@@ -7,6 +7,7 @@ import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.core.network.openai.ModelMeta
 import fan.x0.focus.data.assistant.AgentMode
 import fan.x0.focus.data.assistant.AskKind
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.ChatDetailConfig
 import fan.x0.focus.data.assistant.CommandPolicy
@@ -328,6 +329,7 @@ data class ChatUiState(
     val policy: CommandPolicy = CommandPolicy.Manual,
     val liveStats: MessageStats = MessageStats(),
     val statsConfig: ChatDetailConfig = ChatDetailConfig(),
+    val replyStyle: AssistantReplyStyle = AssistantReplyStyle.Bubble,
     val todos: List<ConversationTodo> = emptyList(),
     val menu: ChatMenuUi? = null,
     val edit: EditUi? = null,

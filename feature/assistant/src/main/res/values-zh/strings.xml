@@ -107,6 +107,12 @@
     <string name="settings_language_title">语言</string>
     <string name="settings_language_item">应用语言</string>
     <string name="settings_language_body">同时影响界面和 Focus 写出的内容。</string>
+    <string name="settings_reply_style_title">消息样式</string>
+    <string name="settings_reply_style_item">助手回复</string>
+    <string name="settings_reply_style_body">助手回答的外框样式。</string>
+    <string name="settings_reply_style_flat">平铺</string>
+    <string name="settings_reply_style_bubble">气泡</string>
+    <string name="settings_reply_style_card">卡片</string>
     <string name="settings_feeds_title">订阅刷新</string>
     <string name="settings_feeds_item">刷新间隔</string>
     <string name="settings_feeds_body">后台多久检查一次订阅。</string>

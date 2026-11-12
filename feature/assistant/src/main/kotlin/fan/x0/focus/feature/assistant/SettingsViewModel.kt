@@ -21,6 +21,7 @@ import fan.x0.focus.core.notify.MessageNotifier
 import fan.x0.focus.core.notify.NotificationSettings
 import fan.x0.focus.data.assistant.AgentSettings
 import fan.x0.focus.data.assistant.AssistantSettings
+import fan.x0.focus.data.assistant.ChatAppearanceSettings
 import fan.x0.focus.data.assistant.CommandPolicy
 import fan.x0.focus.data.assistant.Contributor
 import fan.x0.focus.data.assistant.ContributorsRepository
@@ -64,6 +65,7 @@ class SettingsViewModel(
     private val notificationSettings: NotificationSettings,
     private val notifier: MessageNotifier,
     private val updates: UpdateController,
+    private val appearance: ChatAppearanceSettings,
 ) : BaseViewModel<SettingsAction, SettingsUiState, SettingsEffect>(SettingsUiState()) {
 
     private var modelPickerJob: Job? = null
@@ -123,6 +125,11 @@ class SettingsViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            appearance.replyStyle.collect { style ->
+                updateState { copy(replyStyle = style) }
+            }
+        }
     }
 
     private suspend fun loadBalances(providers: List<ProviderConfig>) {
@@ -147,6 +154,10 @@ class SettingsViewModel(
             is SettingsAction.LanguageChanged -> {
                 locale.setLanguage(action.tag)
                 updateState { copy(language = action.tag) }
+            }
+            is SettingsAction.ReplyStyleChanged -> {
+                viewModelScope.launch { appearance.setReplyStyle(action.style) }
+                updateState { copy(replyStyle = action.style) }
             }
             SettingsAction.RefreshData -> refreshData()
             SettingsAction.CheckUpdate -> updates.check(userInitiated = true)

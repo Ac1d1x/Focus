@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.semantics.Role
@@ -55,11 +57,14 @@ import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import kotlinx.coroutines.flow.first
 
+enum class FocusChatBubbleStyle { Flat, Bubble, Card }
+
 @Composable
 fun FocusChatBubble(
     text: String,
     fromUser: Boolean,
     modifier: Modifier = Modifier,
+    style: FocusChatBubbleStyle = FocusChatBubbleStyle.Bubble,
     streaming: Boolean = false,
     highlighted: Boolean = false,
     selectable: Boolean = false,
@@ -85,6 +90,7 @@ fun FocusChatBubble(
             } else {
                 AssistantBubble(
                     text = text,
+                    style = style,
                     streaming = streaming,
                     highlighted = highlighted,
                     selectable = selectable,
@@ -172,6 +178,7 @@ private fun UserBubble(
 @Composable
 private fun AssistantBubble(
     text: String,
+    style: FocusChatBubbleStyle,
     streaming: Boolean,
     highlighted: Boolean,
     selectable: Boolean,
@@ -181,9 +188,14 @@ private fun AssistantBubble(
 ) {
     val scheme = MaterialTheme.colorScheme
     val motion = LocalFocusMotion.current
-    val shape = FocusShapeTokens.bubbleIncoming
+    val shape = when (style) {
+        FocusChatBubbleStyle.Flat -> RectangleShape
+        FocusChatBubbleStyle.Bubble -> RoundedCornerShape(6.dp, 24.dp, 24.dp, 24.dp)
+        FocusChatBubbleStyle.Card -> MaterialTheme.shapes.extraLarge
+    }
     val container by animateColorAsState(
         targetValue = when {
+            style == FocusChatBubbleStyle.Flat -> Color.Transparent
             highlighted -> scheme.secondaryContainer
             streaming -> scheme.surfaceContainer
             else -> scheme.surfaceContainerLow
@@ -191,24 +203,22 @@ private fun AssistantBubble(
         animationSpec = motion.effectsDefault(),
         label = "bubbleContainer",
     )
-    Surface(
-        modifier = Modifier
-            .widthIn(max = 320.dp)
-            .animateContentSize(motion.spatialDefault())
-            .bubbleGestures(
-                shape = shape,
-                contentColor = scheme.onSurface,
-                selectable = selectable,
-                onLongPress = onLongPress,
-            ),
-        shape = shape,
-        color = container,
-        contentColor = scheme.onSurface,
-        border = if (selectable) BorderStroke(1.dp, scheme.primary) else null,
-    ) {
+    val border = when {
+        selectable -> BorderStroke(1.dp, scheme.primary)
+        style == FocusChatBubbleStyle.Card -> BorderStroke(1.dp, scheme.outlineVariant)
+        else -> null
+    }
+    val horizontal = if (style == FocusChatBubbleStyle.Flat) 0.dp else 16.dp
+    val vertical = if (style == FocusChatBubbleStyle.Flat) 4.dp else 12.dp
+    val textModifier = if (style == FocusChatBubbleStyle.Flat && highlighted) {
+        Modifier.border(2.dp, scheme.primary, MaterialTheme.shapes.medium).padding(6.dp)
+    } else {
+        Modifier
+    }
+    val body: @Composable () -> Unit = {
         Column {
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = horizontal, vertical = vertical),
             ) {
                 header?.let {
                     it()
@@ -227,9 +237,9 @@ private fun AssistantBubble(
                             modifier = Modifier.padding(vertical = 2.dp),
                         )
                         selectable -> SelectionContainer {
-                            FocusMarkdown(text = text, color = scheme.onSurface, streaming = streaming)
+                            FocusMarkdown(text = text, modifier = textModifier, color = scheme.onSurface, streaming = streaming)
                         }
-                        else -> FocusMarkdown(text = text, color = scheme.onSurface, streaming = streaming)
+                        else -> FocusMarkdown(text = text, modifier = textModifier, color = scheme.onSurface, streaming = streaming)
                     }
                 }
             }
@@ -239,6 +249,49 @@ private fun AssistantBubble(
                 modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
             )
         }
+    }
+    when (style) {
+        FocusChatBubbleStyle.Flat -> Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(motion.spatialDefault())
+                .bubbleGestures(
+                    shape = shape,
+                    contentColor = scheme.onSurface,
+                    selectable = selectable,
+                    onLongPress = onLongPress,
+                ),
+        ) { body() }
+        FocusChatBubbleStyle.Bubble -> Surface(
+            modifier = Modifier
+                .widthIn(max = 320.dp)
+                .animateContentSize(motion.spatialDefault())
+                .bubbleGestures(
+                    shape = shape,
+                    contentColor = scheme.onSurface,
+                    selectable = selectable,
+                    onLongPress = onLongPress,
+                ),
+            shape = shape,
+            color = container,
+            contentColor = scheme.onSurface,
+            border = border,
+        ) { body() }
+        FocusChatBubbleStyle.Card -> Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(motion.spatialDefault())
+                .bubbleGestures(
+                    shape = shape,
+                    contentColor = scheme.onSurface,
+                    selectable = selectable,
+                    onLongPress = onLongPress,
+                ),
+            shape = shape,
+            color = container,
+            contentColor = scheme.onSurface,
+            border = border,
+        ) { body() }
     }
 }
 

@@ -11,6 +11,7 @@ import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.AttachmentLoader
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.BtwRunner
+import fan.x0.focus.data.assistant.ChatAppearanceSettings
 import fan.x0.focus.data.assistant.ChatAttachment
 import fan.x0.focus.data.assistant.ChatCommand
 import fan.x0.focus.data.assistant.ChatDetailSettings
@@ -94,6 +95,7 @@ class ChatViewModel(
     private val turns: ChatTurnRunner,
     private val suggestionGenerator: ChatSuggestionGenerator,
     private val details: ChatDetailSettings,
+    private val appearance: ChatAppearanceSettings,
     private val policy: PolicySettings,
     private val btw: BtwRunner,
     private val skills: SkillRepository,
@@ -184,6 +186,11 @@ class ChatViewModel(
         viewModelScope.launch {
             details.config.collect { config ->
                 updateState { copy(statsConfig = config) }
+            }
+        }
+        viewModelScope.launch {
+            appearance.replyStyle.collect { style ->
+                updateState { copy(replyStyle = style) }
             }
         }
         viewModelScope.launch {

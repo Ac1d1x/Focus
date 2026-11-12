@@ -14,6 +14,7 @@ import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
@@ -76,5 +77,41 @@ internal fun SettingsAppearancePage(
                 }
             }
         }
+        item(key = "reply_style") {
+            FocusReveal(index = 2) {
+                FocusCardGroup(title = stringResource(R.string.settings_reply_style_title)) {
+                    formItem(
+                        headlineContent = { Text(stringResource(R.string.settings_reply_style_item)) },
+                        supportingContent = { Text(stringResource(R.string.settings_reply_style_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Chat,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        },
+                    ) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            AssistantReplyStyle.entries.forEach { style ->
+                                FocusChip(
+                                    label = stringResource(style.labelRes()),
+                                    selected = state.replyStyle == style,
+                                    onClick = { onAction(SettingsAction.ReplyStyleChanged(style)) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+}
+
+private fun AssistantReplyStyle.labelRes(): Int = when (this) {
+    AssistantReplyStyle.Flat -> R.string.settings_reply_style_flat
+    AssistantReplyStyle.Bubble -> R.string.settings_reply_style_bubble
+    AssistantReplyStyle.Card -> R.string.settings_reply_style_card
 }

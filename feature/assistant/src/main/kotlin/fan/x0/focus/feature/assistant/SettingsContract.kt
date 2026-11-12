@@ -10,6 +10,7 @@ import fan.x0.focus.core.network.ProviderHeader
 import fan.x0.focus.core.network.openai.ChatProtocol
 import fan.x0.focus.core.network.openai.ProviderBalance
 import fan.x0.focus.data.assistant.AgentDefaults
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.data.assistant.CommandPolicy
 import fan.x0.focus.data.assistant.Contributor
 import fan.x0.focus.data.assistant.DataUsage
@@ -25,6 +26,7 @@ data class SettingsUiState(
     val refreshHours: Int = 6,
     val notificationsEnabled: Boolean = true,
     val language: String? = null,
+    val replyStyle: AssistantReplyStyle = AssistantReplyStyle.Bubble,
     val resetConfirm: Boolean = false,
     val dataUsage: DataUsage = DataUsage(),
     val dataUsageLoading: Boolean = false,
@@ -102,6 +104,7 @@ sealed interface SettingsAction : UiAction {
     data class RefreshHoursChanged(val hours: Int) : SettingsAction
     data class NotificationsEnabledChanged(val value: Boolean) : SettingsAction
     data class LanguageChanged(val tag: String?) : SettingsAction
+    data class ReplyStyleChanged(val style: AssistantReplyStyle) : SettingsAction
     data object RefreshData : SettingsAction
     data object CheckUpdate : SettingsAction
     data object ToggleContributors : SettingsAction

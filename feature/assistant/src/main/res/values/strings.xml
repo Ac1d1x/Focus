@@ -107,6 +107,12 @@
     <string name="settings_language_title">Language</string>
     <string name="settings_language_item">App language</string>
     <string name="settings_language_body">Applies to the interface and to content Focus writes.</string>
+    <string name="settings_reply_style_title">Message style</string>
+    <string name="settings_reply_style_item">Assistant replies</string>
+    <string name="settings_reply_style_body">How the assistant\'s answers are framed.</string>
+    <string name="settings_reply_style_flat">Flat</string>
+    <string name="settings_reply_style_bubble">Bubble</string>
+    <string name="settings_reply_style_card">Card</string>
     <string name="settings_feeds_title">Feed refresh</string>
     <string name="settings_feeds_item">Refresh interval</string>
     <string name="settings_feeds_body">How often feeds are checked in the background.</string>

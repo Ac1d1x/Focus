@@ -22,8 +22,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.FocusChatBubble
+import fan.x0.focus.core.designsystem.components.FocusChatBubbleStyle
 import fan.x0.focus.core.designsystem.components.FocusSelectionBar
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 
 @Composable
 internal fun ChatMessageBubble(
@@ -61,6 +63,7 @@ internal fun ChatMessageBubble(
     FocusChatBubble(
         text = text,
         fromUser = fromUser,
+        style = state.replyStyle.toBubbleStyle(),
         streaming = streaming,
         highlighted = state.highlightKey == key,
         selectable = selecting,
@@ -150,4 +153,10 @@ internal fun SelectionModeBar(
         onDone = onDone,
         modifier = modifier,
     )
+}
+
+private fun AssistantReplyStyle.toBubbleStyle(): FocusChatBubbleStyle = when (this) {
+    AssistantReplyStyle.Flat -> FocusChatBubbleStyle.Flat
+    AssistantReplyStyle.Bubble -> FocusChatBubbleStyle.Bubble
+    AssistantReplyStyle.Card -> FocusChatBubbleStyle.Card
 }

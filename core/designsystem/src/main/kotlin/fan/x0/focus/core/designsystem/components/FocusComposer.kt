@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -60,6 +61,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeColorEffect
 import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import fan.x0.focus.core.designsystem.R
@@ -101,15 +103,12 @@ fun FocusComposer(
         animationSpec = motion.effectsDefault(),
         label = "composerContainer",
     )
-    val scrim by animateColorAsState(
-        targetValue = container.copy(alpha = 0.72f),
-        animationSpec = motion.effectsDefault(),
-        label = "composerScrim",
-    )
-    val blurStyle = remember {
+    val blurStyle = remember(container) {
         HazeBlurStyle {
             blurRadius(20.dp)
             noiseFactor(0f)
+            backgroundColor(container)
+            fallbackColorEffect(HazeColorEffect.tint(container))
         }
     }
     val active = canSend || sending
@@ -170,12 +169,13 @@ fun FocusComposer(
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .onSizeChanged { onHeightChange(it.height) }
             .clip(shape)
+            .background(container)
             .hazeBlur(
                 input = HazeInput.Sources(hazeState),
                 style = blurStyle,
             ),
         shape = shape,
-        color = scrim,
+        color = Color.Transparent,
     ) {
         Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
             if (voice != null) {

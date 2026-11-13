@@ -3,6 +3,7 @@ package fan.x0.focus.feature.assistant
 import androidx.lifecycle.viewModelScope
 import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.mvi.BaseViewModel
+import fan.x0.focus.data.assistant.AssistantManager
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.PromptSettings
@@ -18,6 +19,7 @@ class AssistantViewModel(
     private val workspace: WorkspaceStore,
     private val prompts: PromptSettings,
     private val profiles: AssistantProfileStore,
+    private val manager: AssistantManager,
 ) : BaseViewModel<AssistantAction, AssistantUiState, AssistantEffect>(AssistantUiState()) {
 
     private var assistantId = AssistantProfile.DEFAULT_ID
@@ -45,13 +47,16 @@ class AssistantViewModel(
         try {
             val documents = workspace.readAll(assistantId)
             val assistantName = workspace.assistantName(assistantId)
-            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId }
+            val all = profiles.profiles.first()
+            val profile = all.firstOrNull { it.id == assistantId }
             updateState {
                 copy(
                     loading = false,
                     assistantId = assistantId,
                     assistantName = assistantName,
                     assistantRole = profile?.role.orEmpty(),
+                    assistantEmoji = profile?.emoji.orEmpty(),
+                    canDelete = all.size > 1,
                     documents = documents.map { WorkspaceDocumentUi(it.file, it.content) },
                     openDocument = openDocument?.let { open ->
                         documents.firstOrNull { it.file == open.file }
@@ -93,6 +98,38 @@ class AssistantViewModel(
             }
             AssistantAction.ClosePrompt -> updateState { copy(promptEditor = null) }
             AssistantAction.SavePrompt -> savePrompt()
+            is AssistantAction.SaveProfile -> saveProfile(action)
+            AssistantAction.DeleteProfile -> deleteProfile()
+        }
+    }
+
+    private fun saveProfile(action: AssistantAction.SaveProfile) {
+        viewModelScope.launch {
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            manager.update(
+                profile.copy(
+                    name = action.name,
+                    role = action.role,
+                    emoji = action.emoji,
+                ),
+            )
+            updateState {
+                copy(
+                    assistantName = action.name.trim(),
+                    assistantRole = action.role.trim(),
+                    assistantEmoji = action.emoji.trim(),
+                )
+            }
+            sendEffect(AssistantEffect.ProfileSaved)
+        }
+    }
+
+    private fun deleteProfile() {
+        viewModelScope.launch {
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            if (manager.delete(profile)) {
+                sendEffect(AssistantEffect.ProfileDeleted)
+            }
         }
     }
 

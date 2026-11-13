@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -27,11 +28,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -58,6 +62,7 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -66,10 +71,14 @@ fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val promptSaved = stringResource(R.string.assistant_prompts_saved)
+    val profileSaved = stringResource(R.string.assistant_profile_saved)
+    val profileDeleted = stringResource(R.string.assistant_profile_deleted)
     HandleAppErrors(viewModel.errors, snackbar)
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             AssistantEffect.PromptSaved -> snackbar.showSnackbar(promptSaved)
+            AssistantEffect.ProfileSaved -> snackbar.showSnackbar(profileSaved)
+            AssistantEffect.ProfileDeleted -> snackbar.showSnackbar(profileDeleted)
         }
     }
     AssistantScreen(state = state, onAction = viewModel::onAction, snackbar = snackbar)
@@ -84,6 +93,8 @@ fun AssistantScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val openSettings = LocalFocusSettingsOpener.current
+    var editingProfile by remember { mutableStateOf(false) }
+    var deletingProfile by remember { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = Color.Transparent,
@@ -121,18 +132,27 @@ fun AssistantScreen(
                     AssistantHero(name = state.assistantName, role = state.assistantRole, assistantId = state.assistantId)
                 }
             }
-            item(key = "workspace") {
+            item(key = "profile") {
                 FocusReveal(index = 1) {
+                    ProfileGroup(
+                        state = state,
+                        onEdit = { editingProfile = true },
+                        onDelete = { deletingProfile = true },
+                    )
+                }
+            }
+            item(key = "workspace") {
+                FocusReveal(index = 2) {
                     WorkspaceGroup(state = state, onAction = onAction)
                 }
             }
             item(key = "prompts") {
-                FocusReveal(index = 2) {
+                FocusReveal(index = 3) {
                     PromptGroup(state = state, onAction = onAction)
                 }
             }
             item(key = "more") {
-                FocusReveal(index = 3) {
+                FocusReveal(index = 4) {
                     FocusCardGroup(title = stringResource(R.string.assistant_more)) {
                         item(
                             headlineContent = { Text(stringResource(R.string.assistant_settings_row)) },
@@ -158,6 +178,46 @@ fun AssistantScreen(
             }
         }
     }
+    if (editingProfile) {
+        AssistantProfileDialog(
+            profile = AssistantProfile(
+                id = state.assistantId,
+                name = state.assistantName,
+                emoji = state.assistantEmoji,
+                role = state.assistantRole,
+            ),
+            onDismiss = { editingProfile = false },
+            onSave = { name, role, emoji ->
+                onAction(AssistantAction.SaveProfile(name, role, emoji))
+                editingProfile = false
+            },
+        )
+    }
+    if (deletingProfile) {
+        AlertDialog(
+            onDismissRequest = { deletingProfile = false },
+            title = { Text(stringResource(R.string.assistant_profile_delete_title)) },
+            text = { Text(stringResource(R.string.assistant_profile_delete_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = hapticTap {
+                        onAction(AssistantAction.DeleteProfile)
+                        deletingProfile = false
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.assistant_profile_delete_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = hapticTap { deletingProfile = false }) {
+                    Text(stringResource(R.string.assistant_profile_cancel))
+                }
+            },
+        )
+    }
     state.openDocument?.let { document ->
         DocumentSheet(
             document = document,
@@ -172,6 +232,88 @@ fun AssistantScreen(
             onClose = { onAction(AssistantAction.ClosePrompt) },
             onSave = { onAction(AssistantAction.SavePrompt) },
         )
+    }
+}
+
+@Composable
+private fun ProfileGroup(
+    state: AssistantUiState,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val defaultRole = stringResource(R.string.assistant_profile_default_role)
+    val automatic = stringResource(R.string.assistant_profile_emoji_auto)
+    FocusCardGroup(title = stringResource(R.string.assistant_profile_section)) {
+        item(
+            headlineContent = { Text(stringResource(R.string.assistant_profile_name_item)) },
+            supportingContent = { Text(state.assistantName.ifBlank { stringResource(R.string.assistant_hero_default) }) },
+            leadingContent = {
+                FocusCardGroupIcon(
+                    icon = FocusIcons.Person,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    FocusIcons.Chevron,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            onClick = onEdit,
+        )
+        item(
+            headlineContent = { Text(stringResource(R.string.assistant_profile_role_item)) },
+            supportingContent = { Text(state.assistantRole.ifBlank { defaultRole }) },
+            leadingContent = {
+                FocusCardGroupIcon(
+                    icon = FocusIcons.Task,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    FocusIcons.Chevron,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            onClick = onEdit,
+        )
+        item(
+            headlineContent = { Text(stringResource(R.string.assistant_profile_emoji_item)) },
+            supportingContent = { Text(state.assistantEmoji.ifBlank { automatic }) },
+            leadingContent = {
+                FocusCardGroupIcon(
+                    icon = FocusIcons.Assistant,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            },
+            trailingContent = {
+                Icon(
+                    FocusIcons.Chevron,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            onClick = onEdit,
+        )
+        if (state.canDelete) {
+            item(
+                headlineContent = { Text(stringResource(R.string.assistant_profile_delete_item)) },
+                leadingContent = {
+                    FocusCardGroupIcon(
+                        icon = FocusIcons.Delete,
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                },
+                onClick = onDelete,
+            )
+        }
     }
 }
 

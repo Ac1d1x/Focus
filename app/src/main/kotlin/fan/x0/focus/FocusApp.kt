@@ -216,8 +216,6 @@ private fun MainShell() {
                     shell.createAssistant(name, role, emoji)
                     navigate(FocusRoute.Chat)
                 },
-                onUpdateAssistant = shell::updateAssistant,
-                onDeleteAssistant = shell::deleteAssistant,
             )
         }
         val content: @Composable () -> Unit = {

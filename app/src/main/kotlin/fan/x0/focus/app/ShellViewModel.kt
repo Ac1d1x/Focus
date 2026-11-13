@@ -2,15 +2,13 @@ package fan.x0.focus.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fan.x0.focus.data.assistant.AssistantManager
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.ChatSwitcher
-import fan.x0.focus.data.assistant.ChatTurnRunner
 import fan.x0.focus.data.assistant.Conversation
-import fan.x0.focus.data.assistant.PromptSettings
 import fan.x0.focus.data.assistant.SideChatManager
-import fan.x0.focus.data.assistant.WorkspaceStore
 import fan.x0.focus.data.assistant.sideChatRank
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,12 +34,10 @@ data class ShellState(
 @KoinViewModel
 class ShellViewModel(
     private val chats: ChatStore,
-    private val workspace: WorkspaceStore,
     private val switcher: ChatSwitcher,
     private val sideChats: SideChatManager,
     private val profiles: AssistantProfileStore,
-    private val prompts: PromptSettings,
-    private val turns: ChatTurnRunner,
+    private val manager: AssistantManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShellState())
@@ -130,36 +126,7 @@ class ShellViewModel(
 
     fun createAssistant(name: String, role: String, emoji: String) {
         viewModelScope.launch {
-            val profile = profiles.create(name, role, emoji)
-            workspace.seed(profile.id, profile.name, profile.role)
-            val main = chats.ensureMainConversation(profile.id)
-            switcher.open(main.id)
-            load()
-        }
-    }
-
-    fun deleteAssistant(profile: AssistantProfile) {
-        viewModelScope.launch {
-            val all = profiles.profilesOnce()
-            if (all.size <= 1) return@launch
-            chats.conversationIds(profile.id).forEach { id ->
-                sideChats.stop(id)
-                turns.stop(id)
-            }
-            profiles.delete(profile.id)
-            workspace.delete(profile.id)
-            prompts.clear(profile.id)
-            chats.deleteAssistantData(profile.id)
-            val main = chats.ensureMainConversation()
-            switcher.reload(main.id)
-            load()
-        }
-    }
-
-    fun updateAssistant(profile: AssistantProfile) {
-        viewModelScope.launch {
-            profiles.update(profile)
-            workspace.updateAssistantName(profile.id, profile.name)
+            manager.create(name, role, emoji)
             load()
         }
     }

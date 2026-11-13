@@ -15,17 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,14 +44,8 @@ import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
+import fan.x0.focus.feature.assistant.AssistantProfileDialog
 import fan.x0.focus.plugin.PluginPageRef
-
-private data class AssistantDraft(
-    val profile: AssistantProfile?,
-    val name: String,
-    val role: String,
-    val emoji: String,
-)
 
 @Composable
 fun ShellDrawer(
@@ -69,12 +60,9 @@ fun ShellDrawer(
     onOpenConversation: (String) -> Unit,
     onSelectAssistant: (String) -> Unit,
     onCreateAssistant: (String, String, String) -> Unit,
-    onUpdateAssistant: (AssistantProfile) -> Unit,
-    onDeleteAssistant: (AssistantProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var editing by remember { mutableStateOf<AssistantDraft?>(null) }
-    var deleting by remember { mutableStateOf<AssistantProfile?>(null) }
+    var creating by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -93,21 +81,9 @@ fun ShellDrawer(
                 assistant = assistant,
                 selected = assistant.id == state.activeAssistantId,
                 onClick = { onSelectAssistant(assistant.id) },
-                onEdit = {
-                    editing = AssistantDraft(
-                        profile = assistant,
-                        name = assistant.name,
-                        role = assistant.role,
-                        emoji = assistant.emoji,
-                    )
-                },
             )
         }
-        NewAssistantRow(
-            onClick = {
-                editing = AssistantDraft(profile = null, name = "", role = "", emoji = "")
-            },
-        )
+        NewAssistantRow(onClick = { creating = true })
         Spacer(Modifier.height(8.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(Modifier.height(6.dp))
@@ -183,48 +159,13 @@ fun ShellDrawer(
             onNavigate(FocusRoute.Settings)
         }
     }
-    editing?.let { draft ->
-        AssistantEditorDialog(
-            draft = draft,
-            canDelete = state.assistants.size > 1,
-            onDismiss = { editing = null },
-            onDelete = { profile ->
-                editing = null
-                deleting = profile
-            },
+    if (creating) {
+        AssistantProfileDialog(
+            profile = null,
+            onDismiss = { creating = false },
             onSave = { name, role, emoji ->
-                val profile = draft.profile
-                if (profile == null) {
-                    onCreateAssistant(name, role, emoji)
-                } else {
-                    onUpdateAssistant(profile.copy(name = name, role = role, emoji = emoji))
-                }
-                editing = null
-            },
-        )
-    }
-    deleting?.let { profile ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            title = { Text(stringResource(R.string.drawer_assistant_delete_title)) },
-            text = { Text(stringResource(R.string.drawer_assistant_delete_body)) },
-            confirmButton = {
-                TextButton(
-                    onClick = hapticTap {
-                        onDeleteAssistant(profile)
-                        deleting = null
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.drawer_assistant_delete_confirm),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = hapticTap { deleting = null }) {
-                    Text(stringResource(R.string.drawer_assistant_cancel))
-                }
+                onCreateAssistant(name, role, emoji)
+                creating = false
             },
         )
     }
@@ -274,7 +215,6 @@ private fun AssistantRow(
     assistant: AssistantProfile,
     selected: Boolean,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
@@ -285,7 +225,7 @@ private fun AssistantRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -307,17 +247,6 @@ private fun AssistantRow(
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-            }
-            IconButton(
-                onClick = hapticTap(onEdit),
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    imageVector = FocusIcons.Edit,
-                    contentDescription = stringResource(R.string.drawer_edit_assistant),
-                    tint = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -363,84 +292,6 @@ private fun AssistantAvatar(assistant: AssistantProfile, size: Dp) {
             size = size,
         )
     }
-}
-
-@Composable
-private fun AssistantEditorDialog(
-    draft: AssistantDraft,
-    canDelete: Boolean,
-    onDismiss: () -> Unit,
-    onDelete: (AssistantProfile) -> Unit,
-    onSave: (String, String, String) -> Unit,
-) {
-    val editing = draft.profile != null
-    var name by remember(draft) { mutableStateOf(draft.name) }
-    var role by remember(draft) { mutableStateOf(draft.role) }
-    var emoji by remember(draft) { mutableStateOf(draft.emoji) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                stringResource(
-                    if (editing) R.string.drawer_edit_assistant else R.string.drawer_new_assistant,
-                ),
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(40) },
-                    label = { Text(stringResource(R.string.drawer_assistant_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = role,
-                    onValueChange = { role = it.take(120) },
-                    label = { Text(stringResource(R.string.drawer_assistant_role)) },
-                    placeholder = { Text(stringResource(R.string.drawer_assistant_role_hint)) },
-                    minLines = 2,
-                    maxLines = 4,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = emoji,
-                    onValueChange = { emoji = it.take(8) },
-                    label = { Text(stringResource(R.string.drawer_assistant_emoji)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (editing && canDelete) {
-                    TextButton(
-                        onClick = hapticTap { draft.profile?.let(onDelete) },
-                    ) {
-                        Text(
-                            text = stringResource(R.string.drawer_assistant_delete),
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = hapticTap { onSave(name.trim(), role.trim(), emoji.trim()) },
-                enabled = name.isNotBlank(),
-            ) {
-                Text(
-                    stringResource(
-                        if (editing) R.string.drawer_assistant_save else R.string.drawer_assistant_create,
-                    ),
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = hapticTap(onDismiss)) {
-                Text(stringResource(R.string.drawer_assistant_cancel))
-            }
-        },
-    )
 }
 
 @Composable

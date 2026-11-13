@@ -51,6 +51,11 @@ class ChatSwitcher(private val main: MainSessionStore) {
         _openRequest.value = conversationId
     }
 
+    fun switchQuietly(conversationId: String) {
+        _current.value = conversationId
+        _command.value = ChatCommand.Reload(conversationId)
+    }
+
     fun newChat() {
         _command.value = ChatCommand.New
     }

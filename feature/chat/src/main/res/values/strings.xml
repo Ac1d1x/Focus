@@ -3,12 +3,10 @@
     <string name="chat_title">Focus</string>
     <string name="chat_main_title">Main session</string>
     <string name="chat_side_title">Side chat · %1$s</string>
+    <string name="chat_side_panel_description">Side chats run in parallel with the main session and bring results back when done.</string>
+    <string name="chat_side_panel_untitled">Untitled side chat</string>
+    <string name="chat_side_panel_actions">Side chat actions</string>
     <string name="chat_side_panel_title">Side chats</string>
-    <string name="chat_side_panel_close">Close</string>
-    <string name="chat_side_panel_summary">%1$d chats, %2$d active</string>
-    <string name="chat_side_panel_summary_idle">%1$d chats</string>
-    <string name="chat_side_panel_section_active">Active</string>
-    <string name="chat_side_panel_section_recent">Recent</string>
     <string name="chat_side_panel_empty_title">No side chats yet</string>
     <string name="chat_side_panel_refresh">Refresh</string>
     <string name="chat_side_panel_empty">The main conversation can hand off work, and triggers can create side chats automatically.</string>

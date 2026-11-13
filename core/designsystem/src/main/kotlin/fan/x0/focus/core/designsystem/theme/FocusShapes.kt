@@ -47,7 +47,7 @@ object FocusShapeTokens {
         @Composable get() = RoundedCornerShape(FocusRadii.extraExtraLarge.scaled())
 
     val input: Shape
-        @Composable get() = RoundedCornerShape(FocusRadii.extraLarge.scaled())
+        @Composable get() = RoundedCornerShape(FocusRadii.large.scaled())
 
     val pill = RoundedCornerShape(percent = 50)
 

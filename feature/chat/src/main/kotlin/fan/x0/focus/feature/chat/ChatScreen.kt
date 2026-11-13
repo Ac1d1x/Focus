@@ -42,12 +42,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -566,14 +566,14 @@ private fun ChatHome(
 @Composable
 private fun SuggestionButton(text: String, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    TextButton(
+    FilledTonalButton(
         onClick = hapticTap(onClick),
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .pressScale(interaction, pressedScale = 0.98f),
         interactionSource = interaction,
-        contentPadding = ButtonDefaults.TextButtonContentPadding,
+        contentPadding = ButtonDefaults.ContentPadding,
     ) {
         Text(
             text = text,

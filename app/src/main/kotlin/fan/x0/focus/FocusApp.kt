@@ -255,7 +255,10 @@ private fun MainShell() {
         if (expanded) {
             PermanentNavigationDrawer(
                 drawerContent = {
-                    PermanentDrawerSheet(modifier = Modifier.width(300.dp)) {
+                    PermanentDrawerSheet(
+                        modifier = Modifier.width(300.dp),
+                        drawerContainerColor = MaterialTheme.colorScheme.surface,
+                    ) {
                         Box(modifier = Modifier.safeDrawingPadding()) {
                             drawer()
                         }
@@ -268,7 +271,10 @@ private fun MainShell() {
             ModalNavigationDrawer(
                 drawerState = drawerState,
                 drawerContent = {
-                    ModalDrawerSheet(modifier = Modifier.width(300.dp)) {
+                    ModalDrawerSheet(
+                        modifier = Modifier.width(300.dp),
+                        drawerContainerColor = MaterialTheme.colorScheme.surface,
+                    ) {
                         drawer()
                     }
                 },

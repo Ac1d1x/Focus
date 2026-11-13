@@ -366,7 +366,7 @@ private fun QuickAction(
     Surface(
         onClick = hapticTap(onClick),
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier,
     ) {
         Row(
@@ -481,7 +481,7 @@ private fun AssistantPicker(
         onClick = hapticSelect(onSwitch),
         shape = MaterialTheme.shapes.large,
         colors = androidx.compose.material3.NavigationDrawerItemDefaults.colors(
-            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
     )
 }
@@ -496,7 +496,7 @@ private fun BottomAction(
     Surface(
         onClick = hapticTap(onClick),
         shape = MaterialTheme.shapes.large,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Column(
@@ -557,7 +557,7 @@ private fun AssistantSwitcherSheet(
                             containerColor = if (selected) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
-                                MaterialTheme.colorScheme.surfaceContainerLow
+                                MaterialTheme.colorScheme.surfaceContainerHigh
                             },
                         ),
                         modifier = Modifier.fillMaxWidth(),

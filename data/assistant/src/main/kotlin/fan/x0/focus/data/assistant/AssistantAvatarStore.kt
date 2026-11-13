@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import java.io.ByteArrayInputStream
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import fan.x0.focus.core.error.StorageException
@@ -31,29 +32,33 @@ class AssistantAvatarStore(@Provided private val context: Context) {
     suspend fun import(uri: String, id: String): String = withContext(Dispatchers.IO) {
         try {
             val source = Uri.parse(uri)
+            val bytes = context.contentResolver.openInputStream(source)?.use { it.readBytes() }
+                ?: error("cannot open image")
+            if (bytes.isEmpty()) error("empty image")
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            context.contentResolver.openInputStream(source)?.use {
-                BitmapFactory.decodeStream(it, null, bounds)
-            } ?: error("cannot open image")
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) error("cannot read image")
             val options = BitmapFactory.Options().apply {
                 inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight)
             }
-            val decoded = context.contentResolver.openInputStream(source)?.use {
-                BitmapFactory.decodeStream(it, null, options)
-            } ?: error("cannot decode image")
-            val orientation = context.contentResolver.openInputStream(source)?.use { stream ->
-                ExifInterface(stream).getAttributeInt(
+            val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                ?: error("cannot decode image")
+            val orientation = runCatching {
+                ExifInterface(ByteArrayInputStream(bytes)).getAttributeInt(
                     ExifInterface.TAG_ORIENTATION,
                     ExifInterface.ORIENTATION_NORMAL,
                 )
-            } ?: ExifInterface.ORIENTATION_NORMAL
+            }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
             val oriented = applyOrientation(decoded, orientation)
             val scaled = scaleDown(oriented)
             val name = "${id.take(24)}-${UUID.randomUUID()}.jpg"
             folder.mkdirs()
-            File(folder, name).outputStream().use { output ->
+            val written = File(folder, name).outputStream().use { output ->
                 scaled.compress(Bitmap.CompressFormat.JPEG, 88, output)
+            }
+            if (!written) {
+                File(folder, name).delete()
+                error("cannot save image")
             }
             if (scaled !== decoded) {
                 if (oriented !== decoded && oriented !== scaled) oriented.recycle()

@@ -241,6 +241,7 @@ private fun ProfileGroup(
     var emoji by remember(state.assistantId) { mutableStateOf(state.assistantEmoji) }
     var avatar by remember(state.assistantId) { mutableStateOf(state.assistantAvatar) }
     var dirty by remember(state.assistantId) { mutableStateOf(false) }
+    var avatarError by remember(state.assistantId) { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             scope.launch {
@@ -248,12 +249,18 @@ private fun ProfileGroup(
                     val imported = avatarStore.import(uri.toString(), state.assistantId)
                     if (imported.isNotBlank()) {
                         avatar = imported
-                        dirty = true
+                        avatarError = false
+                        dirty = name.isBlank()
+                        if (name.isNotBlank()) {
+                            onSave(name.trim(), role.trim(), emoji.trim(), imported)
+                        }
+                    } else {
+                        avatarError = true
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Throwable) {
-                    Unit
+                    avatarError = true
                 }
             }
         }
@@ -264,6 +271,7 @@ private fun ProfileGroup(
         role = state.assistantRole
         emoji = state.assistantEmoji
         avatar = state.assistantAvatar
+        avatarError = false
     }
     val changed = name != state.assistantName || role != state.assistantRole ||
         emoji != state.assistantEmoji || avatar != state.assistantAvatar
@@ -315,7 +323,11 @@ private fun ProfileGroup(
                             TextButton(
                                 onClick = hapticTap {
                                     avatar = ""
-                                    dirty = true
+                                    avatarError = false
+                                    dirty = name.isBlank()
+                                    if (name.isNotBlank()) {
+                                        onSave(name.trim(), role.trim(), emoji.trim(), "")
+                                    }
                                 },
                             ) {
                                 Text(
@@ -323,6 +335,13 @@ private fun ProfileGroup(
                                     color = MaterialTheme.colorScheme.error,
                                 )
                             }
+                        }
+                        if (avatarError) {
+                            Text(
+                                text = stringResource(R.string.assistant_profile_avatar_error),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
                         }
                     }
                 }
@@ -629,7 +648,7 @@ private fun AssistantHero(state: AssistantUiState) {
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         AssistantAvatar(
-            assistant = AssistantProfile(
+            assistant = state.profile ?: AssistantProfile(
                 id = state.assistantId,
                 name = state.assistantName,
                 emoji = state.assistantEmoji,

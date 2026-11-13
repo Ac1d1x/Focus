@@ -16,6 +16,7 @@
     <string name="assistant_profile_saved">助手已更新</string>
     <string name="assistant_profile_deleted">助手已删除</string>
     <string name="assistant_profile_new">新建助手</string>
+    <string name="assistant_profile_avatar_error">无法读取这张图片</string>
     <string name="assistant_profile_avatar_pick">选择图片</string>
     <string name="assistant_profile_avatar_remove">移除图片</string>
     <string name="assistant_profile_name">名字</string>

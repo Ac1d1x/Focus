@@ -25,6 +25,7 @@ data class PromptEditorUi(
 
 data class AssistantUiState(
     val loading: Boolean = true,
+    val profile: AssistantProfile? = null,
     val assistantId: String = AssistantProfile.DEFAULT_ID,
     val assistantName: String = "",
     val assistantRole: String = "",

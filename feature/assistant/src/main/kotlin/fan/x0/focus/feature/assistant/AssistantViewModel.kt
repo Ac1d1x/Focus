@@ -52,6 +52,7 @@ class AssistantViewModel(
             updateState {
                 copy(
                     loading = false,
+                    profile = profile,
                     assistantId = assistantId,
                     assistantName = assistantName,
                     assistantRole = profile?.role.orEmpty(),
@@ -115,14 +116,7 @@ class AssistantViewModel(
                     avatar = action.avatar,
                 ),
             )
-            updateState {
-                copy(
-                    assistantName = action.name.trim(),
-                    assistantRole = action.role.trim(),
-                    assistantEmoji = action.emoji.trim(),
-                    assistantAvatar = action.avatar,
-                )
-            }
+            load()
             sendEffect(AssistantEffect.ProfileSaved)
         }
     }

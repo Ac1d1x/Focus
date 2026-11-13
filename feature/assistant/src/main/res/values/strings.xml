@@ -16,6 +16,7 @@
     <string name="assistant_profile_saved">Assistant updated</string>
     <string name="assistant_profile_deleted">Assistant deleted</string>
     <string name="assistant_profile_new">New assistant</string>
+    <string name="assistant_profile_avatar_error">Could not read that image</string>
     <string name="assistant_profile_avatar_pick">Choose image</string>
     <string name="assistant_profile_avatar_remove">Remove image</string>
     <string name="assistant_profile_name">Name</string>

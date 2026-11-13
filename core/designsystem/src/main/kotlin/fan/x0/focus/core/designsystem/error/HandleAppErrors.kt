@@ -12,6 +12,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import fan.x0.focus.core.designsystem.R
+import fan.x0.focus.core.designsystem.components.FocusSignalState
+import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.error.AppErrorType
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +30,24 @@ fun AppError.message(): String = when (type) {
     AppErrorType.UpdateRequired -> stringResource(R.string.error_update_required)
     AppErrorType.Storage -> stringResource(R.string.error_storage)
     AppErrorType.Generic -> serverMessage ?: stringResource(R.string.error_generic)
+}
+
+@Composable
+fun HandleAppErrors(errors: Flow<AppError>, signal: FocusSignalState) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var current by remember { mutableStateOf<AppError?>(null) }
+    LaunchedEffect(errors, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            errors.collect { current = it }
+        }
+    }
+    val message = current?.message()
+    LaunchedEffect(current) {
+        if (message != null) {
+            signal.show(message, tone = FocusSignalTone.Error, durationMs = 4_200L)
+            current = null
+        }
+    }
 }
 
 @Composable

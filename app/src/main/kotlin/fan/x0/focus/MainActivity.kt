@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import fan.x0.focus.app.AndroidMessageNotifier
 import fan.x0.focus.app.AndroidLocaleController
 import fan.x0.focus.app.ImGatewayService
+import fan.x0.focus.core.designsystem.components.FocusSignalProvider
 import fan.x0.focus.core.designsystem.theme.FocusTheme
 import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.CrashLogStore
@@ -38,7 +39,9 @@ class MainActivity : ComponentActivity() {
         openPluginFrom(intent)
         setContent {
             FocusTheme {
-                FocusApp()
+                FocusSignalProvider {
+                    FocusApp()
+                }
             }
         }
     }

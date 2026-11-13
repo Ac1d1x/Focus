@@ -1,0 +1,302 @@
+package fan.x0.focus.core.designsystem.components
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import fan.x0.focus.core.designsystem.theme.LocalFocusCornerScale
+
+enum class FocusSignalTone { Info, Success, Warning, Error }
+
+internal data class FocusSignalData(
+    val id: Long,
+    val message: String,
+    val tone: FocusSignalTone,
+    val icon: ImageVector?,
+    val actionLabel: String?,
+    val action: (() -> Unit)?,
+    val durationMs: Long,
+)
+
+class FocusSignalState {
+    internal var current by mutableStateOf<FocusSignalData?>(null)
+        private set
+
+    private var counter = 0L
+
+    fun show(
+        message: String,
+        tone: FocusSignalTone = FocusSignalTone.Info,
+        icon: ImageVector? = null,
+        actionLabel: String? = null,
+        action: (() -> Unit)? = null,
+        durationMs: Long = 2_800L,
+    ) {
+        if (message.isBlank()) return
+        current = FocusSignalData(
+            id = ++counter,
+            message = message,
+            tone = tone,
+            icon = icon,
+            actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
+            action = action,
+            durationMs = durationMs.coerceAtLeast(1_200L),
+        )
+    }
+
+    fun dismiss() {
+        current = null
+    }
+
+    internal fun dismiss(id: Long) {
+        if (current?.id == id) current = null
+    }
+}
+
+val LocalFocusSignal = staticCompositionLocalOf { FocusSignalState() }
+
+@Composable
+fun rememberFocusSignalState(): FocusSignalState = remember { FocusSignalState() }
+
+@Composable
+fun FocusSignalProvider(content: @Composable () -> Unit) {
+    val state = rememberFocusSignalState()
+    CompositionLocalProvider(LocalFocusSignal provides state) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            content()
+            FocusSignalHost(state = state, modifier = Modifier.align(Alignment.TopCenter))
+        }
+    }
+}
+
+@Composable
+fun FocusSignalHost(
+    state: FocusSignalState,
+    modifier: Modifier = Modifier,
+    statusBarPadding: Boolean = true,
+) {
+    val notice = state.current
+    val motion = MaterialTheme.motionScheme
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (statusBarPadding) Modifier.statusBarsPadding() else Modifier)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        AnimatedContent(
+            targetState = notice,
+            contentKey = { it?.id },
+            transitionSpec = {
+                (
+                    slideInVertically(motion.defaultSpatialSpec()) { -it } +
+                        fadeIn(motion.defaultEffectsSpec()) +
+                        scaleIn(
+                            animationSpec = motion.defaultSpatialSpec(),
+                            initialScale = 0.92f,
+                            transformOrigin = TransformOrigin(0.5f, 0f),
+                        )
+                    ) togetherWith (
+                    slideOutVertically(motion.fastSpatialSpec()) { -it } +
+                        fadeOut(motion.fastEffectsSpec()) +
+                        scaleOut(
+                            animationSpec = motion.fastSpatialSpec(),
+                            targetScale = 0.92f,
+                            transformOrigin = TransformOrigin(0.5f, 0f),
+                        )
+                    )
+            },
+            label = "focusSignal",
+        ) { data ->
+            if (data != null) {
+                FocusSignalCard(
+                    data = data,
+                    onDismiss = { state.dismiss(data.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusSignalCard(data: FocusSignalData, onDismiss: () -> Unit) {
+    val colors = signalColors(data.tone)
+    val scale = LocalFocusCornerScale.current
+    val shape = RoundedCornerShape(
+        topStart = 24.dp * scale,
+        topEnd = 24.dp * scale,
+        bottomEnd = 24.dp * scale,
+        bottomStart = 8.dp * scale,
+    )
+    val progress = remember(data.id) { Animatable(1f) }
+    LaunchedEffect(data.id) {
+        progress.snapTo(1f)
+        progress.animateTo(
+            targetValue = 0f,
+            animationSpec = tween(data.durationMs.toInt(), easing = LinearEasing),
+        )
+        onDismiss()
+    }
+    val icon = data.icon ?: defaultSignalIcon(data.tone)
+    Surface(
+        onClick = onDismiss,
+        shape = shape,
+        color = colors.container,
+        contentColor = colors.content,
+        shadowElevation = 6.dp,
+        modifier = Modifier
+            .widthIn(max = 520.dp)
+            .fillMaxWidth()
+            .semantics {
+                liveRegion = LiveRegionMode.Polite
+            },
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(colors.accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = colors.onAccent,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Text(
+                    text = data.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.content,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (data.action != null && data.actionLabel != null) {
+                    TextButton(
+                        onClick = {
+                            onDismiss()
+                            data.action.invoke()
+                        },
+                    ) {
+                        Text(
+                            text = data.actionLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.accent,
+                        )
+                    }
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(colors.accent.copy(alpha = 0.18f)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress.value)
+                        .background(colors.accent),
+                )
+            }
+        }
+    }
+}
+
+private data class SignalColors(
+    val container: Color,
+    val content: Color,
+    val accent: Color,
+    val onAccent: Color,
+)
+
+@Composable
+private fun signalColors(tone: FocusSignalTone): SignalColors {
+    val scheme = MaterialTheme.colorScheme
+    return when (tone) {
+        FocusSignalTone.Info -> SignalColors(
+            container = scheme.secondaryContainer,
+            content = scheme.onSecondaryContainer,
+            accent = scheme.secondary,
+            onAccent = scheme.onSecondary,
+        )
+        FocusSignalTone.Success -> SignalColors(
+            container = scheme.primaryContainer,
+            content = scheme.onPrimaryContainer,
+            accent = scheme.primary,
+            onAccent = scheme.onPrimary,
+        )
+        FocusSignalTone.Warning -> SignalColors(
+            container = scheme.tertiaryContainer,
+            content = scheme.onTertiaryContainer,
+            accent = scheme.tertiary,
+            onAccent = scheme.onTertiary,
+        )
+        FocusSignalTone.Error -> SignalColors(
+            container = scheme.errorContainer,
+            content = scheme.onErrorContainer,
+            accent = scheme.error,
+            onAccent = scheme.onError,
+        )
+    }
+}
+
+private fun defaultSignalIcon(tone: FocusSignalTone): ImageVector = when (tone) {
+    FocusSignalTone.Info -> FocusIcons.Info
+    FocusSignalTone.Success -> FocusIcons.Check
+    FocusSignalTone.Warning, FocusSignalTone.Error -> FocusIcons.Warning
+}

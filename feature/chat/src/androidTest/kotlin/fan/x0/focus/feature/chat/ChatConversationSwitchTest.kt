@@ -1,6 +1,5 @@
 package fan.x0.focus.feature.chat
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -28,10 +27,9 @@ class ChatConversationSwitchTest {
     @Test
     fun interruptedSwitchRemovesBothPreviousConversations() {
         val current = mutableStateOf(conversation("first", reuseMessageKeys = true))
-        val snackbar = SnackbarHostState()
         compose.setContent {
             FocusTheme {
-                ChatScreen(state = current.value, onAction = {}, snackbar = snackbar)
+                ChatScreen(state = current.value, onAction = {})
             }
         }
         compose.onNodeWithText("first message 39").assertIsDisplayed()
@@ -53,10 +51,9 @@ class ChatConversationSwitchTest {
 
     private fun assertConversationSwitch(reuseMessageKeys: Boolean) {
         val current = mutableStateOf(conversation("first", reuseMessageKeys))
-        val snackbar = SnackbarHostState()
         compose.setContent {
             FocusTheme {
-                ChatScreen(state = current.value, onAction = {}, snackbar = snackbar)
+                ChatScreen(state = current.value, onAction = {})
             }
         }
         compose.onNodeWithText("first message 39").assertIsDisplayed()

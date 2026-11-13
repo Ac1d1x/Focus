@@ -47,8 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -101,6 +99,8 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
 import fan.x0.focus.core.designsystem.components.FocusIconBadge
 import fan.x0.focus.core.designsystem.components.FocusIcons
+import fan.x0.focus.core.designsystem.components.FocusSignalTone
+import fan.x0.focus.core.designsystem.components.LocalFocusSignal
 import fan.x0.focus.core.designsystem.components.FocusJumpToLatest
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
@@ -131,8 +131,8 @@ import java.time.LocalTime
 @Composable
 fun ChatRoute(viewModel: ChatViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    val signal = LocalFocusSignal.current
+    HandleAppErrors(viewModel.errors, signal)
     val context = LocalContext.current
     val presence = koinInject<AppPresence>()
     val notifier = koinInject<MessageNotifier>()
@@ -143,9 +143,9 @@ fun ChatRoute(viewModel: ChatViewModel = koinViewModel()) {
     val editSaved = stringResource(R.string.chat_edit_saved)
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
-            ChatEffect.Copied -> snackbar.showSnackbar(copied)
-            ChatEffect.Deleted -> snackbar.showSnackbar(deleted)
-            ChatEffect.EditSaved -> snackbar.showSnackbar(editSaved)
+            ChatEffect.Copied -> signal.show(copied, tone = FocusSignalTone.Success)
+            ChatEffect.Deleted -> signal.show(deleted, tone = FocusSignalTone.Info)
+            ChatEffect.EditSaved -> signal.show(editSaved, tone = FocusSignalTone.Success)
             ChatEffect.ReplySent -> Unit
             ChatEffect.OpenSettings -> openSettings()
             ChatEffect.OpenSessions -> openDrawer()
@@ -189,7 +189,6 @@ fun ChatRoute(viewModel: ChatViewModel = koinViewModel()) {
     ChatScreen(
         state = state,
         onAction = viewModel::onAction,
-        snackbar = snackbar,
         onPickFiles = { filePicker.launch(arrayOf("image/*", "text/*", "application/json", "application/xml")) },
         onPickPhotos = {
             photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -207,12 +206,12 @@ fun ChatRoute(viewModel: ChatViewModel = koinViewModel()) {
 fun ChatScreen(
     state: ChatUiState,
     onAction: (ChatAction) -> Unit,
-    snackbar: SnackbarHostState,
     onPickFiles: () -> Unit = {},
     onPickPhotos: () -> Unit = {},
     onTakePhoto: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val signal = LocalFocusSignal.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.chat_copied)
@@ -220,7 +219,7 @@ fun ChatScreen(
         onAction(ChatAction.CloseMessageMenu)
         scope.launch {
             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
-            snackbar.showSnackbar(copied)
+            signal.show(copied, tone = FocusSignalTone.Success)
         }
     }
     BackHandler(enabled = state.selectionKey != null) {
@@ -231,8 +230,9 @@ fun ChatScreen(
     }
     LaunchedEffect(state.message?.nonce) {
         val message = state.message ?: return@LaunchedEffect
-        snackbar.showSnackbar(
-            context.getString(message.resId, *message.args.toTypedArray()),
+        signal.show(
+            message = context.getString(message.resId, *message.args.toTypedArray()),
+            tone = FocusSignalTone.Info,
         )
         onAction(ChatAction.ConsumeMessage)
     }
@@ -264,7 +264,6 @@ fun ChatScreen(
     ) {
         Scaffold(
             containerColor = Color.Transparent,
-            snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
                 FocusCompactTopBar(
                     title = when {

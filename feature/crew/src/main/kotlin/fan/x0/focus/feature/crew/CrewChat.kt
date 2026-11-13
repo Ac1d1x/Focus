@@ -9,8 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +36,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -68,6 +67,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import fan.x0.focus.core.designsystem.components.FocusActivity
 import fan.x0.focus.core.designsystem.components.FocusAttachmentSheet
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
 import fan.x0.focus.core.designsystem.components.FocusChatBubble
@@ -81,15 +81,15 @@ import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
 import fan.x0.focus.core.designsystem.components.FocusMentionGroup
 import fan.x0.focus.core.designsystem.components.FocusMentionItem
 import fan.x0.focus.core.designsystem.components.FocusMentionPanel
-import fan.x0.focus.core.designsystem.components.FocusVoiceUi
-import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
-import fan.x0.focus.core.designsystem.components.FocusActivity
 import fan.x0.focus.core.designsystem.components.FocusSelectionBar
-import fan.x0.focus.core.designsystem.components.FocusTraceStep
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusStepStatus
+import fan.x0.focus.core.designsystem.components.FocusTraceStep
+import fan.x0.focus.core.designsystem.components.FocusVoiceUi
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.ChatAttachment
@@ -185,7 +185,7 @@ fun CrewChatScreen(
 
     Scaffold(
         containerColor = Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = {
             CrewChatTopBar(group = group, state = state, onAction = onAction)
         },

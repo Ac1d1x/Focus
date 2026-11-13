@@ -45,7 +45,7 @@ import java.io.File
 fun CrewRoute(viewModel: CrewViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val edited = stringResource(R.string.crew_edit_saved)
     val deleted = stringResource(R.string.crew_message_deleted)
     CollectEffect(viewModel.effect) { effect ->

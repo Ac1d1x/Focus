@@ -2,15 +2,14 @@ package fan.x0.focus.feature.plugin
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.data.plugin.PluginRegistry
 import fan.x0.focus.plugin.LocalPluginContext
 import fan.x0.focus.plugin.PluginContext
@@ -55,10 +54,7 @@ fun PluginPageRoute(
             val content = handle.page.content
             with(pageScope) { content() }
         }
-        SnackbarHost(
-            hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        FocusSnackbarHost(snackbar)
     }
 }
 

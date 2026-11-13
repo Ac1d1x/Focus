@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,18 +43,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
-import org.koin.compose.viewmodel.koinViewModel
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun LibraryRoute(viewModel: LibraryViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) viewModel.onAction(LibraryAction.FolderPicked(uri.toString()))
     }
@@ -94,7 +94,7 @@ fun LibraryScreen(
     }
     Scaffold(
         containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = {
             AnimatedContent(targetState = view, label = "libraryTopBar") { target ->
                 when (target) {

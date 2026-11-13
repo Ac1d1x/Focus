@@ -37,7 +37,7 @@ fun SettingsModelsRoute(
     viewModel: RoleModelsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val saved = stringResource(R.string.settings_models_saved)
     val cleared = stringResource(R.string.settings_models_cleared)
     CollectEffect(viewModel.effect) { effect ->

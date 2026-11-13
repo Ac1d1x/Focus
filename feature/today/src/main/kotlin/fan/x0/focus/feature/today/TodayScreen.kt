@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -27,6 +26,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.designsystem.components.FocusLargeTopBar
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
@@ -40,7 +40,7 @@ fun TodayRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     CollectEffect(viewModel.effect) { effect ->
         if (effect is TodayEffect.OpenChat) onOpenChat()
     }
@@ -71,7 +71,7 @@ fun TodayScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = {
             FocusLargeTopBar(
                 title = stringResource(R.string.today_title),

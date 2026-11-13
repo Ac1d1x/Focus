@@ -21,7 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +44,7 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
 import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusStatusPill
 import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
@@ -70,7 +70,7 @@ fun BridgeRoute(viewModel: BridgeViewModel = koinViewModel()) {
             localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
         }
     }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     BridgeScreen(
         state = state,
         onAction = viewModel::onAction,
@@ -86,7 +86,7 @@ fun BridgeScreen(
 ) {
     Scaffold(
         containerColor = Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = { BridgeTopBar(state = state, onAction = onAction) },
     ) { inner ->
         Column(modifier = Modifier.fillMaxSize().padding(inner)) {

@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,10 +57,12 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLargeTopBar
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.data.assistant.AssistantAvatarStore
@@ -71,7 +72,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
@@ -80,7 +80,7 @@ fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
     val promptSaved = stringResource(R.string.assistant_prompts_saved)
     val profileSaved = stringResource(R.string.assistant_profile_saved)
     val profileDeleted = stringResource(R.string.assistant_profile_deleted)
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             AssistantEffect.PromptSaved -> snackbar.showSnackbar(promptSaved)
@@ -104,7 +104,7 @@ fun AssistantScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = {
             FocusLargeTopBar(
                 title = stringResource(R.string.assistant_title),

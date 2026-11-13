@@ -17,7 +17,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,13 +33,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
 import fan.x0.focus.core.designsystem.components.FocusIcons
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.mvi.CollectEffect
 import org.koin.compose.viewmodel.koinViewModel
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun DeviceRoute(viewModel: DeviceViewModel = koinViewModel()) {
@@ -56,7 +56,7 @@ fun DeviceRoute(viewModel: DeviceViewModel = koinViewModel()) {
             localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
         }
     }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
             is DeviceEffect.Message -> {
@@ -78,7 +78,7 @@ fun DeviceScreen(
 ) {
     Scaffold(
         containerColor = Color.Transparent,
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { FocusSnackbarHost(snackbar) },
         topBar = {
             FocusCompactTopBar(
                 title = stringResource(R.string.device_title),

@@ -53,7 +53,7 @@ fun SettingsRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val saved = stringResource(R.string.settings_provider_saved)
     val connected = stringResource(R.string.assistant_connection_ok)
     val deleted = stringResource(R.string.settings_provider_deleted)

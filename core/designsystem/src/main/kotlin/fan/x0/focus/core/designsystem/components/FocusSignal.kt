@@ -1,6 +1,9 @@
 package fan.x0.focus.core.designsystem.components
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -8,9 +11,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,11 +28,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +65,7 @@ internal data class FocusSignalData(
     val actionLabel: String?,
     val action: (() -> Unit)?,
     val durationMs: Long,
+    val onFinished: (() -> Unit)?,
 )
 
 class FocusSignalState {
@@ -77,6 +81,7 @@ class FocusSignalState {
         actionLabel: String? = null,
         action: (() -> Unit)? = null,
         durationMs: Long = 2_800L,
+        onFinished: (() -> Unit)? = null,
     ) {
         if (message.isBlank()) return
         current = FocusSignalData(
@@ -87,6 +92,7 @@ class FocusSignalState {
             actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
             action = action,
             durationMs = durationMs.coerceAtLeast(1_200L),
+            onFinished = onFinished,
         )
     }
 
@@ -111,6 +117,42 @@ fun FocusSignalProvider(content: @Composable () -> Unit) {
         Box(modifier = Modifier.fillMaxSize()) {
             content()
             FocusSignalHost(state = state, modifier = Modifier.align(Alignment.TopCenter))
+        }
+    }
+}
+
+@Composable
+fun FocusSnackbarHost(hostState: SnackbarHostState) {
+    val signal = LocalFocusSignal.current
+    val data = hostState.currentSnackbarData
+    LaunchedEffect(data) {
+        val snackbar = data ?: return@LaunchedEffect
+        signal.show(
+            message = snackbar.visuals.message,
+            tone = FocusSignalTone.Info,
+            actionLabel = snackbar.visuals.actionLabel,
+            action = { snackbar.performAction() },
+            durationMs = when (snackbar.visuals.duration) {
+                SnackbarDuration.Short -> 3_000L
+                SnackbarDuration.Long -> 5_500L
+                SnackbarDuration.Indefinite -> 6_000L
+            },
+            onFinished = { snackbar.dismiss() },
+        )
+    }
+}
+
+@Composable
+fun FocusSignalScaffold(content: @Composable () -> Unit) {
+    val state = rememberFocusSignalState()
+    CompositionLocalProvider(LocalFocusSignal provides state) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            content()
+            FocusSignalHost(
+                state = state,
+                modifier = Modifier.align(Alignment.TopCenter),
+                statusBarPadding = false,
+            )
         }
     }
 }
@@ -168,13 +210,11 @@ fun FocusSignalHost(
 private fun FocusSignalCard(data: FocusSignalData, onDismiss: () -> Unit) {
     val colors = signalColors(data.tone)
     val scale = LocalFocusCornerScale.current
-    val shape = RoundedCornerShape(
-        topStart = 24.dp * scale,
-        topEnd = 24.dp * scale,
-        bottomEnd = 24.dp * scale,
-        bottomStart = 8.dp * scale,
-    )
+    val shape = RoundedCornerShape(24.dp * scale)
     val progress = remember(data.id) { Animatable(1f) }
+    DisposableEffect(data.id) {
+        onDispose { data.onFinished?.invoke() }
+    }
     LaunchedEffect(data.id) {
         progress.snapTo(1f)
         progress.animateTo(

@@ -39,6 +39,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
+import fan.x0.focus.core.designsystem.components.FocusSignalScaffold
 import fan.x0.focus.core.designsystem.theme.FocusTheme
 import fan.x0.focus.core.notify.R as NotifyR
 import fan.x0.focus.data.device.DeviceAutomationState
@@ -47,8 +48,8 @@ import fan.x0.focus.data.device.DeviceRuntime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -380,12 +381,16 @@ class FocusOverlayService : Service() {
         attachOwners(view)
         view.setContent {
             val state by viewModel.state.collectAsState()
-            OverlayBarContent(
-                state = state,
-                onAction = viewModel::onAction,
-                onCaptureScreen = ::captureScreen,
-                onClose = ::animatedDismiss,
-            )
+            FocusTheme {
+                FocusSignalScaffold {
+                    OverlayBarContent(
+                        state = state,
+                        onAction = viewModel::onAction,
+                        onCaptureScreen = ::captureScreen,
+                        onClose = ::animatedDismiss,
+                    )
+                }
+            }
         }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,

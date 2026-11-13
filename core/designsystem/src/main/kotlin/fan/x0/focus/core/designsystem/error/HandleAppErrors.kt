@@ -1,6 +1,5 @@
 package fan.x0.focus.core.designsystem.error
 
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -14,6 +13,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import fan.x0.focus.core.designsystem.R
 import fan.x0.focus.core.designsystem.components.FocusSignalState
 import fan.x0.focus.core.designsystem.components.FocusSignalTone
+import fan.x0.focus.core.designsystem.components.LocalFocusSignal
 import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.error.AppErrorType
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +33,10 @@ fun AppError.message(): String = when (type) {
 }
 
 @Composable
-fun HandleAppErrors(errors: Flow<AppError>, signal: FocusSignalState) {
+fun HandleAppErrors(
+    errors: Flow<AppError>,
+    signal: FocusSignalState = LocalFocusSignal.current,
+) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var current by remember { mutableStateOf<AppError?>(null) }
     LaunchedEffect(errors, lifecycle) {
@@ -45,24 +48,6 @@ fun HandleAppErrors(errors: Flow<AppError>, signal: FocusSignalState) {
     LaunchedEffect(current) {
         if (message != null) {
             signal.show(message, tone = FocusSignalTone.Error, durationMs = 4_200L)
-            current = null
-        }
-    }
-}
-
-@Composable
-fun HandleAppErrors(errors: Flow<AppError>, hostState: SnackbarHostState) {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var current by remember { mutableStateOf<AppError?>(null) }
-    LaunchedEffect(errors, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            errors.collect { current = it }
-        }
-    }
-    val message = current?.message()
-    LaunchedEffect(current) {
-        if (message != null) {
-            hostState.showSnackbar(message)
             current = null
         }
     }

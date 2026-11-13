@@ -2,7 +2,6 @@ package fan.x0.focus.feature.assistant.settings
 
 import android.graphics.Bitmap
 import android.text.format.DateUtils
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +49,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusCardGroupScope
@@ -62,12 +64,16 @@ import fan.x0.focus.core.designsystem.components.FocusPickerItem
 import fan.x0.focus.core.designsystem.components.FocusPickerSelection
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.FocusSignalScaffold
+import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.designsystem.components.FocusStatusPill
 import fan.x0.focus.core.designsystem.components.FocusTextButton
+import fan.x0.focus.core.designsystem.components.LocalFocusSignal
 import fan.x0.focus.core.designsystem.components.StatusTone
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.hapticToggle
 import fan.x0.focus.core.designsystem.error.message
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.data.im.ImChatKind
@@ -85,11 +91,7 @@ import fan.x0.focus.feature.assistant.ImLoginUi
 import fan.x0.focus.feature.assistant.ImSettingsUiState
 import fan.x0.focus.feature.assistant.ImSettingsViewModel
 import fan.x0.focus.feature.assistant.R
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
 import org.koin.compose.viewmodel.koinViewModel
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsImRoute(
@@ -309,95 +311,97 @@ private fun ImLoginSheet(
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+        FocusSignalScaffold {
+            val signal = LocalFocusSignal.current
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_im_login_title),
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { onAction(ImAction.HideLogin) }) {
+                        Icon(
+                            imageVector = FocusIcons.Close,
+                            contentDescription = stringResource(R.string.settings_im_login_close),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
                 Text(
-                    text = stringResource(R.string.settings_im_login_title),
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { onAction(ImAction.HideLogin) }) {
-                    Icon(
-                        imageVector = FocusIcons.Close,
-                        contentDescription = stringResource(R.string.settings_im_login_close),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Text(
-                text = accountName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            when (val challenge = login.challenge) {
-                is ImLoginChallenge.Qr -> {
-                    QrCodeImage(
-                        content = challenge.content,
-                        modifier = Modifier.size(260.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_im_login_qr_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    FocusOutlinedButton(
-                        text = stringResource(R.string.settings_im_login_copy_link),
-                        onClick = {
-                            clipboard.setText(AnnotatedString(challenge.content))
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.settings_im_login_copied),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = FocusIcons.Copy,
-                    )
-                    FocusOutlinedButton(
-                        text = stringResource(R.string.settings_im_login_refresh),
-                        onClick = { onAction(ImAction.StartLogin(login.accountId)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        icon = FocusIcons.Refresh,
-                    )
-                }
-                is ImLoginChallenge.Code -> {
-                    var code by remember(login.accountId, challenge.prompt) { mutableStateOf("") }
-                    Text(
-                        text = challenge.prompt,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    OutlinedTextField(
-                        value = code,
-                        onValueChange = { code = it },
-                        label = { Text(stringResource(R.string.settings_im_login_code)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = FocusShapeTokens.input,
-                    )
-                    FocusPrimaryButton(
-                        text = stringResource(R.string.settings_im_login_submit),
-                        onClick = {
-                            onAction(ImAction.SubmitLoginCode(code))
-                            code = ""
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                ImLoginChallenge.Done -> Text(
-                    text = stringResource(R.string.settings_im_login_success),
+                    text = accountName,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                when (val challenge = login.challenge) {
+                    is ImLoginChallenge.Qr -> {
+                        QrCodeImage(
+                            content = challenge.content,
+                            modifier = Modifier.size(260.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_im_login_qr_hint),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FocusOutlinedButton(
+                            text = stringResource(R.string.settings_im_login_copy_link),
+                            onClick = {
+                                clipboard.setText(AnnotatedString(challenge.content))
+                                signal.show(
+                                    message = context.getString(R.string.settings_im_login_copied),
+                                    tone = FocusSignalTone.Success,
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = FocusIcons.Copy,
+                        )
+                        FocusOutlinedButton(
+                            text = stringResource(R.string.settings_im_login_refresh),
+                            onClick = { onAction(ImAction.StartLogin(login.accountId)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = FocusIcons.Refresh,
+                        )
+                    }
+                    is ImLoginChallenge.Code -> {
+                        var code by remember(login.accountId, challenge.prompt) { mutableStateOf("") }
+                        Text(
+                            text = challenge.prompt,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = { code = it },
+                            label = { Text(stringResource(R.string.settings_im_login_code)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = FocusShapeTokens.input,
+                        )
+                        FocusPrimaryButton(
+                            text = stringResource(R.string.settings_im_login_submit),
+                            onClick = {
+                                onAction(ImAction.SubmitLoginCode(code))
+                                code = ""
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    ImLoginChallenge.Done -> Text(
+                        text = stringResource(R.string.settings_im_login_success),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
     }
@@ -454,83 +458,85 @@ private fun ImLogSheet(onDismiss: () -> Unit) {
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.settings_im_logs),
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { lines = ImLog.snapshot() }) {
-                    Icon(
-                        imageVector = FocusIcons.Refresh,
-                        contentDescription = stringResource(R.string.settings_im_logs_refresh),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        FocusSignalScaffold {
+            val signal = LocalFocusSignal.current
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.settings_im_logs),
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                        modifier = Modifier.weight(1f),
                     )
-                }
-                IconButton(
-                    onClick = {
-                        ImLog.clear()
-                        lines = emptyList()
-                    },
-                ) {
-                    Icon(
-                        imageVector = FocusIcons.Delete,
-                        contentDescription = stringResource(R.string.settings_im_logs_clear),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(
-                    onClick = {
-                        clipboard.setText(AnnotatedString(lines.joinToString("\n")))
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.settings_im_logs_copied),
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    },
-                ) {
-                    Icon(
-                        imageVector = FocusIcons.Copy,
-                        contentDescription = stringResource(R.string.settings_im_logs_copy),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = FocusIcons.Close,
-                        contentDescription = stringResource(R.string.settings_im_logs_close),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            if (lines.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.settings_im_logs_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 520.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    itemsIndexed(lines, key = { index, line -> "$index:$line" }) { _, line ->
-                        Text(
-                            text = line,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    IconButton(onClick = { lines = ImLog.snapshot() }) {
+                        Icon(
+                            imageVector = FocusIcons.Refresh,
+                            contentDescription = stringResource(R.string.settings_im_logs_refresh),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                    }
+                    IconButton(
+                        onClick = {
+                            ImLog.clear()
+                            lines = emptyList()
+                        },
+                    ) {
+                        Icon(
+                            imageVector = FocusIcons.Delete,
+                            contentDescription = stringResource(R.string.settings_im_logs_clear),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(lines.joinToString("\n")))
+                            signal.show(
+                                message = context.getString(R.string.settings_im_logs_copied),
+                                tone = FocusSignalTone.Success,
+                            )
+                        },
+                    ) {
+                        Icon(
+                            imageVector = FocusIcons.Copy,
+                            contentDescription = stringResource(R.string.settings_im_logs_copy),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = FocusIcons.Close,
+                            contentDescription = stringResource(R.string.settings_im_logs_close),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (lines.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.settings_im_logs_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 520.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        itemsIndexed(lines, key = { index, line -> "$index:$line" }) { _, line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }

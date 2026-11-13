@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,23 +65,24 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
 import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
-import fan.x0.focus.core.modelpicker.ModelPickerSheet
-import fan.x0.focus.core.modelpicker.rememberModelPickerGroup
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusReasoningCard
+import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.FocusTraceCard
 import fan.x0.focus.core.designsystem.components.FocusVoiceUi
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.error.message
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import fan.x0.focus.core.modelpicker.ModelPickerSheet
+import fan.x0.focus.core.modelpicker.rememberModelPickerGroup
 import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.core.network.openai.ChatProtocol
 import fan.x0.focus.data.assistant.ProviderCatalog
 import fan.x0.focus.data.assistant.ProviderModel
 import fan.x0.focus.data.voice.rememberVoiceInput
 import org.koin.compose.viewmodel.koinViewModel
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun OnboardingRoute(
@@ -91,7 +91,7 @@ fun OnboardingRoute(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val saved = stringResource(R.string.onboarding_provider_saved)
     CollectEffect(viewModel.effect) { effect ->
         when (effect) {
@@ -115,7 +115,7 @@ fun OnboardingScreen(
         FocusAmbientWorking(active = state.sending)
         Scaffold(
             containerColor = Color.Transparent,
-            snackbarHost = { SnackbarHost(snackbar) },
+            snackbarHost = { FocusSnackbarHost(snackbar) },
             topBar = {
                 FocusCompactTopBar(
                     title = state.assistantName.ifBlank { stringResource(R.string.onboarding_title) },

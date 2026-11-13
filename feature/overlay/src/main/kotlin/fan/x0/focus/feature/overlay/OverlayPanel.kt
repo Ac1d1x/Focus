@@ -2,7 +2,6 @@ package fan.x0.focus.feature.overlay
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -24,9 +23,9 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -113,19 +112,21 @@ import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusMarkdown
+import fan.x0.focus.core.designsystem.components.FocusSignalTone
+import fan.x0.focus.core.designsystem.components.LocalFocusSignal
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.message
-import fan.x0.focus.core.designsystem.theme.FocusTheme
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import fan.x0.focus.core.designsystem.theme.FocusTheme
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import fan.x0.focus.data.assistant.AskAnswer
 import fan.x0.focus.data.assistant.AskKind
 import fan.x0.focus.data.voice.VoiceInputHandle
 import fan.x0.focus.data.voice.rememberVoiceInput
-import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.sin
+import kotlinx.coroutines.delay
 
 private val InputShape = RoundedCornerShape(50)
 private val ResultShape: Shape
@@ -895,17 +896,17 @@ private fun InputBar(
     onAction: (OverlayAction) -> Unit,
     onCaptureScreen: () -> Unit,
 ) {
-    val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     var typing by remember { mutableStateOf(false) }
     val voice = rememberVoiceInput(
         input = state.input,
         onInput = { onAction(OverlayAction.InputChanged(it)) },
     )
+    val signal = LocalFocusSignal.current
     val voiceError = voice.error?.message()
     LaunchedEffect(voiceError) {
         if (voiceError != null) {
-            Toast.makeText(context, voiceError, Toast.LENGTH_SHORT).show()
+            signal.show(voiceError, tone = FocusSignalTone.Warning)
         }
     }
     val focusRequester = remember { FocusRequester() }

@@ -64,7 +64,7 @@ fun SettingsAutomationRoute(
     viewModel: AutomationViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     val saved = stringResource(R.string.settings_super_saved)
     val deleted = stringResource(R.string.settings_super_trigger_deleted)
     CollectEffect(viewModel.effect) { effect ->

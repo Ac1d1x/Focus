@@ -53,7 +53,7 @@ internal fun SettingsCrashLogsRoute(
     viewModel: CrashLogsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    HandleAppErrors(viewModel.errors, snackbar)
+    HandleAppErrors(viewModel.errors)
     SettingsCrashLogsPage(
         state = state,
         onAction = viewModel::onAction,

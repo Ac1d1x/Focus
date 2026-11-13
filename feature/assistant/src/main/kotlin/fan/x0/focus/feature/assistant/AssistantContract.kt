@@ -3,6 +3,7 @@ package fan.x0.focus.feature.assistant
 import fan.x0.focus.core.mvi.UiAction
 import fan.x0.focus.core.mvi.UiEffect
 import fan.x0.focus.core.mvi.UiState
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 
 data class WorkspaceDocumentUi(
@@ -24,7 +25,9 @@ data class PromptEditorUi(
 
 data class AssistantUiState(
     val loading: Boolean = true,
+    val assistantId: String = AssistantProfile.DEFAULT_ID,
     val assistantName: String = "",
+    val assistantRole: String = "",
     val documents: List<WorkspaceDocumentUi> = emptyList(),
     val openDocument: WorkspaceDocumentUi? = null,
     val mainPrompt: String = "",

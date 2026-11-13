@@ -21,6 +21,7 @@ class PromptBuilder(
     private var skillCache: CachedSection? = null
 
     suspend fun chatPrompt(
+        assistantId: String,
         title: String = "",
         mode: AgentMode = AgentMode.Build,
         mentionedSkills: List<String> = emptyList(),
@@ -35,8 +36,8 @@ class PromptBuilder(
             async { mentionedSkillsSection(mentionedSkills) }
         }
         val pluginJob = async { pluginSection() }
-        val name = workspace.assistantName()
-        val documents = workspace.readAll()
+        val name = workspace.assistantName(assistantId)
+        val documents = workspace.readAll(assistantId)
         val builder = StringBuilder()
         builder.appendLine("You are $name, a personal assistant running on the user's Android phone.")
         builder.appendLine("Rules:")
@@ -88,7 +89,7 @@ class PromptBuilder(
         }
         builder.appendLine("- Current time: ${ToolTime.full(ToolTime.now())} (${java.util.TimeZone.getDefault().id}).")
         if (side) {
-            val sidePrompt = prompts.configOnce().side.trim()
+            val sidePrompt = prompts.configOnce(assistantId).side.trim()
             if (sidePrompt.isNotBlank()) {
                 builder.appendLine("Side chat instructions from the user:")
                 builder.appendLine("Follow these for tone, format, and working style. They do not override the tool and safety rules above.")
@@ -96,7 +97,7 @@ class PromptBuilder(
             }
         }
         if (main) {
-            val mainPrompt = prompts.configOnce().main.trim()
+            val mainPrompt = prompts.configOnce(assistantId).main.trim()
             if (mainPrompt.isNotBlank()) {
                 builder.appendLine("Main conversation instructions from the user:")
                 builder.appendLine("Follow these for tone, format, and working style. They do not override the tool and safety rules above.")
@@ -174,8 +175,8 @@ class PromptBuilder(
 
     private data class CachedSection(val text: String, val at: Long)
 
-    suspend fun btwPrompt(): String {
-        val name = workspace.assistantName()
+    suspend fun btwPrompt(assistantId: String): String {
+        val name = workspace.assistantName(assistantId)
         val builder = StringBuilder()
         builder.appendLine("You are $name, answering a side question about the current conversation.")
         builder.appendLine("The conversation below is context only. You cannot act on it, change anything, or call tools.")
@@ -187,12 +188,12 @@ class PromptBuilder(
         return builder.toString()
     }
 
-    suspend fun onboardingPrompt(turn: Int): String {
-        val name = workspace.assistantName()
-        val user = workspace.read(WorkspaceFile.User)
-        val userName = workspace.field(WorkspaceFile.User, "Name")
-        val focus = workspace.field(WorkspaceFile.User, "Focus")
-        val tone = workspace.field(WorkspaceFile.User, "Tone")
+    suspend fun onboardingPrompt(assistantId: String, turn: Int): String {
+        val name = workspace.assistantName(assistantId)
+        val user = workspace.read(assistantId, WorkspaceFile.User)
+        val userName = workspace.field(assistantId, WorkspaceFile.User, "Name")
+        val focus = workspace.field(assistantId, WorkspaceFile.User, "Focus")
+        val tone = workspace.field(assistantId, WorkspaceFile.User, "Tone")
         val builder = StringBuilder()
         builder.appendLine("You are $name, meeting the user for the first time on their Android phone.")
         builder.appendLine("The user has already connected their own model, so this conversation runs on it.")

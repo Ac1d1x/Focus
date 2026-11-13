@@ -2,6 +2,8 @@ package fan.x0.focus.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.Conversation
@@ -12,12 +14,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
 data class ShellState(
     val loading: Boolean = true,
-    val name: String? = null,
+    val assistants: List<AssistantProfile> = emptyList(),
+    val activeAssistantId: String = AssistantProfile.DEFAULT_ID,
+    val activeAssistant: AssistantProfile? = null,
     val main: Conversation? = null,
     val conversations: List<Conversation> = emptyList(),
     val sides: List<Conversation> = emptyList(),
@@ -32,6 +37,7 @@ class ShellViewModel(
     private val workspace: WorkspaceStore,
     private val switcher: ChatSwitcher,
     private val sideChats: SideChatManager,
+    private val profiles: AssistantProfileStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShellState())
@@ -41,6 +47,13 @@ class ShellViewModel(
         refresh()
         viewModelScope.launch {
             chats.changes.collect { load() }
+        }
+        viewModelScope.launch {
+            combine(profiles.profiles, profiles.activeId) { assistants, activeId ->
+                assistants to activeId
+            }.collect { (assistants, activeId) ->
+                load(assistants, activeId)
+            }
         }
     }
 
@@ -102,19 +115,56 @@ class ShellViewModel(
         }
     }
 
-    private suspend fun load() {
-        val name = workspace.userName()
-        val main = chats.ensureMainConversation()
-        val conversations = chats.conversations()
+    fun selectAssistant(id: String) {
+        viewModelScope.launch {
+            profiles.setActive(id)
+            val main = chats.ensureMainConversation(id)
+            switcher.open(main.id)
+            load()
+        }
+    }
+
+    fun createAssistant(name: String, role: String, emoji: String) {
+        viewModelScope.launch {
+            val profile = profiles.create(name, role, emoji)
+            workspace.seed(profile.id, profile.name, profile.role)
+            val main = chats.ensureMainConversation(profile.id)
+            switcher.open(main.id)
+            load()
+        }
+    }
+
+    fun updateAssistant(profile: AssistantProfile) {
+        viewModelScope.launch {
+            profiles.update(profile)
+            workspace.updateAssistantName(profile.id, profile.name)
+            load()
+        }
+    }
+
+    private suspend fun load(
+        assistants: List<AssistantProfile>? = null,
+        activeId: String? = null,
+    ) {
+        val list = assistants ?: profiles.profilesOnce()
+        val id = activeId ?: profiles.activeOnce()
+        val active = list.firstOrNull { it.id == id } ?: list.firstOrNull() ?: AssistantProfile(
+            id = AssistantProfile.DEFAULT_ID,
+            name = AssistantProfile.DEFAULT_NAME,
+        )
+        val main = chats.ensureMainConversation(active.id)
+        val conversations = chats.conversations(assistantId = active.id)
             .filter { it.id != ChatStore.ONBOARDING_CONVERSATION_ID && !it.archived }
-        val sides = chats.listedConversations()
+        val sides = chats.listedConversations(active.id)
             .filter { it.id != ChatStore.ONBOARDING_CONVERSATION_ID && it.title.isNotBlank() }
             .sortedWith(compareBy({ it.taskStatus.sideChatRank() }, { -it.updatedAt }))
-        val archived = chats.conversations(archived = true)
+        val archived = chats.conversations(archived = true, assistantId = active.id)
             .filter { it.id != ChatStore.ONBOARDING_CONVERSATION_ID && it.archived }
         _state.value = ShellState(
             loading = false,
-            name = name,
+            assistants = list,
+            activeAssistantId = active.id,
+            activeAssistant = active,
             main = main,
             conversations = conversations,
             sides = sides,

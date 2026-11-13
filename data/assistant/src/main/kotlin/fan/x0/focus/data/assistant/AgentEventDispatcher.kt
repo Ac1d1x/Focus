@@ -62,7 +62,7 @@ class AgentEventDispatcher(
     }
 
     private suspend fun injectSideResult(event: AgentEvent) {
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(chats.conversation(event.sideChatId())?.assistantId)
         if (event.sideChatId() == main.id) {
             events.complete(event.id)
             return
@@ -87,7 +87,7 @@ class AgentEventDispatcher(
                 label = label,
             )
         }
-        startMainTurn(autoTitle = false, silent = true, event = event)
+        startMainTurn(autoTitle = false, silent = true, event = event, conversationId = main.id)
     }
 
     private suspend fun runInMain(event: AgentEvent) {
@@ -106,8 +106,13 @@ class AgentEventDispatcher(
         startMainTurn(autoTitle = false, silent = false, event = event)
     }
 
-    private suspend fun startMainTurn(autoTitle: Boolean, silent: Boolean, event: AgentEvent) {
-        val main = chats.ensureMainConversation()
+    private suspend fun startMainTurn(
+        autoTitle: Boolean,
+        silent: Boolean,
+        event: AgentEvent,
+        conversationId: String? = null,
+    ) {
+        val main = conversationId?.let { chats.conversation(it) } ?: chats.ensureMainConversation()
         val handle = turns.start(
             conversationId = main.id,
             text = "",

@@ -51,8 +51,10 @@ class SideChatManager(
     private val notified = mutableSetOf<String>()
     private val activeTurns = mutableMapOf<String, Long>()
 
-    private val _counts = MutableStateFlow(SideChatCounts())
-    val counts: StateFlow<SideChatCounts> = _counts.asStateFlow()
+    private val _counts = MutableStateFlow<Map<String, SideChatCounts>>(emptyMap())
+    val counts: StateFlow<Map<String, SideChatCounts>> = _counts.asStateFlow()
+
+    fun countsFor(assistantId: String): SideChatCounts = _counts.value[assistantId] ?: SideChatCounts()
 
     init {
         scope.launch {
@@ -189,8 +191,8 @@ class SideChatManager(
         updateCounts()
     }
 
-    suspend fun list(limit: Int = 40): List<SideChatSummary> {
-        val items = chats.listedConversations()
+    suspend fun list(assistantId: String? = null, limit: Int = 40): List<SideChatSummary> {
+        val items = chats.listedConversations(assistantId)
             .filter { it.id != ChatStore.ONBOARDING_CONVERSATION_ID }
             .take(limit)
         return items.map { conversation ->
@@ -349,7 +351,7 @@ class SideChatManager(
         failed: Boolean,
         turnId: Long,
     ) {
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(conversation.assistantId)
         if (main.id == conversation.id) return
         if (summary.isBlank() && !failed) return
         bus.publish(
@@ -365,7 +367,7 @@ class SideChatManager(
     }
 
     private suspend fun appendSideApproval(sideChatId: String, title: String, note: String) {
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(chats.conversation(sideChatId)?.assistantId)
         chats.append(
             conversationId = main.id,
             role = ChatRole.System,
@@ -393,9 +395,12 @@ class SideChatManager(
 
     private suspend fun updateCounts() {
         val sides = chats.sideChats().filter { it.isSideChat }
-        val active = sides.count { it.taskStatus.active }
-        val unseen = sides.count { !it.resultSeen && it.taskStatus.settledSide }
-        _counts.update { SideChatCounts(active = active, unread = unseen) }
+        _counts.value = sides.groupBy { it.assistantId }.mapValues { (_, list) ->
+            SideChatCounts(
+                active = list.count { it.taskStatus.active },
+                unread = list.count { !it.resultSeen && it.taskStatus.settledSide },
+            )
+        }
     }
 
     private val TaskStatus.settledSide: Boolean

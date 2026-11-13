@@ -34,12 +34,24 @@
     </plurals>
     <string name="settings_title">设置</string>
     <string name="device_title">设备</string>
+    <string name="drawer_assistants">助手</string>
+    <string name="drawer_sessions">会话</string>
+    <string name="drawer_new_assistant">新建助手</string>
+    <string name="drawer_edit_assistant">编辑助手</string>
+    <string name="drawer_assistant_name">名字</string>
+    <string name="drawer_assistant_role">负责什么</string>
+    <string name="drawer_assistant_role_hint">写作、角色扮演、日常安排...</string>
+    <string name="drawer_assistant_emoji">表情</string>
+    <string name="drawer_assistant_default_role">个人助手</string>
+    <string name="drawer_assistant_create">创建</string>
+    <string name="drawer_assistant_save">保存</string>
+    <string name="drawer_assistant_context">上下文与提示词</string>
+    <string name="drawer_assistant_cancel">取消</string>
     <string name="drawer_recent">最近</string>
     <string name="drawer_new_chat">新对话</string>
     <string name="drawer_new_side_chat">新旁聊</string>
     <string name="drawer_main_session">主会话</string>
     <string name="drawer_no_conversations">还没有对话。</string>
-    <string name="drawer_default_name">你</string>
     <string name="drawer_untitled">未命名</string>
     <string name="drawer_history">全部对话</string>
     <string name="plugins_drawer_section">插件</string>

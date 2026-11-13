@@ -270,6 +270,7 @@ class ToolExecutor(
     private suspend fun runTool(spec: ToolSpec, args: JsonObject, conversationId: String): ToolResult = try {
         providers.execute(spec.name, args, conversationId)?.let { return it }
         skills.handle(spec.name, args)?.let { return it }
+        val assistantId = chats.assistantIdFor(conversationId)
         when (spec.name) {
             "list_calendar_events" -> {
                 val days = (args.number("days") ?: 7).coerceIn(1, 60)
@@ -384,7 +385,7 @@ class ToolExecutor(
                 ok("${list.size} goals", goalsJson(list))
             }
             "list_workspace_files" -> {
-                val documents = workspace.readAll()
+                val documents = workspace.readAll(assistantId)
                 ok(
                     "${documents.size} context files",
                     buildJsonObject {
@@ -405,7 +406,7 @@ class ToolExecutor(
             }
             "read_workspace_file" -> {
                 val file = args.workspaceFile() ?: return fail("file must be one of ${WorkspaceFile.keys()}")
-                val content = workspace.read(file)
+                val content = workspace.read(assistantId, file)
                 ok(
                     "Read ${file.fileName}",
                     buildJsonObject {
@@ -418,18 +419,18 @@ class ToolExecutor(
             "write_workspace_file" -> {
                 val file = args.workspaceFile() ?: return fail("file must be one of ${WorkspaceFile.keys()}")
                 val content = args.text("content") ?: return fail("content is required")
-                val old = workspace.read(file)
-                workspace.write(file, content)
-                val updated = workspace.read(file)
+                val old = workspace.read(assistantId, file)
+                workspace.write(assistantId, file, content)
+                val updated = workspace.read(assistantId, file)
                 val diff = LineDiff.compute(file.fileName, old, updated)
                 ok("Saved ${file.fileName}", "${file.fileName} updated.", listOfNotNull(diff))
             }
             "append_workspace_file" -> {
                 val file = args.workspaceFile() ?: return fail("file must be one of ${WorkspaceFile.keys()}")
                 val content = args.text("content") ?: return fail("content is required")
-                val old = workspace.read(file)
-                workspace.append(file, content)
-                val updated = workspace.read(file)
+                val old = workspace.read(assistantId, file)
+                workspace.append(assistantId, file, content)
+                val updated = workspace.read(assistantId, file)
                 val diff = LineDiff.compute(file.fileName, old, updated)
                 ok("Updated ${file.fileName}", "${file.fileName} updated.", listOfNotNull(diff))
             }
@@ -620,8 +621,8 @@ class ToolExecutor(
                 val target = args.text("target").orEmpty().trim().lowercase()
                 val content = args.text("content").orEmpty().trim()
                 when (target) {
-                    "main" -> prompts.setMain(content)
-                    "side" -> prompts.setSide(content)
+                    "main" -> prompts.setMain(assistantId, content)
+                    "side" -> prompts.setSide(assistantId, content)
                     else -> return fail("target must be main or side")
                 }
                 ok("Prompt updated", "Prompt updated.")
@@ -756,7 +757,7 @@ class ToolExecutor(
             }
             "save_memory" -> {
                 val content = args.text("content") ?: return fail("content is required")
-                workspace.appendMemory(content)
+                workspace.appendMemory(assistantId, content)
                 ok("Saved memory", "Saved to MEMORY.md: $content")
             }
             "create_reminder" -> {
@@ -795,6 +796,7 @@ class ToolExecutor(
             }
             "save_profile" -> {
                 workspace.updateUserProfile(
+                    assistantId = assistantId,
                     name = args.text("name"),
                     tone = args.text("tone"),
                     focus = args.text("focus"),
@@ -804,7 +806,7 @@ class ToolExecutor(
             }
             "set_assistant_name" -> {
                 val name = args.text("name") ?: return fail("name is required")
-                workspace.updateAssistantName(name)
+                workspace.updateAssistantName(assistantId, name)
                 ok("Name set to ${name.trim().take(40)}", "Assistant name updated.")
             }
             "list_providers" -> {

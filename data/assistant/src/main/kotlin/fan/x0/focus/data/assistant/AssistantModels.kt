@@ -177,6 +177,7 @@ data class Conversation(
     val taskStatus: TaskStatus = TaskStatus.None,
     val taskNote: String = "",
     val resultSeen: Boolean = true,
+    val assistantId: String = AssistantProfile.DEFAULT_ID,
 )
 
 enum class GoalStatus { Active, Paused, Done }

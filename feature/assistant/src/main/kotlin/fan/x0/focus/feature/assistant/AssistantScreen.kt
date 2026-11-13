@@ -118,7 +118,7 @@ fun AssistantScreen(
         ) {
             item(key = "hero") {
                 FocusReveal {
-                    AssistantHero(name = state.assistantName)
+                    AssistantHero(name = state.assistantName, role = state.assistantRole, assistantId = state.assistantId)
                 }
             }
             item(key = "workspace") {
@@ -403,7 +403,7 @@ private fun DocumentSheet(document: WorkspaceDocumentUi, onClose: () -> Unit) {
 }
 
 @Composable
-private fun AssistantHero(name: String) {
+private fun AssistantHero(name: String, role: String, assistantId: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -411,8 +411,9 @@ private fun AssistantHero(name: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        val hash = assistantId.hashCode()
         FocusAvatar(
-            style = AvatarStyle(preset = 0, palette = 0),
+            style = AvatarStyle(preset = hash, palette = hash ushr 8),
             size = 88.dp,
             state = AvatarState.Idle,
         )
@@ -422,7 +423,7 @@ private fun AssistantHero(name: String) {
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text = stringResource(R.string.assistant_hero_hint),
+            text = role.ifBlank { stringResource(R.string.assistant_hero_hint) },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

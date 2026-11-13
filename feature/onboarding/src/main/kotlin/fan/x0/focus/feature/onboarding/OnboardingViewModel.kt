@@ -14,6 +14,7 @@ import fan.x0.focus.core.network.openai.ModelConnectionTester
 import fan.x0.focus.core.network.openai.ModelEndpoint
 import fan.x0.focus.core.network.openai.OpenAiModelCatalog
 import fan.x0.focus.data.assistant.AssistantConfig
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.ChatEngine
 import fan.x0.focus.data.assistant.ChatEvent
@@ -68,7 +69,7 @@ class OnboardingViewModel(
         }
         viewModelScope.launch {
             workspace.revision.collect {
-                val name = workspace.assistantName()
+                val name = workspace.assistantName(AssistantProfile.DEFAULT_ID)
                 updateState { copy(assistantName = name) }
             }
         }

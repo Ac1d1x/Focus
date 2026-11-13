@@ -35,12 +35,24 @@
     </plurals>
     <string name="settings_title">Settings</string>
     <string name="device_title">Device</string>
+    <string name="drawer_assistants">Assistants</string>
+    <string name="drawer_sessions">Sessions</string>
+    <string name="drawer_new_assistant">New assistant</string>
+    <string name="drawer_edit_assistant">Edit assistant</string>
+    <string name="drawer_assistant_name">Name</string>
+    <string name="drawer_assistant_role">What it handles</string>
+    <string name="drawer_assistant_role_hint">Writing, role play, daily planning...</string>
+    <string name="drawer_assistant_emoji">Emoji</string>
+    <string name="drawer_assistant_default_role">Personal assistant</string>
+    <string name="drawer_assistant_create">Create</string>
+    <string name="drawer_assistant_save">Save</string>
+    <string name="drawer_assistant_context">Context and prompts</string>
+    <string name="drawer_assistant_cancel">Cancel</string>
     <string name="drawer_recent">Recent</string>
     <string name="drawer_new_chat">New chat</string>
     <string name="drawer_new_side_chat">New side chat</string>
     <string name="drawer_main_session">Main session</string>
     <string name="drawer_no_conversations">No conversations yet.</string>
-    <string name="drawer_default_name">You</string>
     <string name="drawer_untitled">Untitled</string>
     <string name="drawer_history">All conversations</string>
     <string name="plugins_drawer_section">Plugins</string>

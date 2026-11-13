@@ -20,6 +20,7 @@ import java.util.UUID
 class ChatStore(
     private val database: AssistantDatabase,
     private val mainSession: MainSessionStore,
+    private val profiles: AssistantProfileStore,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = false }
     private val callsSerializer = ListSerializer(ToolCallRecord.serializer())
@@ -30,13 +31,19 @@ class ChatStore(
     val changes: SharedFlow<String> = _changes.asSharedFlow()
     private val mainLock = Mutex()
 
-    suspend fun conversations(archived: Boolean = false): List<Conversation> = withContext(Dispatchers.IO) {
+    suspend fun conversations(archived: Boolean = false, assistantId: String? = null): List<Conversation> = withContext(Dispatchers.IO) {
+        val scope = if (assistantId == null) "" else " AND c.assistant_id = ?"
+        val args = if (assistantId == null) {
+            arrayOf(if (archived) "1" else "0")
+        } else {
+            arrayOf(if (archived) "1" else "0", assistantId)
+        }
         database.readableDatabase.rawQuery(
             "SELECT $CONVERSATION_COLUMNS FROM conversations c " +
-                "WHERE c.archived = ? AND c.kind = 'side' " +
+                "WHERE c.archived = ? AND c.kind = 'side'$scope " +
                 "AND EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id) " +
                 "ORDER BY c.updated_at DESC",
-            arrayOf(if (archived) "1" else "0"),
+            args,
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) add(cursor.toConversation())
@@ -44,14 +51,15 @@ class ChatStore(
         }
     }
 
-    suspend fun listedConversations(): List<Conversation> = withContext(Dispatchers.IO) {
+    suspend fun listedConversations(assistantId: String? = null): List<Conversation> = withContext(Dispatchers.IO) {
+        val scope = if (assistantId == null) "" else " AND c.assistant_id = ?"
         database.readableDatabase.rawQuery(
             "SELECT $CONVERSATION_COLUMNS FROM conversations c " +
-                "WHERE c.archived = 0 AND c.kind = 'side' " +
+                "WHERE c.archived = 0 AND c.kind = 'side'$scope " +
                 "AND (EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id) " +
                 "OR (c.parent_id <> '' AND c.task_status <> 'none')) " +
                 "ORDER BY c.updated_at DESC",
-            null,
+            assistantId?.let { arrayOf(it) },
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) add(cursor.toConversation())
@@ -59,11 +67,12 @@ class ChatStore(
         }
     }
 
-    suspend fun sideChats(): List<Conversation> = withContext(Dispatchers.IO) {
+    suspend fun sideChats(assistantId: String? = null): List<Conversation> = withContext(Dispatchers.IO) {
+        val scope = if (assistantId == null) "" else " AND assistant_id = ?"
         database.readableDatabase.rawQuery(
             "SELECT $CONVERSATION_COLUMNS FROM conversations " +
-                "WHERE kind = 'side' AND archived = 0 ORDER BY updated_at DESC",
-            null,
+                "WHERE kind = 'side' AND archived = 0$scope ORDER BY updated_at DESC",
+            assistantId?.let { arrayOf(it) },
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) add(cursor.toConversation())
@@ -95,36 +104,52 @@ class ChatStore(
 
     suspend fun ensureConversation(): Conversation = ensureMainConversation()
 
-    suspend fun ensureMainConversation(): Conversation = withContext(Dispatchers.IO) {
+    suspend fun ensureMainConversation(assistantId: String? = null): Conversation = withContext(Dispatchers.IO) {
+        val scopeId = assistantId ?: profiles.activeOnce()
         mainLock.withLock {
-            queryConversation("kind = 'main'")?.let { main ->
+            queryConversation("kind = 'main' AND assistant_id = ?", arrayOf(scopeId))?.let { main ->
                 mainSession.set(main.id)
                 return@withLock main
             }
-            conversation(MAIN_CONVERSATION_ID)?.let { existing ->
-                val values = ContentValues().apply { put("kind", ConversationKind.Main.wire) }
-                database.writableDatabase.update("conversations", values, "id = ?", arrayOf(existing.id))
-                val promoted = existing.copy(kind = ConversationKind.Main)
-                mainSession.set(promoted.id)
-                _changes.tryEmit(promoted.id)
-                return@withLock promoted
+            if (scopeId == AssistantProfile.DEFAULT_ID) {
+                conversation(MAIN_CONVERSATION_ID)?.let { existing ->
+                    val values = ContentValues().apply {
+                        put("kind", ConversationKind.Main.wire)
+                        put("assistant_id", AssistantProfile.DEFAULT_ID)
+                    }
+                    database.writableDatabase.update("conversations", values, "id = ?", arrayOf(existing.id))
+                    val promoted = existing.copy(kind = ConversationKind.Main)
+                    mainSession.set(promoted.id)
+                    _changes.tryEmit(promoted.id)
+                    return@withLock promoted
+                }
+            }
+            val title = if (scopeId == AssistantProfile.DEFAULT_ID) {
+                MAIN_CONVERSATION_TITLE
+            } else {
+                profiles.profilesOnce().firstOrNull { it.id == scopeId }?.name ?: MAIN_CONVERSATION_TITLE
             }
             insertConversation(
-                id = MAIN_CONVERSATION_ID,
-                title = MAIN_CONVERSATION_TITLE,
+                id = mainConversationId(scopeId),
+                title = title,
                 kind = ConversationKind.Main,
                 origin = ConversationOrigin.User,
+                assistantId = scopeId,
             ).also { mainSession.set(it.id) }
         }
     }
 
-    suspend fun mainConversation(): Conversation = ensureMainConversation()
+    suspend fun mainConversation(assistantId: String? = null): Conversation =
+        ensureMainConversation(assistantId)
+
+    suspend fun assistantIdFor(conversationId: String): String =
+        conversation(conversationId)?.assistantId ?: profiles.activeOnce()
 
     suspend fun promoteToMain(id: String): Boolean = withContext(Dispatchers.IO) {
         mainLock.withLock {
             val target = queryConversation("id = ?", arrayOf(id)) ?: return@withLock false
             if (target.archived || target.kind == ConversationKind.Main) return@withLock false
-            val previous = queryConversation("kind = 'main'")
+            val previous = queryConversation("kind = 'main' AND assistant_id = ?", arrayOf(target.assistantId))
             val now = System.currentTimeMillis()
             val db = database.writableDatabase
             db.beginTransaction()
@@ -134,7 +159,7 @@ class ChatStore(
                     put("parent_id", id)
                     put("updated_at", now)
                 }
-                db.update("conversations", demote, "kind = 'main'", null)
+                db.update("conversations", demote, "kind = 'main' AND assistant_id = ?", arrayOf(target.assistantId))
                 val promote = ContentValues().apply {
                     put("kind", ConversationKind.Main.wire)
                     put("parent_id", "")
@@ -147,6 +172,7 @@ class ChatStore(
             } finally {
                 db.endTransaction()
             }
+            profiles.setActive(target.assistantId)
             mainSession.set(id)
             previous?.let { _changes.tryEmit(it.id) }
             _changes.tryEmit(id)
@@ -175,6 +201,7 @@ class ChatStore(
             kind = ConversationKind.Side,
             origin = origin,
             mode = mode,
+            assistantId = profiles.activeOnce(),
         )
     }
 
@@ -198,6 +225,7 @@ class ChatStore(
             providerId = providerId,
             model = model,
             reasoning = reasoning,
+            assistantId = conversation(parentId)?.assistantId ?: profiles.activeOnce(),
         )
     }
 
@@ -213,6 +241,7 @@ class ChatStore(
         providerId: String = "",
         model: String = "",
         reasoning: String = "",
+        assistantId: String = AssistantProfile.DEFAULT_ID,
     ): Conversation {
         val now = System.currentTimeMillis()
         val conversation = Conversation(
@@ -230,6 +259,7 @@ class ChatStore(
             taskStatus = taskStatus,
             taskNote = taskNote,
             resultSeen = kind != ConversationKind.Side,
+            assistantId = assistantId,
         )
         val values = ContentValues().apply {
             put("id", conversation.id)
@@ -246,6 +276,7 @@ class ChatStore(
             put("model", model)
             put("reasoning", reasoning)
             put("result_seen", if (conversation.resultSeen) 1 else 0)
+            put("assistant_id", assistantId)
         }
         database.writableDatabase.insertOrThrow("conversations", null, values)
         if (kind == ConversationKind.Main) mainSession.set(conversation.id)
@@ -635,6 +666,7 @@ class ChatStore(
         taskStatus = TaskStatus.fromWire(getString(15).orEmpty()),
         taskNote = getString(16).orEmpty(),
         resultSeen = getInt(17) != 0,
+        assistantId = getString(18).orEmpty().ifBlank { AssistantProfile.DEFAULT_ID },
     )
 
     private fun Cursor.toMessage(): ChatMessage {
@@ -689,13 +721,16 @@ class ChatStore(
 
     companion object {
         const val MAIN_CONVERSATION_ID = "main"
+
+        fun mainConversationId(assistantId: String): String =
+            if (assistantId == AssistantProfile.DEFAULT_ID) MAIN_CONVERSATION_ID else "$MAIN_CONVERSATION_ID:$assistantId"
         const val MAIN_CONVERSATION_TITLE = "主会话"
         const val ONBOARDING_CONVERSATION_ID = "onboarding"
 
         private const val CONVERSATION_COLUMNS =
             "id, title, created_at, updated_at, archived, provider_id, model, reasoning, " +
                 "mode, plan_json, plan_status, plan_request_id, kind, parent_id, origin, " +
-                "task_status, task_note, result_seen"
+                "task_status, task_note, result_seen, assistant_id"
 
         private const val MESSAGE_COLUMNS =
             "id, conversation_id, role, content, reasoning, tool_calls, tool_call_id, name, " +

@@ -170,6 +170,7 @@ private fun MainShell() {
     }
     LaunchedEffect(assistRequest) {
         if (assistRequest) {
+            shell.openMain()
             backStack.open(FocusRoute.Chat)
             switcher.consumeAssistRequest()
         }
@@ -207,6 +208,15 @@ private fun MainShell() {
                     shell.openConversation(id)
                     navigate(FocusRoute.Chat)
                 },
+                onSelectAssistant = { id ->
+                    shell.selectAssistant(id)
+                    navigate(FocusRoute.Chat)
+                },
+                onCreateAssistant = { name, role, emoji ->
+                    shell.createAssistant(name, role, emoji)
+                    navigate(FocusRoute.Chat)
+                },
+                onUpdateAssistant = shell::updateAssistant,
             )
         }
         val content: @Composable () -> Unit = {

@@ -7,7 +7,7 @@ import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 
 @Single
-class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 22) {
+class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 23) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -30,7 +30,8 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
                 task_status TEXT NOT NULL DEFAULT 'none',
                 worker_profile TEXT NOT NULL DEFAULT 'standard',
                 task_note TEXT NOT NULL DEFAULT '',
-                result_seen INTEGER NOT NULL DEFAULT 1
+                result_seen INTEGER NOT NULL DEFAULT 1,
+                assistant_id TEXT NOT NULL DEFAULT 'default'
             )
             """.trimIndent(),
         )
@@ -777,6 +778,9 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS idx_agent_triggers_due ON agent_triggers(enabled, next_run)",
             )
+        }
+        if (oldVersion < 23) {
+            db.execSQL("ALTER TABLE conversations ADD COLUMN assistant_id TEXT NOT NULL DEFAULT 'default'")
         }
         if (oldVersion < 22) {
             db.execSQL("ALTER TABLE agent_triggers ADD COLUMN target TEXT NOT NULL DEFAULT 'side'")

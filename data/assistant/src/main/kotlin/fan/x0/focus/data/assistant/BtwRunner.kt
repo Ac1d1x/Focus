@@ -57,7 +57,7 @@ class BtwRunner(
         val protocol = provider?.protocol ?: ChatProtocol.ChatCompletions
         val history = chats.messages(conversationId, limit = CONTEXT_MESSAGES)
         val messages = buildList {
-            add(ChatMessageDto(role = "system", content = prompt.btwPrompt()))
+            add(ChatMessageDto(role = "system", content = prompt.btwPrompt(chats.conversation(conversationId)?.assistantId ?: AssistantProfile.DEFAULT_ID)))
             addAll(history.toBtwMessages())
             add(ChatMessageDto(role = "user", content = question))
         }

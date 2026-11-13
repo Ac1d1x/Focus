@@ -24,22 +24,28 @@ class PromptSettings(@Provided private val context: Context) {
         val side = stringPreferencesKey("side_prompt")
     }
 
-    val config: Flow<PromptConfig> = context.promptDataStore.data.map { prefs ->
+    fun config(assistantId: String): Flow<PromptConfig> = context.promptDataStore.data.map { prefs ->
         PromptConfig(
-            main = prefs[Keys.main].orEmpty(),
-            side = prefs[Keys.side].orEmpty(),
+            main = prefs[mainKey(assistantId)].orEmpty(),
+            side = prefs[sideKey(assistantId)].orEmpty(),
         )
     }
 
-    suspend fun configOnce(): PromptConfig = config.first()
+    suspend fun configOnce(assistantId: String): PromptConfig = config(assistantId).first()
 
-    suspend fun setMain(value: String) {
-        context.promptDataStore.edit { prefs -> prefs[Keys.main] = value.take(MAX_PROMPT_CHARS) }
+    suspend fun setMain(assistantId: String, value: String) {
+        context.promptDataStore.edit { prefs -> prefs[mainKey(assistantId)] = value.take(MAX_PROMPT_CHARS) }
     }
 
-    suspend fun setSide(value: String) {
-        context.promptDataStore.edit { prefs -> prefs[Keys.side] = value.take(MAX_PROMPT_CHARS) }
+    suspend fun setSide(assistantId: String, value: String) {
+        context.promptDataStore.edit { prefs -> prefs[sideKey(assistantId)] = value.take(MAX_PROMPT_CHARS) }
     }
+
+    private fun mainKey(assistantId: String) =
+        if (assistantId == AssistantProfile.DEFAULT_ID) Keys.main else stringPreferencesKey("main_prompt:$assistantId")
+
+    private fun sideKey(assistantId: String) =
+        if (assistantId == AssistantProfile.DEFAULT_ID) Keys.side else stringPreferencesKey("side_prompt:$assistantId")
 
     companion object {
         const val MAX_PROMPT_CHARS = 8_000

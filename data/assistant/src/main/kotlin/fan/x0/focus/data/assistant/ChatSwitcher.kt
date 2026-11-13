@@ -28,7 +28,6 @@ class ChatSwitcher(private val main: MainSessionStore) {
 
     fun requestAssist() {
         _assistRequest.value = true
-        open(main.id.value)
     }
 
     fun consumeAssistRequest() {

@@ -3,9 +3,13 @@ package fan.x0.focus.feature.assistant
 import androidx.lifecycle.viewModelScope
 import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.mvi.BaseViewModel
+import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.PromptSettings
 import fan.x0.focus.data.assistant.WorkspaceStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -13,27 +17,41 @@ import org.koin.core.annotation.KoinViewModel
 class AssistantViewModel(
     private val workspace: WorkspaceStore,
     private val prompts: PromptSettings,
+    private val profiles: AssistantProfileStore,
 ) : BaseViewModel<AssistantAction, AssistantUiState, AssistantEffect>(AssistantUiState()) {
+
+    private var assistantId = AssistantProfile.DEFAULT_ID
 
     init {
         viewModelScope.launch {
             workspace.revision.collect { load() }
         }
         viewModelScope.launch {
-            prompts.config.collect { config ->
-                updateState { copy(mainPrompt = config.main, sidePrompt = config.side) }
+            profiles.activeId.collect { id ->
+                assistantId = id
+                load()
+            }
+        }
+        viewModelScope.launch {
+            profiles.activeId.collectLatest { id ->
+                prompts.config(id).collect { config ->
+                    updateState { copy(mainPrompt = config.main, sidePrompt = config.side) }
+                }
             }
         }
     }
 
     private suspend fun load() {
         try {
-            val documents = workspace.readAll()
-            val assistantName = workspace.assistantName()
+            val documents = workspace.readAll(assistantId)
+            val assistantName = workspace.assistantName(assistantId)
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId }
             updateState {
                 copy(
                     loading = false,
+                    assistantId = assistantId,
                     assistantName = assistantName,
+                    assistantRole = profile?.role.orEmpty(),
                     documents = documents.map { WorkspaceDocumentUi(it.file, it.content) },
                     openDocument = openDocument?.let { open ->
                         documents.firstOrNull { it.file == open.file }
@@ -87,8 +105,8 @@ class AssistantViewModel(
         ) {
             val value = editor.value.trim()
             when (editor.target) {
-                PromptTarget.Main -> prompts.setMain(value)
-                PromptTarget.Side -> prompts.setSide(value)
+                PromptTarget.Main -> prompts.setMain(assistantId, value)
+                PromptTarget.Side -> prompts.setSide(assistantId, value)
             }
             updateState { copy(promptSaving = false, promptEditor = null) }
             sendEffect(AssistantEffect.PromptSaved)

@@ -7,6 +7,7 @@ import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.core.network.openai.ModelMeta
 import fan.x0.focus.data.assistant.AgentMode
 import fan.x0.focus.data.assistant.AskKind
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.ChatDetailConfig
@@ -302,6 +303,7 @@ data class ChatUiState(
     val sideUnreadCount: Int = 0,
     val sidePanel: SidePanelUi = SidePanelUi(),
     val assistantName: String = "",
+    val assistantId: String = AssistantProfile.DEFAULT_ID,
     val workingText: String = "",
     val name: String? = null,
     val history: List<ChatEntry> = emptyList(),

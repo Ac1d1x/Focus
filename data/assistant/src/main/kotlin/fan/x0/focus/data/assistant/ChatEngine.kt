@@ -208,6 +208,7 @@ class ChatEngine(
                 }
                 val system = when (mode) {
                     ChatMode.Chat -> prompt.chatPrompt(
+                        assistantId = info?.assistantId ?: AssistantProfile.DEFAULT_ID,
                         title = info?.title.orEmpty(),
                         mode = agentMode,
                         mentionedSkills = options.mentionedSkills,
@@ -215,6 +216,7 @@ class ChatEngine(
                         side = info?.kind == ConversationKind.Side,
                     )
                     ChatMode.Onboarding -> prompt.onboardingPrompt(
+                        assistantId = AssistantProfile.DEFAULT_ID,
                         turn = context.messages.count { it.role == ChatRole.User },
                     )
                 }.withSummary(context.summary)

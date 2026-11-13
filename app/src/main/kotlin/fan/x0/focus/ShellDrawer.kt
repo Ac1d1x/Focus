@@ -1,7 +1,9 @@
 package fan.x0.focus
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,20 +13,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.app.ShellState
 import fan.x0.focus.core.designsystem.components.AvatarStyle
@@ -32,8 +45,16 @@ import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
 import fan.x0.focus.plugin.PluginPageRef
+
+private data class AssistantDraft(
+    val profile: AssistantProfile?,
+    val name: String,
+    val role: String,
+    val emoji: String,
+)
 
 @Composable
 fun ShellDrawer(
@@ -46,8 +67,12 @@ fun ShellDrawer(
     onOpenMain: () -> Unit,
     onNewSideChat: () -> Unit,
     onOpenConversation: (String) -> Unit,
+    onSelectAssistant: (String) -> Unit,
+    onCreateAssistant: (String, String, String) -> Unit,
+    onUpdateAssistant: (AssistantProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var editing by remember { mutableStateOf<AssistantDraft?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -55,8 +80,36 @@ fun ShellDrawer(
             .padding(horizontal = 12.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        DrawerHeader(state, onOpenSettings = { onNavigate(FocusRoute.Settings) })
+        DrawerHeader(
+            assistant = state.activeAssistant,
+            onOpenSettings = { onNavigate(FocusRoute.Settings) },
+        )
+        Spacer(Modifier.height(12.dp))
+        DrawerSectionLabel(stringResource(R.string.drawer_assistants))
+        state.assistants.forEach { assistant ->
+            AssistantRow(
+                assistant = assistant,
+                selected = assistant.id == state.activeAssistantId,
+                onClick = { onSelectAssistant(assistant.id) },
+                onEdit = {
+                    editing = AssistantDraft(
+                        profile = assistant,
+                        name = assistant.name,
+                        role = assistant.role,
+                        emoji = assistant.emoji,
+                    )
+                },
+            )
+        }
+        NewAssistantRow(
+            onClick = {
+                editing = AssistantDraft(profile = null, name = "", role = "", emoji = "")
+            },
+        )
         Spacer(Modifier.height(8.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(Modifier.height(6.dp))
+        DrawerSectionLabel(stringResource(R.string.drawer_sessions))
         DrawerEntry(
             FocusIcons.Assistant,
             stringResource(R.string.drawer_main_session),
@@ -70,7 +123,22 @@ fun ShellDrawer(
                 selected = false,
                 onClick = onNewSideChat,
             )
+            state.recent.forEach { conversation ->
+                ConversationRow(
+                    conversation = conversation,
+                    selected = conversation.id == currentConversationId,
+                    onClick = { onOpenConversation(conversation.id) },
+                )
+            }
+            DrawerEntry(
+                icon = FocusIcons.History,
+                label = stringResource(R.string.drawer_history),
+                selected = current == FocusRoute.History,
+                onClick = { onNavigate(FocusRoute.History) },
+            )
             Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(6.dp))
             DrawerEntry(FocusIcons.Today, stringResource(R.string.tab_today), current == FocusRoute.Today) {
                 onNavigate(FocusRoute.Today)
             }
@@ -91,7 +159,7 @@ fun ShellDrawer(
             onNavigate(FocusRoute.Device)
         }
         if (!controlledOnly) {
-            DrawerEntry(FocusIcons.Assistant, stringResource(R.string.tab_assistant), current == FocusRoute.Assistant) {
+            DrawerEntry(FocusIcons.Assistant, stringResource(R.string.drawer_assistant_context), current == FocusRoute.Assistant) {
                 onNavigate(FocusRoute.Assistant)
             }
         }
@@ -112,39 +180,26 @@ fun ShellDrawer(
         DrawerEntry(FocusIcons.Settings, stringResource(R.string.settings_title), current == FocusRoute.Settings) {
             onNavigate(FocusRoute.Settings)
         }
-        if (!controlledOnly) {
-            Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(6.dp))
-            DrawerSectionLabel(stringResource(R.string.drawer_recent))
-            if (state.recent.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.drawer_no_conversations),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                )
-            } else {
-                state.recent.forEach { conversation ->
-                    ConversationRow(
-                        conversation = conversation,
-                        selected = conversation.id == currentConversationId,
-                        onClick = { onOpenConversation(conversation.id) },
-                    )
+    }
+    editing?.let { draft ->
+        AssistantEditorDialog(
+            draft = draft,
+            onDismiss = { editing = null },
+            onSave = { name, role, emoji ->
+                val profile = draft.profile
+                if (profile == null) {
+                    onCreateAssistant(name, role, emoji)
+                } else {
+                    onUpdateAssistant(profile.copy(name = name, role = role, emoji = emoji))
                 }
-            }
-            DrawerEntry(
-                icon = FocusIcons.History,
-                label = stringResource(R.string.drawer_history),
-                selected = current == FocusRoute.History,
-                onClick = { onNavigate(FocusRoute.History) },
-            )
-        }
+                editing = null
+            },
+        )
     }
 }
 
 @Composable
-private fun DrawerHeader(state: ShellState, onOpenSettings: () -> Unit) {
+private fun DrawerHeader(assistant: AssistantProfile?, onOpenSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,19 +207,22 @@ private fun DrawerHeader(state: ShellState, onOpenSettings: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 52.dp)
+        AssistantAvatar(
+            assistant = assistant ?: AssistantProfile(AssistantProfile.DEFAULT_ID, AssistantProfile.DEFAULT_NAME),
+            size = 52.dp,
+        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = state.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.drawer_default_name),
+                text = assistant?.name?.ifBlank { AssistantProfile.DEFAULT_NAME } ?: AssistantProfile.DEFAULT_NAME,
                 style = MaterialTheme.typography.titleMediumEmphasized,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Running on Focus",
+                text = assistant?.role?.ifBlank { null } ?: stringResource(R.string.drawer_assistant_default_role),
                 style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF9E9E9E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -177,6 +235,168 @@ private fun DrawerHeader(state: ShellState, onOpenSettings: () -> Unit) {
             )
         }
     }
+}
+
+@Composable
+private fun AssistantRow(
+    assistant: AssistantProfile,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        onClick = hapticSelect(onClick),
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) scheme.secondaryContainer else Color.Transparent,
+        contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            AssistantAvatar(assistant = assistant, size = 32.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = assistant.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) {
+                        scheme.onSecondaryContainer.copy(alpha = 0.72f)
+                    } else {
+                        scheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            IconButton(
+                onClick = hapticTap(onEdit),
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = FocusIcons.Edit,
+                    contentDescription = stringResource(R.string.drawer_edit_assistant),
+                    tint = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewAssistantRow(onClick: () -> Unit) {
+    NavigationDrawerItem(
+        label = { Text(stringResource(R.string.drawer_new_assistant)) },
+        selected = false,
+        onClick = hapticTap(onClick),
+        icon = {
+            Icon(
+                imageVector = FocusIcons.Add,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+        },
+        shape = MaterialTheme.shapes.medium,
+    )
+}
+
+@Composable
+private fun AssistantAvatar(assistant: AssistantProfile, size: Dp) {
+    if (assistant.emoji.isNotBlank()) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = assistant.emoji,
+                style = if (size > 40.dp) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
+            )
+        }
+    } else {
+        val hash = assistant.id.hashCode()
+        FocusAvatar(
+            style = AvatarStyle(preset = hash, palette = hash ushr 8),
+            size = size,
+        )
+    }
+}
+
+@Composable
+private fun AssistantEditorDialog(
+    draft: AssistantDraft,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String) -> Unit,
+) {
+    val editing = draft.profile != null
+    var name by remember(draft) { mutableStateOf(draft.name) }
+    var role by remember(draft) { mutableStateOf(draft.role) }
+    var emoji by remember(draft) { mutableStateOf(draft.emoji) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                stringResource(
+                    if (editing) R.string.drawer_edit_assistant else R.string.drawer_new_assistant,
+                ),
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(40) },
+                    label = { Text(stringResource(R.string.drawer_assistant_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = role,
+                    onValueChange = { role = it.take(120) },
+                    label = { Text(stringResource(R.string.drawer_assistant_role)) },
+                    placeholder = { Text(stringResource(R.string.drawer_assistant_role_hint)) },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = emoji,
+                    onValueChange = { emoji = it.take(8) },
+                    label = { Text(stringResource(R.string.drawer_assistant_emoji)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = hapticTap { onSave(name.trim(), role.trim(), emoji.trim()) },
+                enabled = name.isNotBlank(),
+            ) {
+                Text(
+                    stringResource(
+                        if (editing) R.string.drawer_assistant_save else R.string.drawer_assistant_create,
+                    ),
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = hapticTap(onDismiss)) {
+                Text(stringResource(R.string.drawer_assistant_cancel))
+            }
+        },
+    )
 }
 
 @Composable

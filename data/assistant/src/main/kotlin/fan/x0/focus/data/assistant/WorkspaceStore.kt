@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,62 +42,83 @@ data class WorkspaceDocument(
 )
 
 @Single
-class WorkspaceStore(@Provided private val context: Context) {
+class WorkspaceStore(
+    @Provided private val context: Context,
+    private val profiles: AssistantProfileStore,
+) {
     private val revisionCount = MutableStateFlow(0)
     private val seedLock = Mutex()
 
     val revision: StateFlow<Int> = revisionCount.asStateFlow()
 
-    suspend fun readAll(): List<WorkspaceDocument> = withContext(Dispatchers.IO) {
-        ensureSeeded()
-        WorkspaceFile.entries.map { file ->
-            WorkspaceDocument(file, fileFor(file).readText().take(MAX_FILE_CHARS))
-        }
-    }
-
-    suspend fun read(file: WorkspaceFile): String = withContext(Dispatchers.IO) {
-        ensureSeeded()
-        fileFor(file).readText().take(MAX_FILE_CHARS)
-    }
-
-    suspend fun write(file: WorkspaceFile, content: String) {
+    suspend fun seed(assistantId: String, name: String, role: String) {
         withContext(Dispatchers.IO) {
-            ensureSeeded()
-            writeFile(file, content.take(MAX_FILE_CHARS))
+            seedLock.withLock {
+                val dir = directory(assistantId)
+                if (!dir.exists()) dir.mkdirs()
+                WorkspaceFile.entries.forEach { file ->
+                    val target = dir.resolve(file.fileName)
+                    if (!target.exists()) {
+                        target.writeText(defaultContent(file, name, role))
+                    }
+                }
+            }
         }
         revisionCount.update { it + 1 }
     }
 
-    suspend fun append(file: WorkspaceFile, block: String) {
+    suspend fun readAll(assistantId: String): List<WorkspaceDocument> = withContext(Dispatchers.IO) {
+        ensureSeeded(assistantId)
+        WorkspaceFile.entries.map { file ->
+            WorkspaceDocument(file, fileFor(assistantId, file).readText().take(MAX_FILE_CHARS))
+        }
+    }
+
+    suspend fun read(assistantId: String, file: WorkspaceFile): String = withContext(Dispatchers.IO) {
+        ensureSeeded(assistantId)
+        fileFor(assistantId, file).readText().take(MAX_FILE_CHARS)
+    }
+
+    suspend fun write(assistantId: String, file: WorkspaceFile, content: String) {
+        withContext(Dispatchers.IO) {
+            ensureSeeded(assistantId)
+            writeFile(assistantId, file, content.take(MAX_FILE_CHARS))
+        }
+        revisionCount.update { it + 1 }
+    }
+
+    suspend fun append(assistantId: String, file: WorkspaceFile, block: String) {
         val text = block.trim()
         if (text.isBlank()) return
         withContext(Dispatchers.IO) {
-            ensureSeeded()
-            val current = fileFor(file).readText()
+            ensureSeeded(assistantId)
+            val current = fileFor(assistantId, file).readText()
             val next = buildString {
                 append(current.trimEnd())
                 if (isNotEmpty()) append("\n\n")
                 append(text)
                 append('\n')
             }
-            writeFile(file, next.take(MAX_FILE_CHARS))
+            writeFile(assistantId, file, next.take(MAX_FILE_CHARS))
         }
         revisionCount.update { it + 1 }
     }
 
-    suspend fun appendMemory(fact: String) {
+    suspend fun appendMemory(assistantId: String, fact: String) {
         val text = fact.trim()
         if (text.isBlank()) return
-        append(WorkspaceFile.Memory, "- $text")
+        append(assistantId, WorkspaceFile.Memory, "- $text")
     }
 
     suspend fun updateUserProfile(
+        assistantId: String,
         name: String? = null,
         tone: String? = null,
         focus: String? = null,
         language: String? = null,
     ) {
         updateFields(
+            assistantId = assistantId,
             file = WorkspaceFile.User,
             values = listOf(
                 "Name" to name,
@@ -107,33 +129,39 @@ class WorkspaceStore(@Provided private val context: Context) {
         )
     }
 
-    suspend fun updateAssistantName(name: String) {
+    suspend fun updateAssistantName(assistantId: String, name: String) {
         val value = name.trim().take(MAX_NAME_CHARS)
         if (value.isBlank()) return
-        updateFields(WorkspaceFile.Persona, listOf("Name" to value))
+        updateFields(assistantId, WorkspaceFile.Persona, listOf("Name" to value))
+        profiles.rename(assistantId, value)
     }
 
-    suspend fun userName(): String? = field(WorkspaceFile.User, "Name")
+    suspend fun userName(assistantId: String): String? = field(assistantId, WorkspaceFile.User, "Name")
 
-    suspend fun assistantName(): String =
-        field(WorkspaceFile.Persona, "Name") ?: DEFAULT_ASSISTANT_NAME
+    suspend fun assistantName(assistantId: String): String {
+        val fromFile = field(assistantId, WorkspaceFile.Persona, "Name")
+        if (!fromFile.isNullOrBlank()) return fromFile
+        return profiles.profiles.first().firstOrNull { it.id == assistantId }?.name
+            ?: DEFAULT_ASSISTANT_NAME
+    }
 
-    suspend fun userLanguage(): String? = field(WorkspaceFile.User, "Language")
+    suspend fun userLanguage(assistantId: String): String? = field(assistantId, WorkspaceFile.User, "Language")
 
-    suspend fun field(file: WorkspaceFile, label: String): String? = withContext(Dispatchers.IO) {
-        ensureSeeded()
-        fieldOf(fileFor(file).readText(), label)
+    suspend fun field(assistantId: String, file: WorkspaceFile, label: String): String? = withContext(Dispatchers.IO) {
+        ensureSeeded(assistantId)
+        fieldOf(fileFor(assistantId, file).readText(), label)
     }
 
     private suspend fun updateFields(
+        assistantId: String,
         file: WorkspaceFile,
         values: List<Pair<String, String?>>,
     ) {
         val present = values.filter { !it.second.isNullOrBlank() }
         if (present.isEmpty()) return
         withContext(Dispatchers.IO) {
-            ensureSeeded()
-            var content = fileFor(file).readText()
+            ensureSeeded(assistantId)
+            var content = fileFor(assistantId, file).readText()
             if (content.isBlank()) content = "# ${file.fileName.removeSuffix(".md")}\n"
             present.forEach { (label, value) ->
                 val line = "- $label: ${value!!.trim()}"
@@ -144,26 +172,35 @@ class WorkspaceStore(@Provided private val context: Context) {
                     content.trimEnd() + "\n" + line + "\n"
                 }
             }
-            writeFile(file, content.take(MAX_FILE_CHARS))
+            writeFile(assistantId, file, content.take(MAX_FILE_CHARS))
         }
         revisionCount.update { it + 1 }
     }
 
-    private suspend fun ensureSeeded() {
+    private suspend fun ensureSeeded(assistantId: String) {
         seedLock.withLock {
-            val dir = directory()
+            val dir = directory(assistantId)
             if (!dir.exists()) dir.mkdirs()
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId }
             WorkspaceFile.entries.forEach { file ->
                 val target = dir.resolve(file.fileName)
-                if (!target.exists()) target.writeText(defaultContent(file))
+                if (!target.exists()) {
+                    target.writeText(
+                        defaultContent(
+                            file = file,
+                            name = profile?.name ?: DEFAULT_ASSISTANT_NAME,
+                            role = profile?.role.orEmpty(),
+                        ),
+                    )
+                }
             }
         }
     }
 
-    private fun writeFile(file: WorkspaceFile, content: String) {
-        val dir = directory()
+    private fun writeFile(assistantId: String, file: WorkspaceFile, content: String) {
+        val dir = directory(assistantId)
         if (!dir.exists()) dir.mkdirs()
-        val target = fileFor(file)
+        val target = fileFor(assistantId, file)
         val temp = dir.resolve("${file.fileName}.tmp")
         temp.writeText(content)
         if (!temp.renameTo(target)) {
@@ -172,15 +209,30 @@ class WorkspaceStore(@Provided private val context: Context) {
         }
     }
 
-    private fun directory(): File = File(File(context.filesDir, "assistant"), "workspace")
+    private fun directory(assistantId: String): File {
+        val root = File(context.filesDir, "assistant")
+        return if (assistantId == AssistantProfile.DEFAULT_ID) {
+            File(root, "workspace")
+        } else {
+            File(File(root, "assistants"), assistantId).resolve("workspace")
+        }
+    }
 
-    private fun fileFor(file: WorkspaceFile): File = directory().resolve(file.fileName)
+    private fun fileFor(assistantId: String, file: WorkspaceFile): File =
+        directory(assistantId).resolve(file.fileName)
 
-    private fun defaultContent(file: WorkspaceFile): String = when (file) {
+    private fun defaultContent(file: WorkspaceFile, name: String, role: String): String = when (file) {
         WorkspaceFile.Soul ->
             "# Soul\n\n- Direct, calm, and specific.\n- Short answers unless the user needs detail.\n"
         WorkspaceFile.Persona ->
-            "# Persona\n\n- Name: $DEFAULT_ASSISTANT_NAME\n- $DEFAULT_ASSISTANT_NAME is a personal assistant on the user's phone.\n- Helpful first, warm second.\n"
+            buildString {
+                appendLine("# Persona")
+                appendLine()
+                appendLine("- Name: $name")
+                if (role.isNotBlank()) appendLine("- Role: $role")
+                appendLine("- $name is a personal assistant on the user's phone.")
+                appendLine("- Helpful first, warm second.")
+            }
         WorkspaceFile.User ->
             "# User\n\n"
         WorkspaceFile.Agent ->

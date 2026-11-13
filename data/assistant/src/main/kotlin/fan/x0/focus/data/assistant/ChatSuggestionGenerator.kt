@@ -37,7 +37,7 @@ class ChatSuggestionGenerator(
         isLenient = true
     }
 
-    suspend fun generate(providerId: String, model: String): List<ChatSuggestion> {
+    suspend fun generate(providerId: String, model: String, assistantId: String): List<ChatSuggestion> {
         val config = settings.configOnce()
         val fallback = config.providers.firstOrNull { it.id == providerId }
             ?: config.activeProvider
@@ -57,7 +57,7 @@ class ChatSuggestionGenerator(
             model = endpoint.model,
             messages = listOf(
                 ChatMessageDto(role = "system", content = SYSTEM_PROMPT),
-                ChatMessageDto(role = "user", content = buildContext()),
+                ChatMessageDto(role = "user", content = buildContext(assistantId)),
             ),
             stream = false,
         )
@@ -65,13 +65,13 @@ class ChatSuggestionGenerator(
         return parse(reply.text)
     }
 
-    private suspend fun buildContext(): String {
-        val name = workspace.userName()
-        val focus = workspace.field(WorkspaceFile.User, "Focus")
+    private suspend fun buildContext(assistantId: String): String {
+        val name = workspace.userName(assistantId)
+        val focus = workspace.field(assistantId, WorkspaceFile.User, "Focus")
         val activeGoals = fallback({ goals.active() }, emptyList())
         val titles = fallback(
             {
-                chats.conversations()
+                chats.conversations(assistantId = assistantId)
                     .map { it.title.trim() }
                     .filter { it.isNotBlank() }
                     .take(20)
@@ -89,7 +89,7 @@ class ChatSuggestionGenerator(
         val articles = fallback({ feeds.listArticles(limit = 30) }, emptyList())
             .let { list -> list.filterNot { it.read }.ifEmpty { list } }
             .take(12)
-        val language = workspace.userLanguage()?.takeIf { it.isNotBlank() }
+        val language = workspace.userLanguage(assistantId)?.takeIf { it.isNotBlank() }
             ?: locale.current()?.takeIf { it.isNotBlank() }
             ?: Locale.getDefault().language
 

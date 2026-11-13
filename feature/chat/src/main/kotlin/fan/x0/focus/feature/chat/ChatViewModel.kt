@@ -9,6 +9,7 @@ import fan.x0.focus.data.assistant.AskAnswer
 import fan.x0.focus.data.assistant.AskKind
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.AttachmentLoader
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.BtwRunner
 import fan.x0.focus.data.assistant.ChatAppearanceSettings
@@ -43,6 +44,7 @@ import fan.x0.focus.data.assistant.MentionText
 import fan.x0.focus.data.assistant.MainSessionStore
 import fan.x0.focus.data.assistant.MentionUi
 import fan.x0.focus.data.assistant.modelOptions
+import fan.x0.focus.data.assistant.SideChatCounts
 import fan.x0.focus.data.assistant.SideChatManager
 import fan.x0.focus.data.assistant.TaskStatus
 import fan.x0.focus.data.assistant.WORKSPACE_BIND_PREFIX
@@ -231,10 +233,11 @@ class ChatViewModel(
         }
         viewModelScope.launch {
             sideChats.counts.collect { counts ->
+                val active = counts[currentState.assistantId] ?: SideChatCounts()
                 updateState {
                     copy(
-                        sideActiveCount = counts.active,
-                        sideUnreadCount = counts.unread,
+                        sideActiveCount = active.active,
+                        sideUnreadCount = active.unread,
                     )
                 }
             }
@@ -1335,7 +1338,7 @@ class ChatViewModel(
     private fun refreshSidePanel() {
         viewModelScope.launch {
             updateState { copy(sidePanel = sidePanel.copy(loading = true)) }
-            val rows = sideChats.list().map { item ->
+            val rows = sideChats.list(currentState.assistantId).map { item ->
                 SideChatRowUi(
                     id = item.id,
                     title = item.title,
@@ -1421,8 +1424,8 @@ class ChatViewModel(
                 workingText = "",
                 kind = conversation?.kind ?: ConversationKind.Side,
                 taskStatus = conversation?.taskStatus ?: TaskStatus.None,
-                sideActiveCount = sideChats.counts.value.active,
-                sideUnreadCount = sideChats.counts.value.unread,
+                sideActiveCount = sideChats.countsFor(conversation?.assistantId ?: currentState.assistantId).active,
+                sideUnreadCount = sideChats.countsFor(conversation?.assistantId ?: currentState.assistantId).unread,
                 providers = config.providers.map { ProviderOption(it.id, it.name, it.model, it.icon, it.models) },
                 providerId = providerId,
                 model = model,
@@ -1453,8 +1456,9 @@ class ChatViewModel(
         val messages = chats.messages(conversationId)
         val conversation = chats.conversation(conversationId)
         val compaction = chats.compaction(conversationId)
-        val name = workspace.userName()
-        val assistantName = workspace.assistantName()
+        val assistantId = conversation?.assistantId ?: AssistantProfile.DEFAULT_ID
+        val name = workspace.userName(assistantId)
+        val assistantName = workspace.assistantName(assistantId)
         val config = settings.configOnce()
         val providerId = conversation?.providerId?.takeIf { id ->
             config.providers.any { it.id == id }
@@ -1490,10 +1494,11 @@ class ChatViewModel(
                 title = conversation?.title.orEmpty(),
                 kind = conversation?.kind ?: ConversationKind.Side,
                 taskStatus = conversation?.taskStatus ?: TaskStatus.None,
-                sideActiveCount = sideChats.counts.value.active,
-                sideUnreadCount = sideChats.counts.value.unread,
+                sideActiveCount = sideChats.countsFor(assistantId).active,
+                sideUnreadCount = sideChats.countsFor(assistantId).unread,
                 name = name,
                 assistantName = assistantName,
+                assistantId = assistantId,
                 history = entries,
                 live = emptyList(),
                 suggestions = emptyList(),
@@ -1547,7 +1552,7 @@ class ChatViewModel(
         val state = currentState
         if (state.conversationId != conversationId || state.history.isNotEmpty()) return
         val generated = try {
-            suggestionGenerator.generate(state.providerId, state.model)
+            suggestionGenerator.generate(state.providerId, state.model, state.assistantId)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {

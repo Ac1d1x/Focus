@@ -1,9 +1,7 @@
 package fan.x0.focus
 
 import android.text.format.DateUtils
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -30,20 +27,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.app.ShellState
-import fan.x0.focus.core.designsystem.components.AvatarStyle
-import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
+import fan.x0.focus.feature.assistant.AssistantAvatar
 import fan.x0.focus.feature.assistant.NewAssistantDialog
 import fan.x0.focus.plugin.PluginPageRef
 
@@ -267,30 +261,6 @@ private fun NewAssistantRow(onClick: () -> Unit) {
         },
         shape = MaterialTheme.shapes.medium,
     )
-}
-
-@Composable
-private fun AssistantAvatar(assistant: AssistantProfile, size: Dp) {
-    if (assistant.emoji.isNotBlank()) {
-        Box(
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = assistant.emoji,
-                style = if (size > 40.dp) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
-            )
-        }
-    } else {
-        val hash = assistant.id.hashCode()
-        FocusAvatar(
-            style = AvatarStyle(preset = hash, palette = hash ushr 8),
-            size = size,
-        )
-    }
 }
 
 @Composable

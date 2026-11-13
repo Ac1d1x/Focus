@@ -32,6 +32,7 @@ import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusStatusPill
 import fan.x0.focus.core.designsystem.components.StatusTone
 import fan.x0.focus.data.device.DeviceTrigger
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun DeviceTriggersPane(state: DeviceUiState, onAction: (DeviceAction) -> Unit) {
@@ -154,6 +155,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     label = { Text(stringResource(R.string.device_trigger_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FocusChip(
@@ -173,6 +175,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     label = { Text(stringResource(R.string.device_trigger_package)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.triggerText,
@@ -180,6 +183,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     label = { Text(stringResource(R.string.device_trigger_text)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.triggerType,
@@ -187,6 +191,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     label = { Text(stringResource(R.string.device_trigger_type)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.triggerCommand,
@@ -201,6 +206,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     minLines = 2,
                     maxLines = 5,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.triggerCooldown,
@@ -208,6 +214,7 @@ private fun TriggerDialog(state: DeviceUiState, onAction: (DeviceAction) -> Unit
                     label = { Text(stringResource(R.string.device_trigger_cooldown)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },

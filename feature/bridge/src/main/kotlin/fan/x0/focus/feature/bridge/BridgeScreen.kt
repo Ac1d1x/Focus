@@ -370,6 +370,7 @@ private fun WorkspaceEditor(state: BridgeUiState, onAction: (BridgeAction) -> Un
                 label = { Text(stringResource(R.string.bridge_workspace_path)) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
+                shape = FocusShapeTokens.input,
             )
             IconButton(
                 onClick = hapticTap { onAction(BridgeAction.AddRoot) },
@@ -403,6 +404,7 @@ private fun PairDialog(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
                     label = { Text(stringResource(R.string.bridge_host)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.port,
@@ -410,6 +412,7 @@ private fun PairDialog(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
                     label = { Text(stringResource(R.string.bridge_port)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.code,
@@ -417,6 +420,7 @@ private fun PairDialog(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
                     label = { Text(stringResource(R.string.bridge_code)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },

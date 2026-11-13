@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 data class FocusPickerCapability(
     val icon: ImageVector,
@@ -114,7 +115,7 @@ fun FocusSearchPickerSheet(
                     )
                 },
                 singleLine = true,
-                shape = MaterialTheme.shapes.large,
+                shape = FocusShapeTokens.input,
                 modifier = Modifier.fillMaxWidth(),
             )
             if (filtered.isEmpty()) {

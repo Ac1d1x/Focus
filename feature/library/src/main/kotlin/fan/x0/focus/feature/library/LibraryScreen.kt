@@ -49,6 +49,7 @@ import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun LibraryRoute(viewModel: LibraryViewModel = koinViewModel()) {
@@ -274,6 +275,7 @@ private fun AddFeedDialog(state: LibraryUiState, onAction: (LibraryAction) -> Un
                     label = { Text(stringResource(R.string.library_feed_url)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },
@@ -306,6 +308,7 @@ private fun NoteDialog(state: LibraryUiState, onAction: (LibraryAction) -> Unit)
                     label = { Text(stringResource(R.string.library_note_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.noteBody,
@@ -314,6 +317,7 @@ private fun NoteDialog(state: LibraryUiState, onAction: (LibraryAction) -> Unit)
                     minLines = 4,
                     maxLines = 8,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },

@@ -59,6 +59,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun SettingsAutomationRoute(
@@ -344,6 +345,7 @@ private fun TriggerEditorSheet(
                 label = { Text(stringResource(R.string.settings_super_trigger_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             OutlinedTextField(
                 value = draft.prompt,
@@ -353,6 +355,7 @@ private fun TriggerEditorSheet(
                 minLines = 3,
                 maxLines = 6,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             if (draft.kind == AgentTriggerKind.Cron) {
                 OutlinedTextField(
@@ -370,6 +373,7 @@ private fun TriggerEditorSheet(
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 if (nextRun != null) {
                     Text(

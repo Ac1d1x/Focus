@@ -23,6 +23,7 @@ import fan.x0.focus.core.designsystem.components.FocusCategoryIcons
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.data.assistant.AskKind
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun AskQuestionInput(
@@ -167,6 +168,7 @@ private fun AskTextField(
         singleLine = singleLine,
         maxLines = if (singleLine) 1 else 4,
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
 }
 
@@ -185,5 +187,6 @@ private fun AskOtherField(
         placeholder = { Text(stringResource(R.string.chat_ask_other)) },
         maxLines = 3,
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
 }

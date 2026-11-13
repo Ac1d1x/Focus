@@ -67,6 +67,7 @@ import fan.x0.focus.data.assistant.ProviderModel
 import fan.x0.focus.data.assistant.ProviderModelGroup
 import kotlinx.coroutines.launch
 import java.util.Locale
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 data class ModelPickerModel(
     val id: String,
@@ -273,7 +274,7 @@ fun ModelPickerSheet(
                     )
                 },
                 singleLine = true,
-                shape = MaterialTheme.shapes.large,
+                shape = FocusShapeTokens.input,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),

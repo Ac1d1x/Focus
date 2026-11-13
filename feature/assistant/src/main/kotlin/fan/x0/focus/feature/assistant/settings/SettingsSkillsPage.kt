@@ -51,6 +51,7 @@ import fan.x0.focus.feature.assistant.SkillsSettingsViewModel
 import fan.x0.focus.feature.assistant.SkillsUiState
 import org.koin.compose.viewmodel.koinViewModel
 import java.io.File
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsSkillsRoute(
@@ -410,6 +411,7 @@ private fun SkillLinkDialog(
                     placeholder = { Text(stringResource(R.string.settings_skills_link_hint)) },
                     singleLine = true,
                     modifier = Modifier.padding(top = 4.dp),
+                    shape = FocusShapeTokens.input,
                 )
                 if (fetching) {
                     if (fetchProgress != null) {

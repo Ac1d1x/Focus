@@ -59,6 +59,7 @@ import fan.x0.focus.core.network.openai.ChatProtocol
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun ProviderConnectionTab(
@@ -79,6 +80,7 @@ internal fun ProviderConnectionTab(
             label = { Text(stringResource(R.string.settings_provider_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         OutlinedTextField(
             value = state.baseUrl,
@@ -86,6 +88,7 @@ internal fun ProviderConnectionTab(
             label = { Text(stringResource(R.string.assistant_base_url)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         OutlinedTextField(
             value = state.apiKeyInput,
@@ -117,6 +120,7 @@ internal fun ProviderConnectionTab(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         ProtocolSection(state = state, onAction = onAction)
         AuthSection(state = state, onAction = onAction)
@@ -163,6 +167,7 @@ private fun AuthSection(state: SettingsUiState, onAction: (SettingsAction) -> Un
                 label = { Text(stringResource(R.string.settings_provider_auth_header_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             ProviderAuthType.Query -> OutlinedTextField(
                 value = state.authName,
@@ -170,6 +175,7 @@ private fun AuthSection(state: SettingsUiState, onAction: (SettingsAction) -> Un
                 label = { Text(stringResource(R.string.settings_provider_auth_query_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             ProviderAuthType.Basic -> OutlinedTextField(
                 value = state.authUsername,
@@ -177,6 +183,7 @@ private fun AuthSection(state: SettingsUiState, onAction: (SettingsAction) -> Un
                 label = { Text(stringResource(R.string.settings_provider_auth_username)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             else -> Unit
         }

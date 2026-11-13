@@ -34,6 +34,7 @@ import fan.x0.focus.feature.assistant.VoiceSettingsAction
 import fan.x0.focus.feature.assistant.VoiceSettingsUiState
 import fan.x0.focus.feature.assistant.VoiceSettingsViewModel
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsVoiceRoute(
@@ -162,6 +163,7 @@ internal fun SettingsVoicePage(
                                 },
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = FocusShapeTokens.input,
                             )
                             Text(
                                 text = stringResource(R.string.settings_voice_cloud_note),

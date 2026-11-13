@@ -27,6 +27,7 @@ import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +67,7 @@ internal fun MessageEditSheet(
                 },
                 minLines = 3,
                 maxLines = 8,
-                shape = MaterialTheme.shapes.largeIncreased,
+                shape = FocusShapeTokens.input,
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,

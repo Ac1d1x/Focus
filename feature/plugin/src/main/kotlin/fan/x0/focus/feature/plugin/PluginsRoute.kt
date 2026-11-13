@@ -16,6 +16,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.mvi.CollectEffect
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun SettingsPluginsRoute(
@@ -92,6 +93,7 @@ fun SettingsPluginsRoute(
                     onValueChange = { viewModel.onAction(PluginAction.ImportUrlChanged(it)) },
                     placeholder = { Text(stringResource(R.string.plugins_url_hint)) },
                     singleLine = true,
+                    shape = FocusShapeTokens.input,
                 )
             },
             confirmButton = {
@@ -116,6 +118,7 @@ fun SettingsPluginsRoute(
                     onValueChange = { viewModel.onAction(PluginAction.RegistryChanged(it)) },
                     placeholder = { Text(stringResource(R.string.plugins_registry_hint)) },
                     singleLine = true,
+                    shape = FocusShapeTokens.input,
                 )
             },
             confirmButton = {

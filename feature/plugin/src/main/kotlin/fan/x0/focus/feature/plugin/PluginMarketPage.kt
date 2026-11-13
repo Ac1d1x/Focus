@@ -21,6 +21,7 @@ import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.data.plugin.MarketplacePlugin
 import fan.x0.focus.plugin.PluginScaffold
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun PluginMarketPage(
@@ -48,6 +49,7 @@ internal fun PluginMarketPage(
                     placeholder = { Text(stringResource(R.string.plugins_market_search)) },
                     singleLine = true,
                     leadingIcon = { Icon(FocusIcons.Search, contentDescription = null) },
+                    shape = FocusShapeTokens.input,
                 )
             }
         }

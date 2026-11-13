@@ -56,6 +56,7 @@ import fan.x0.focus.feature.assistant.McpSettingsViewModel
 import fan.x0.focus.feature.assistant.McpUiState
 import fan.x0.focus.feature.assistant.R
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsMcpRoute(
@@ -228,6 +229,7 @@ private fun McpEditorSheet(
                 label = { Text(stringResource(R.string.settings_mcp_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -263,6 +265,7 @@ private fun McpEditorSheet(
                     label = { Text(stringResource(R.string.settings_mcp_command)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = draft.args,
@@ -270,6 +273,7 @@ private fun McpEditorSheet(
                     label = { Text(stringResource(R.string.settings_mcp_args)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = draft.env,
@@ -277,6 +281,7 @@ private fun McpEditorSheet(
                     label = { Text(stringResource(R.string.settings_mcp_env)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             } else {
                 OutlinedTextField(
@@ -285,6 +290,7 @@ private fun McpEditorSheet(
                     label = { Text(stringResource(R.string.settings_mcp_url)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
             Text(
@@ -308,6 +314,7 @@ private fun McpEditorSheet(
                             label = { Text(stringResource(R.string.settings_mcp_header_name)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
+                            shape = FocusShapeTokens.input,
                         )
                         OutlinedTextField(
                             value = header.value,
@@ -320,6 +327,7 @@ private fun McpEditorSheet(
                                 VisualTransformation.None
                             },
                             modifier = Modifier.fillMaxWidth(),
+                            shape = FocusShapeTokens.input,
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(

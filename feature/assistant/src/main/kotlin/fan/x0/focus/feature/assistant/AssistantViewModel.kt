@@ -56,6 +56,7 @@ class AssistantViewModel(
                     assistantName = assistantName,
                     assistantRole = profile?.role.orEmpty(),
                     assistantEmoji = profile?.emoji.orEmpty(),
+                    assistantAvatar = profile?.avatar.orEmpty(),
                     canDelete = all.size > 1,
                     documents = documents.map { WorkspaceDocumentUi(it.file, it.content) },
                     openDocument = openDocument?.let { open ->
@@ -111,6 +112,7 @@ class AssistantViewModel(
                     name = action.name,
                     role = action.role,
                     emoji = action.emoji,
+                    avatar = action.avatar,
                 ),
             )
             updateState {
@@ -118,6 +120,7 @@ class AssistantViewModel(
                     assistantName = action.name.trim(),
                     assistantRole = action.role.trim(),
                     assistantEmoji = action.emoji.trim(),
+                    assistantAvatar = action.avatar,
                 )
             }
             sendEffect(AssistantEffect.ProfileSaved)

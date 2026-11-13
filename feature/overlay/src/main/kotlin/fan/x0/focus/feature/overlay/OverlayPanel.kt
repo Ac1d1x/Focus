@@ -773,6 +773,7 @@ private fun AskInline(
                         placeholder = { Text(stringResource(R.string.overlay_answer_other)) },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3,
+                        shape = FocusShapeTokens.input,
                     )
                 }
                 if (question.kind == AskKind.Text ||
@@ -805,6 +806,7 @@ private fun AskInline(
                             ),
                         singleLine = question.kind == AskKind.Number,
                         maxLines = if (question.kind == AskKind.Number) 1 else 4,
+                        shape = FocusShapeTokens.input,
                     )
                 }
             }

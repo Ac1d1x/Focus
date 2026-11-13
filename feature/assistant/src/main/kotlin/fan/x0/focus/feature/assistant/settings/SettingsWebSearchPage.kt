@@ -54,6 +54,7 @@ import fan.x0.focus.feature.assistant.WebSearchProviderStatus
 import fan.x0.focus.feature.assistant.WebSearchSettingsViewModel
 import fan.x0.focus.feature.assistant.WebSearchUiState
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsWebSearchRoute(
@@ -242,6 +243,7 @@ private fun ProviderEditorSheet(
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 if (state.keySaved) {
                     FocusStatusPill(

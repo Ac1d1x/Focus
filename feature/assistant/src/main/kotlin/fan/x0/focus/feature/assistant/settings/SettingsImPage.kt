@@ -89,6 +89,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun SettingsImRoute(
@@ -382,6 +383,7 @@ private fun ImLoginSheet(
                         label = { Text(stringResource(R.string.settings_im_login_code)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = FocusShapeTokens.input,
                     )
                     FocusPrimaryButton(
                         text = stringResource(R.string.settings_im_login_submit),
@@ -728,6 +730,7 @@ private fun ImEditorSheet(
                 label = { Text(stringResource(R.string.settings_im_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             key(draft.id) {
                 draft.fields.forEach { field ->
@@ -839,6 +842,7 @@ private fun ImFieldRow(
             null
         },
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
 }
 

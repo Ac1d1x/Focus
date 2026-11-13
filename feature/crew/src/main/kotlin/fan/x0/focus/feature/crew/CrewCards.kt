@@ -221,6 +221,7 @@ private fun CrewAskQuestion(
                         placeholder = { Text(stringResource(R.string.crew_ask_other)) },
                         maxLines = 3,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = FocusShapeTokens.input,
                     )
                 }
             }
@@ -266,6 +267,7 @@ private fun CrewAskQuestion(
                 singleLine = question.kind == AskKind.Number,
                 maxLines = if (question.kind == AskKind.Number) 1 else 4,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
         }
     }

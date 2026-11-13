@@ -52,6 +52,7 @@ import fan.x0.focus.data.assistant.ProviderModel
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 private data class ProviderModelEditTarget(
     val original: ProviderModel?,
@@ -310,6 +311,7 @@ private fun ProviderModelEditorDialog(
                     singleLine = true,
                     enabled = target.original == null,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = name,
@@ -320,6 +322,7 @@ private fun ProviderModelEditorDialog(
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },
@@ -408,7 +411,7 @@ private fun ProviderModelsFetchSheet(
                     )
                 },
                 singleLine = true,
-                shape = MaterialTheme.shapes.large,
+                shape = FocusShapeTokens.input,
                 modifier = Modifier.fillMaxWidth(),
             )
             if (filtered.isEmpty()) {

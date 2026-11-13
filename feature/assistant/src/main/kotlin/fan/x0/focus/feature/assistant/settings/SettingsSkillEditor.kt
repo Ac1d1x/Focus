@@ -35,6 +35,7 @@ import fan.x0.focus.core.designsystem.components.hapticToggle
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SkillDraftUi
 import fan.x0.focus.feature.assistant.SkillsAction
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -174,6 +175,7 @@ private fun EditableSkill(
         singleLine = true,
         isError = invalid && draft.name.isBlank(),
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
     OutlinedTextField(
         value = draft.description,
@@ -182,6 +184,7 @@ private fun EditableSkill(
         minLines = 2,
         isError = invalid && draft.description.isBlank(),
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
     OutlinedTextField(
         value = draft.body,
@@ -189,6 +192,7 @@ private fun EditableSkill(
         label = { Text(stringResource(R.string.settings_skills_body)) },
         minLines = 10,
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(

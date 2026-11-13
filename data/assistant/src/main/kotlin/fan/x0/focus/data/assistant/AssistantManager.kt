@@ -11,6 +11,7 @@ class AssistantManager(
     private val sideChats: SideChatManager,
     private val turns: ChatTurnRunner,
     private val switcher: ChatSwitcher,
+    private val avatars: AssistantAvatarStore,
 ) {
     suspend fun create(name: String, role: String, emoji: String): AssistantProfile {
         val profile = profiles.create(name, role, emoji)
@@ -21,7 +22,11 @@ class AssistantManager(
     }
 
     suspend fun update(profile: AssistantProfile) {
+        val previous = profiles.profilesOnce().firstOrNull { it.id == profile.id }
         profiles.update(profile)
+        if (previous != null && previous.avatar != profile.avatar && previous.avatar.isNotBlank()) {
+            avatars.delete(previous.avatar)
+        }
         workspace.updateAssistantName(profile.id, profile.name)
     }
 
@@ -33,6 +38,7 @@ class AssistantManager(
             turns.stop(id)
         }
         profiles.delete(profile.id)
+        if (profile.avatar.isNotBlank()) avatars.delete(profile.avatar)
         workspace.delete(profile.id)
         prompts.clear(profile.id)
         chats.deleteAssistantData(profile.id)

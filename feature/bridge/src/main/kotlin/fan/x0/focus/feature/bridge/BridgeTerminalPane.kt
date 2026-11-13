@@ -251,6 +251,7 @@ private fun TerminalView(
                     onDone = { onAction(BridgeAction.SendTerminalInput) },
                 ),
                 modifier = Modifier.weight(1f),
+                shape = FocusShapeTokens.input,
             )
             IconButton(onClick = hapticTap { onAction(BridgeAction.SendTerminalInput) }) {
                 Icon(

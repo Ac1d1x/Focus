@@ -82,6 +82,7 @@ import fan.x0.focus.data.assistant.ProviderCatalog
 import fan.x0.focus.data.assistant.ProviderModel
 import fan.x0.focus.data.voice.rememberVoiceInput
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun OnboardingRoute(
@@ -424,6 +425,7 @@ private fun ProviderSheet(
                 label = { Text(stringResource(R.string.onboarding_provider_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             OutlinedTextField(
                 value = state.baseUrl,
@@ -431,6 +433,7 @@ private fun ProviderSheet(
                 label = { Text(stringResource(R.string.onboarding_base_url)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             ProtocolChips(state = state, onAction = onAction)
             ApiKeyField(state = state, onAction = onAction)
@@ -582,6 +585,7 @@ private fun ApiKeyField(state: OnboardingUiState, onAction: (OnboardingAction) -
             }
         },
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
 }
 
@@ -608,6 +612,7 @@ private fun ModelField(state: OnboardingUiState, onAction: (OnboardingAction) ->
             }
         },
         modifier = Modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.input,
     )
 }
 

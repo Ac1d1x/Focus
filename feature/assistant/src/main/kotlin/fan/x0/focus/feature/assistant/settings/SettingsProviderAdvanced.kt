@@ -25,6 +25,7 @@ import fan.x0.focus.core.network.ProviderHeader
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 internal fun ProviderAdvancedTab(
@@ -52,6 +53,7 @@ private fun UserAgentSection(state: SettingsUiState, onAction: (SettingsAction) 
             label = { Text(stringResource(R.string.settings_provider_user_agent)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         Text(
             text = stringResource(R.string.settings_provider_user_agent_body),
@@ -108,6 +110,7 @@ private fun ProviderHeaderEditor(
                 label = { Text(stringResource(R.string.settings_provider_header_name)) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
+                shape = FocusShapeTokens.input,
             )
             IconButton(onClick = hapticTap(onRemove)) {
                 Icon(
@@ -123,6 +126,7 @@ private fun ProviderHeaderEditor(
             label = { Text(stringResource(R.string.settings_provider_header_value)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
     }
 }

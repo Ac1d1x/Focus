@@ -103,6 +103,7 @@ fun CrewGroupEditorSheet(
                 label = { Text(stringResource(R.string.crew_group_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             OutlinedTextField(
                 value = draft.topic,
@@ -111,6 +112,7 @@ fun CrewGroupEditorSheet(
                 minLines = 2,
                 maxLines = 4,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             Text(
                 text = stringResource(R.string.crew_avatar),
@@ -166,6 +168,7 @@ fun CrewGroupEditorSheet(
                                     label = { Text(stringResource(R.string.crew_member_name)) },
                                     singleLine = true,
                                     modifier = Modifier.weight(1f),
+                                    shape = FocusShapeTokens.input,
                                 )
                                 IconButton(
                                     onClick = hapticTap { onAction(CrewAction.RemoveDraftMember(member.key)) },
@@ -210,6 +213,7 @@ fun CrewGroupEditorSheet(
                                 minLines = 2,
                                 maxLines = 4,
                                 modifier = Modifier.fillMaxWidth(),
+                                shape = FocusShapeTokens.input,
                             )
                         }
                     }
@@ -471,6 +475,7 @@ private fun MemberEditor(
             label = { Text(stringResource(R.string.crew_member_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         OutlinedTextField(
             value = draft.duty,
@@ -479,6 +484,7 @@ private fun MemberEditor(
             minLines = 3,
             maxLines = 6,
             modifier = Modifier.fillMaxWidth(),
+            shape = FocusShapeTokens.input,
         )
         Text(
             text = stringResource(R.string.crew_avatar),
@@ -683,7 +689,7 @@ fun CrewMessageEditSheet(
                 placeholder = { Text(stringResource(R.string.crew_edit_hint)) },
                 minLines = 3,
                 maxLines = 10,
-                shape = MaterialTheme.shapes.largeIncreased,
+                shape = FocusShapeTokens.input,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = MaterialTheme.colorScheme.onSurface,
                     unfocusedTextColor = MaterialTheme.colorScheme.onSurface,

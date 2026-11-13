@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun NewAssistantDialog(
@@ -36,6 +37,7 @@ fun NewAssistantDialog(
                     label = { Text(stringResource(R.string.assistant_profile_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = role,
@@ -45,6 +47,7 @@ fun NewAssistantDialog(
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = emoji,
@@ -52,6 +55,7 @@ fun NewAssistantDialog(
                     label = { Text(stringResource(R.string.assistant_profile_emoji)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },

@@ -66,6 +66,7 @@ import dev.chrisbanes.haze.blur.HazeBlurStyle
 import dev.chrisbanes.haze.blur.hazeBlur
 import fan.x0.focus.core.designsystem.R
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -218,6 +219,7 @@ fun FocusComposer(
                         }
                     },
                 ),
+                shape = FocusShapeTokens.input,
             )
             Row(
                 modifier = Modifier

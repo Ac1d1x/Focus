@@ -40,6 +40,7 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.mvi.CollectEffect
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun DeviceRoute(viewModel: DeviceViewModel = koinViewModel()) {
@@ -135,6 +136,7 @@ private fun PairPhoneDialog(state: DeviceUiState, onAction: (DeviceAction) -> Un
                     label = { Text(stringResource(R.string.device_host)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.portText,
@@ -142,6 +144,7 @@ private fun PairPhoneDialog(state: DeviceUiState, onAction: (DeviceAction) -> Un
                     label = { Text(stringResource(R.string.device_port)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = state.code,
@@ -149,6 +152,7 @@ private fun PairPhoneDialog(state: DeviceUiState, onAction: (DeviceAction) -> Un
                     label = { Text(stringResource(R.string.device_code)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
             }
         },

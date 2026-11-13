@@ -24,6 +24,7 @@ data class AssistantProfile(
     val name: String,
     val emoji: String = "",
     val role: String = "",
+    val avatar: String = "",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 ) {

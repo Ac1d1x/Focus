@@ -29,6 +29,7 @@ data class AssistantUiState(
     val assistantName: String = "",
     val assistantRole: String = "",
     val assistantEmoji: String = "",
+    val assistantAvatar: String = "",
     val canDelete: Boolean = false,
     val documents: List<WorkspaceDocumentUi> = emptyList(),
     val openDocument: WorkspaceDocumentUi? = null,
@@ -45,7 +46,7 @@ sealed interface AssistantAction : UiAction {
     data class PromptChanged(val value: String) : AssistantAction
     data object ClosePrompt : AssistantAction
     data object SavePrompt : AssistantAction
-    data class SaveProfile(val name: String, val role: String, val emoji: String) : AssistantAction
+    data class SaveProfile(val name: String, val role: String, val emoji: String, val avatar: String) : AssistantAction
     data object DeleteProfile : AssistantAction
 }
 

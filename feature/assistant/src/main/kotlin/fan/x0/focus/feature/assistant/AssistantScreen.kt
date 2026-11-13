@@ -1,5 +1,8 @@
 package fan.x0.focus.feature.assistant
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,9 +51,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import fan.x0.focus.core.designsystem.components.AvatarState
-import fan.x0.focus.core.designsystem.components.AvatarStyle
-import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusCardGroupScope
@@ -63,8 +64,13 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
+import fan.x0.focus.data.assistant.AssistantAvatarStore
+import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 @Composable
 fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
@@ -128,15 +134,15 @@ fun AssistantScreen(
         ) {
             item(key = "hero") {
                 FocusReveal {
-                    AssistantHero(name = state.assistantName, role = state.assistantRole, assistantId = state.assistantId)
+                    AssistantHero(state)
                 }
             }
             item(key = "profile") {
                 FocusReveal(index = 1) {
                     ProfileGroup(
                         state = state,
-                        onSave = { name, role, emoji ->
-                            onAction(AssistantAction.SaveProfile(name, role, emoji))
+                        onSave = { name, role, emoji, avatar ->
+                            onAction(AssistantAction.SaveProfile(name, role, emoji, avatar))
                         },
                         onDelete = { deletingProfile = true },
                     )
@@ -224,25 +230,42 @@ fun AssistantScreen(
 @Composable
 private fun ProfileGroup(
     state: AssistantUiState,
-    onSave: (String, String, String) -> Unit,
+    onSave: (String, String, String, String) -> Unit,
     onDelete: () -> Unit,
 ) {
+    val avatarStore: AssistantAvatarStore = koinInject()
+    val scope = rememberCoroutineScope()
     var name by remember(state.assistantId) { mutableStateOf(state.assistantName) }
     var role by remember(state.assistantId) { mutableStateOf(state.assistantRole) }
     var emoji by remember(state.assistantId) { mutableStateOf(state.assistantEmoji) }
+    var avatar by remember(state.assistantId) { mutableStateOf(state.assistantAvatar) }
     var dirty by remember(state.assistantId) { mutableStateOf(false) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val imported = avatarStore.import(uri.toString(), state.assistantId)
+                if (imported.isNotBlank()) {
+                    avatar = imported
+                    dirty = true
+                }
+            }
+        }
+    }
     LaunchedEffect(state.assistantId) {
         dirty = false
         name = state.assistantName
         role = state.assistantRole
         emoji = state.assistantEmoji
+        avatar = state.assistantAvatar
     }
-    val changed = name != state.assistantName || role != state.assistantRole || emoji != state.assistantEmoji
-    LaunchedEffect(state.assistantName, state.assistantRole, state.assistantEmoji) {
+    val changed = name != state.assistantName || role != state.assistantRole ||
+        emoji != state.assistantEmoji || avatar != state.assistantAvatar
+    LaunchedEffect(state.assistantName, state.assistantRole, state.assistantEmoji, state.assistantAvatar) {
         if (!dirty) {
             name = state.assistantName
             role = state.assistantRole
             emoji = state.assistantEmoji
+            avatar = state.assistantAvatar
         }
     }
     FocusCardGroup(title = stringResource(R.string.assistant_profile_section)) {
@@ -258,6 +281,44 @@ private fun ProfileGroup(
             },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    AssistantAvatar(
+                        assistant = AssistantProfile(
+                            id = state.assistantId,
+                            name = name,
+                            emoji = emoji,
+                            role = role,
+                            avatar = avatar,
+                        ),
+                        size = 64.dp,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        FocusTextButton(
+                            text = stringResource(R.string.assistant_profile_avatar_pick),
+                            onClick = {
+                                picker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        )
+                        if (avatar.isNotBlank()) {
+                            TextButton(
+                                onClick = hapticTap {
+                                    avatar = ""
+                                    dirty = true
+                                },
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.assistant_profile_avatar_remove),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = {
@@ -267,6 +328,7 @@ private fun ProfileGroup(
                     label = { Text(stringResource(R.string.assistant_profile_name_item)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = role,
@@ -279,6 +341,7 @@ private fun ProfileGroup(
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 OutlinedTextField(
                     value = emoji,
@@ -289,6 +352,7 @@ private fun ProfileGroup(
                     label = { Text(stringResource(R.string.assistant_profile_emoji_item)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.canDelete) {
@@ -310,7 +374,7 @@ private fun ProfileGroup(
                             role = nextRole
                             emoji = nextEmoji
                             dirty = false
-                            onSave(nextName, nextRole, nextEmoji)
+                            onSave(nextName, nextRole, nextEmoji, avatar)
                         },
                         enabled = name.isNotBlank() && changed,
                     )
@@ -470,6 +534,7 @@ private fun PromptEditorSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                shape = FocusShapeTokens.input,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -548,7 +613,7 @@ private fun DocumentSheet(document: WorkspaceDocumentUi, onClose: () -> Unit) {
 }
 
 @Composable
-private fun AssistantHero(name: String, role: String, assistantId: String) {
+private fun AssistantHero(state: AssistantUiState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -556,19 +621,23 @@ private fun AssistantHero(name: String, role: String, assistantId: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        val hash = assistantId.hashCode()
-        FocusAvatar(
-            style = AvatarStyle(preset = hash, palette = hash ushr 8),
+        AssistantAvatar(
+            assistant = AssistantProfile(
+                id = state.assistantId,
+                name = state.assistantName,
+                emoji = state.assistantEmoji,
+                role = state.assistantRole,
+                avatar = state.assistantAvatar,
+            ),
             size = 88.dp,
-            state = AvatarState.Idle,
         )
         Text(
-            text = name.ifBlank { stringResource(R.string.assistant_hero_default) },
+            text = state.assistantName.ifBlank { stringResource(R.string.assistant_hero_default) },
             style = LocalFocusTypography.current.headlineSmall,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
-            text = role.ifBlank { stringResource(R.string.assistant_hero_hint) },
+            text = state.assistantRole.ifBlank { stringResource(R.string.assistant_hero_hint) },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

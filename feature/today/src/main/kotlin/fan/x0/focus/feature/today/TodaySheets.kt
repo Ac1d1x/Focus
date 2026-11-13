@@ -319,6 +319,7 @@ fun GoalEditorSheet(draft: GoalDraft, saving: Boolean, onAction: (TodayAction) -
                 label = { Text(stringResource(R.string.today_goal_field_title)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             OutlinedTextField(
                 value = draft.detail,
@@ -328,6 +329,7 @@ fun GoalEditorSheet(draft: GoalDraft, saving: Boolean, onAction: (TodayAction) -
                 maxLines = 6,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
+                shape = FocusShapeTokens.input,
             )
             FocusPrimaryButton(
                 text = stringResource(R.string.today_goal_save),

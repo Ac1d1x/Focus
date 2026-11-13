@@ -67,6 +67,7 @@ import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.data.assistant.AssistantAvatarStore
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -243,10 +244,16 @@ private fun ProfileGroup(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             scope.launch {
-                val imported = avatarStore.import(uri.toString(), state.assistantId)
-                if (imported.isNotBlank()) {
-                    avatar = imported
-                    dirty = true
+                try {
+                    val imported = avatarStore.import(uri.toString(), state.assistantId)
+                    if (imported.isNotBlank()) {
+                        avatar = imported
+                        dirty = true
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                    Unit
                 }
             }
         }

@@ -35,7 +35,9 @@ fun AssistantAvatar(
     val store: AssistantAvatarStore = koinInject()
     val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, assistant.avatar) {
         value = withContext(Dispatchers.IO) {
-            store.path(assistant.avatar)?.let { BitmapFactory.decodeFile(it) }
+            runCatching {
+                store.path(assistant.avatar)?.let { BitmapFactory.decodeFile(it) }
+            }.getOrNull()
         }
     }
     val image = bitmap

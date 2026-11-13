@@ -121,7 +121,7 @@ class AgentWatchdog(
         val conversation = chats.conversation(conversationId)
         val title = conversation?.title?.ifBlank { "旁聊" } ?: "旁聊"
         val body = "看门狗：$title：$text"
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(conversation?.assistantId)
         chats.append(
             conversationId = main.id,
             role = ChatRole.System,

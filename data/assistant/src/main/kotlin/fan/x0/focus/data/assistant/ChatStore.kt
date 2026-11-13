@@ -166,6 +166,10 @@ class ChatStore(
                     put("archived", 0)
                     put("result_seen", 1)
                     put("updated_at", now)
+                    if (target.title.isBlank() || target.title == "新旁聊" || target.title == "旁聊") {
+                        val name = profiles.profilesOnce().firstOrNull { it.id == target.assistantId }?.name
+                        put("title", name ?: MAIN_CONVERSATION_TITLE)
+                    }
                 }
                 db.update("conversations", promote, "id = ?", arrayOf(id))
                 db.setTransactionSuccessful()
@@ -178,6 +182,41 @@ class ChatStore(
             _changes.tryEmit(id)
             true
         }
+    }
+
+    suspend fun conversationIds(assistantId: String): List<String> = withContext(Dispatchers.IO) {
+        database.readableDatabase.rawQuery(
+            "SELECT id FROM conversations WHERE assistant_id = ?",
+            arrayOf(assistantId),
+        ).use { cursor ->
+            buildList { while (cursor.moveToNext()) add(cursor.getString(0)) }
+        }
+    }
+
+    suspend fun deleteAssistantData(assistantId: String) = withContext(Dispatchers.IO) {
+        val db = database.writableDatabase
+        val args = arrayOf(assistantId)
+        val conversationScope =
+            "conversation_id IN (SELECT id FROM conversations WHERE assistant_id = ?)"
+        db.beginTransaction()
+        try {
+            db.delete("messages", conversationScope, args)
+            db.delete("compactions", conversationScope, args)
+            db.delete("conversation_todos", conversationScope, args)
+            db.delete("turn_journal", conversationScope, args)
+            db.execSQL(
+                "UPDATE im_chats SET conversation_id = NULL " +
+                    "WHERE conversation_id IN (SELECT id FROM conversations WHERE assistant_id = ?)",
+                args,
+            )
+            db.delete("conversations", "assistant_id = ?", args)
+            db.delete("goals", "assistant_id = ?", args)
+            db.delete("agent_triggers", "assistant_id = ?", args)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        _changes.tryEmit("")
     }
 
     suspend fun cleanupEmptySideChats() = withContext(Dispatchers.IO) {

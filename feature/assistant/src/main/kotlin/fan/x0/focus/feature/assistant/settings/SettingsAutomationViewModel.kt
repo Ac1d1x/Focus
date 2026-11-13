@@ -9,6 +9,7 @@ import fan.x0.focus.data.assistant.AgentTrigger
 import fan.x0.focus.data.assistant.AgentTriggerKind
 import fan.x0.focus.data.assistant.AgentTriggerScheduler
 import fan.x0.focus.data.assistant.AgentTriggerStore
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.AgentTriggerTarget
 import fan.x0.focus.data.assistant.AgentWebhookServer
 import fan.x0.focus.data.assistant.CronExpression
@@ -76,6 +77,7 @@ class AutomationViewModel(
     private val triggerStore: AgentTriggerStore,
     private val triggerScheduler: AgentTriggerScheduler,
     private val webhook: AgentWebhookServer,
+    private val profiles: AssistantProfileStore,
 ) : BaseViewModel<AutomationAction, AutomationUiState, AutomationEffect>(AutomationUiState()) {
 
     init {
@@ -109,6 +111,9 @@ class AutomationViewModel(
         viewModelScope.launch {
             reloadTriggers()
             updateState { copy(webhookBase = webhook.baseUrl()) }
+        }
+        viewModelScope.launch {
+            profiles.activeId.collect { reloadTriggers() }
         }
     }
 
@@ -232,7 +237,7 @@ class AutomationViewModel(
     }
 
     private suspend fun reloadTriggers() {
-        val triggers = triggerStore.list()
+        val triggers = triggerStore.list(profiles.activeOnce())
         updateState { copy(triggers = triggers) }
     }
 

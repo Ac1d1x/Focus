@@ -15,6 +15,7 @@ class AgentEventDispatcher(
     private val chats: ChatStore,
     private val turns: ChatTurnRunner,
     private val sideChats: SideChatManager,
+    private val profiles: AssistantProfileStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -34,6 +35,11 @@ class AgentEventDispatcher(
 
     suspend fun dispatch(event: AgentEvent) {
         try {
+            val assistantId = event.assistantId()
+            if (assistantId.isNotBlank() && profiles.profilesOnce().none { it.id == assistantId }) {
+                events.complete(event.id)
+                return
+            }
             when (event.kind) {
                 AgentEventKind.SideChatResult -> injectSideResult(event)
                 AgentEventKind.Scheduled,
@@ -91,7 +97,7 @@ class AgentEventDispatcher(
     }
 
     private suspend fun runInMain(event: AgentEvent) {
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(event.assistantId().takeIf { it.isNotBlank() })
         if (turns.isRunning(main.id)) return
         if (!events.claim(event.id)) return
         val label = "trigger:${event.id}"
@@ -103,7 +109,7 @@ class AgentEventDispatcher(
                 label = label,
             )
         }
-        startMainTurn(autoTitle = false, silent = false, event = event)
+        startMainTurn(autoTitle = false, silent = false, event = event, conversationId = main.id)
     }
 
     private suspend fun startMainTurn(
@@ -135,17 +141,19 @@ class AgentEventDispatcher(
 
     private suspend fun startSideChat(event: AgentEvent) {
         if (!events.claim(event.id)) return
+        val main = chats.ensureMainConversation(event.assistantId().takeIf { it.isNotBlank() })
         sideChats.create(
             title = event.title().ifBlank { "自动任务" },
             task = event.instruction(),
             note = "",
             origin = ConversationOrigin.System,
+            parentId = main.id,
         )
         events.complete(event.id)
     }
 
     private suspend fun deliverToConversation(event: AgentEvent) {
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(event.assistantId().takeIf { it.isNotBlank() })
         val id = event.conversationId().ifBlank {
             if (event.target == AgentTriggerTarget.Main.wire) main.id else event.target
         }
@@ -186,7 +194,7 @@ class AgentEventDispatcher(
 
     private suspend fun appendMainNotice(event: AgentEvent) {
         if (!events.claim(event.id)) return
-        val main = chats.ensureMainConversation()
+        val main = chats.ensureMainConversation(event.assistantId().takeIf { it.isNotBlank() })
         val label = "event:${event.id}"
         if (chats.messages(main.id, limit = 20).none { it.label == label }) {
             chats.append(

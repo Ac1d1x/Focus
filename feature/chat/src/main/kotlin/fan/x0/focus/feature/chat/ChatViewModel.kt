@@ -152,6 +152,7 @@ class ChatViewModel(
             switcher.command.filterNotNull().collect { command ->
                 when (command) {
                     is ChatCommand.Open -> switchTo(command.conversationId)
+                    is ChatCommand.Reload -> switchTo(command.conversationId, force = true)
                     ChatCommand.New -> newConversation()
                     is ChatCommand.Ask -> ask(command.text)
                 }
@@ -1325,7 +1326,7 @@ class ChatViewModel(
             if (chats.promoteToMain(id)) {
                 updateState { copy(kind = ConversationKind.Main) }
                 refreshSidePanel()
-                reload()
+                switchTo(id, force = true)
             }
         }
     }
@@ -1379,7 +1380,7 @@ class ChatViewModel(
             if (chats.promoteToMain(id)) {
                 updateState { copy(sidePanel = sidePanel.copy(open = false)) }
                 refreshSidePanel()
-                switchTo(id)
+                switchTo(id, force = true)
             }
         }
     }
@@ -1569,8 +1570,8 @@ class ChatViewModel(
         }
     }
 
-    private suspend fun switchTo(conversationId: String) {
-        if (conversationId == currentState.conversationId && loadJob?.isActive != true) return
+    private suspend fun switchTo(conversationId: String, force: Boolean = false) {
+        if (!force && conversationId == currentState.conversationId && loadJob?.isActive != true) return
         loadGeneration++
         loadJob?.cancel()
         updateState { copy(loading = true) }

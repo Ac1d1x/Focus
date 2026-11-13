@@ -121,6 +121,7 @@ class AgentWebhookServer(
                         prompt = trigger.prompt,
                         body = body,
                         target = trigger.target,
+                        assistantId = trigger.assistantId,
                         dedupeKey = dedupe,
                     ),
                 )

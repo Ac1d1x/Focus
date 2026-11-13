@@ -194,6 +194,7 @@ data class Goal(
     val updatedAt: Long,
     val category: String = "",
     val icon: String = "",
+    val assistantId: String = AssistantProfile.DEFAULT_ID,
 )
 
 @Serializable

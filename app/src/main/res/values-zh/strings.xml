@@ -46,6 +46,10 @@
     <string name="drawer_assistant_create">创建</string>
     <string name="drawer_assistant_save">保存</string>
     <string name="drawer_assistant_context">上下文与提示词</string>
+    <string name="drawer_assistant_delete">删除助手</string>
+    <string name="drawer_assistant_delete_title">删除这个助手？</string>
+    <string name="drawer_assistant_delete_body">它的会话、上下文文件和自动化任务都会被删除。</string>
+    <string name="drawer_assistant_delete_confirm">删除</string>
     <string name="drawer_assistant_cancel">取消</string>
     <string name="drawer_recent">最近</string>
     <string name="drawer_new_chat">新对话</string>

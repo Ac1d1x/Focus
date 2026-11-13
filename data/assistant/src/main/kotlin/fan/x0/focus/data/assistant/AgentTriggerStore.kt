@@ -52,6 +52,7 @@ data class AgentTrigger(
     val lastStatus: String = "",
     val createdAt: Long = 0,
     val updatedAt: Long = 0,
+    val assistantId: String = AssistantProfile.DEFAULT_ID,
 ) {
     val zone: ZoneId get() = runCatching {
         if (timezone.isBlank()) ZoneId.systemDefault() else ZoneId.of(timezone)
@@ -61,14 +62,18 @@ data class AgentTrigger(
 }
 
 @Single
-class AgentTriggerStore(private val database: AssistantDatabase) {
+class AgentTriggerStore(
+    private val database: AssistantDatabase,
+    private val profiles: AssistantProfileStore,
+) {
     private val _changes = MutableSharedFlow<String>(extraBufferCapacity = 16)
     val changes: SharedFlow<String> = _changes.asSharedFlow()
 
-    suspend fun list(): List<AgentTrigger> = withContext(Dispatchers.IO) {
+    suspend fun list(assistantId: String? = null): List<AgentTrigger> = withContext(Dispatchers.IO) {
+        val where = if (assistantId == null) "" else " WHERE assistant_id = ?"
         database.readableDatabase.rawQuery(
-            "SELECT $COLUMNS FROM agent_triggers ORDER BY updated_at DESC",
-            null,
+            "SELECT $COLUMNS FROM agent_triggers$where ORDER BY updated_at DESC",
+            assistantId?.let { arrayOf(it) },
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) add(cursor.toTrigger())
@@ -92,7 +97,9 @@ class AgentTriggerStore(private val database: AssistantDatabase) {
         schedule: String,
         timezone: String = ZoneId.systemDefault().id,
         target: AgentTriggerTarget = AgentTriggerTarget.Side,
+        assistantId: String? = null,
     ): AgentTrigger = withContext(Dispatchers.IO) {
+        val scope = assistantId ?: profiles.activeOnce()
         val now = System.currentTimeMillis()
         val trigger = AgentTrigger(
             id = UUID.randomUUID().toString(),
@@ -106,6 +113,7 @@ class AgentTriggerStore(private val database: AssistantDatabase) {
             webhookToken = if (kind == AgentTriggerKind.Webhook) UUID.randomUUID().toString().replace("-", "") else "",
             createdAt = now,
             updatedAt = now,
+            assistantId = scope,
         )
         val withNext = trigger.copy(nextRun = nextRunFor(trigger))
         database.writableDatabase.insertOrThrow("agent_triggers", null, withNext.values())
@@ -232,6 +240,7 @@ class AgentTriggerStore(private val database: AssistantDatabase) {
         put("last_status", lastStatus)
         put("created_at", createdAt)
         put("updated_at", updatedAt)
+        put("assistant_id", assistantId)
     }
 
     private fun Cursor.toTrigger(): AgentTrigger = AgentTrigger(
@@ -249,11 +258,12 @@ class AgentTriggerStore(private val database: AssistantDatabase) {
         lastStatus = getString(11).orEmpty(),
         createdAt = getLong(12),
         updatedAt = getLong(13),
+        assistantId = getString(14).orEmpty().ifBlank { AssistantProfile.DEFAULT_ID },
     )
 
     private companion object {
         const val COLUMNS =
             "id, name, kind, prompt, schedule, timezone, target, enabled, webhook_token, " +
-                "next_run, last_run, last_status, created_at, updated_at"
+                "next_run, last_run, last_status, created_at, updated_at, assistant_id"
     }
 }

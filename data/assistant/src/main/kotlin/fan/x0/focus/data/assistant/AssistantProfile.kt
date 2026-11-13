@@ -130,6 +130,20 @@ class AssistantProfileStore(@Provided private val context: Context) {
         }
     }
 
+    suspend fun delete(id: String): Boolean {
+        ensureSeed()
+        var removed = false
+        context.assistantProfileDataStore.edit { prefs ->
+            val current = read(prefs)
+            if (current.size <= 1 || current.none { it.id == id }) return@edit
+            val next = current.filterNot { it.id == id }
+            prefs[Keys.profiles] = json.encodeToString(serializer, next)
+            if (prefs[Keys.active] == id) prefs[Keys.active] = next.first().id
+            removed = true
+        }
+        return removed
+    }
+
     suspend fun setActive(id: String) {
         if (id.isBlank()) return
         ensureSeed()

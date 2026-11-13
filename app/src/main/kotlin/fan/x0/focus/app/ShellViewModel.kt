@@ -6,7 +6,9 @@ import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.ChatSwitcher
+import fan.x0.focus.data.assistant.ChatTurnRunner
 import fan.x0.focus.data.assistant.Conversation
+import fan.x0.focus.data.assistant.PromptSettings
 import fan.x0.focus.data.assistant.SideChatManager
 import fan.x0.focus.data.assistant.WorkspaceStore
 import fan.x0.focus.data.assistant.sideChatRank
@@ -38,6 +40,8 @@ class ShellViewModel(
     private val switcher: ChatSwitcher,
     private val sideChats: SideChatManager,
     private val profiles: AssistantProfileStore,
+    private val prompts: PromptSettings,
+    private val turns: ChatTurnRunner,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShellState())
@@ -84,7 +88,7 @@ class ShellViewModel(
     fun promoteConversation(id: String) {
         viewModelScope.launch {
             if (chats.promoteToMain(id)) {
-                switcher.open(id)
+                switcher.reload(id)
                 load()
             }
         }
@@ -130,6 +134,24 @@ class ShellViewModel(
             workspace.seed(profile.id, profile.name, profile.role)
             val main = chats.ensureMainConversation(profile.id)
             switcher.open(main.id)
+            load()
+        }
+    }
+
+    fun deleteAssistant(profile: AssistantProfile) {
+        viewModelScope.launch {
+            val all = profiles.profilesOnce()
+            if (all.size <= 1) return@launch
+            chats.conversationIds(profile.id).forEach { id ->
+                sideChats.stop(id)
+                turns.stop(id)
+            }
+            profiles.delete(profile.id)
+            workspace.delete(profile.id)
+            prompts.clear(profile.id)
+            chats.deleteAssistantData(profile.id)
+            val main = chats.ensureMainConversation()
+            switcher.reload(main.id)
             load()
         }
     }

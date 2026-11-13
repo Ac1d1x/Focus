@@ -98,6 +98,8 @@ data class AgentEvent(
 
     fun conversationId(): String = payloadObject()["conversation_id"].stringValue()
 
+    fun assistantId(): String = payloadObject()["assistant_id"].stringValue()
+
     fun triggerTarget(): AgentTriggerTarget =
         AgentTriggerTarget.fromWire(payloadObject()["target"].stringValue())
 
@@ -200,6 +202,7 @@ data class AgentEvent(
             prompt: String,
             target: AgentTriggerTarget,
             runAt: Long,
+            assistantId: String,
         ): AgentEvent = AgentEvent(
             source = AgentEventSource.Schedule,
             kind = AgentEventKind.Scheduled,
@@ -210,6 +213,7 @@ data class AgentEvent(
                 put("text", prompt)
                 put("target", target.wire)
                 put("run_at", runAt)
+                put("assistant_id", assistantId)
             }.toString(),
             dedupeKey = "schedule:$triggerId:$runAt",
         )
@@ -220,6 +224,7 @@ data class AgentEvent(
             prompt: String,
             body: String,
             target: AgentTriggerTarget,
+            assistantId: String,
             dedupeKey: String = "",
         ): AgentEvent = AgentEvent(
             source = AgentEventSource.Webhook,
@@ -231,6 +236,7 @@ data class AgentEvent(
                 put("text", body)
                 put("prompt", prompt)
                 put("target", target.wire)
+                put("assistant_id", assistantId)
             }.toString(),
             dedupeKey = dedupeKey.takeIf { it.isNotBlank() },
         )

@@ -68,7 +68,7 @@ class ChatSuggestionGenerator(
     private suspend fun buildContext(assistantId: String): String {
         val name = workspace.userName(assistantId)
         val focus = workspace.field(assistantId, WorkspaceFile.User, "Focus")
-        val activeGoals = fallback({ goals.active() }, emptyList())
+        val activeGoals = fallback({ goals.active(assistantId) }, emptyList())
         val titles = fallback(
             {
                 chats.conversations(assistantId = assistantId)

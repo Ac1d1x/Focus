@@ -7,6 +7,7 @@ import org.koin.core.annotation.Single
 
 sealed interface ChatCommand {
     data class Open(val conversationId: String) : ChatCommand
+    data class Reload(val conversationId: String) : ChatCommand
     data object New : ChatCommand
     data class Ask(val text: String) : ChatCommand
 }
@@ -42,6 +43,12 @@ class ChatSwitcher(private val main: MainSessionStore) {
 
     fun consumeOpenRequest() {
         _openRequest.value = null
+    }
+
+    fun reload(conversationId: String) {
+        _current.value = conversationId
+        _command.value = ChatCommand.Reload(conversationId)
+        _openRequest.value = conversationId
     }
 
     fun newChat() {

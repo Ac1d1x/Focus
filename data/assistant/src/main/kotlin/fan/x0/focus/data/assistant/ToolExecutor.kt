@@ -381,7 +381,7 @@ class ToolExecutor(
                 )
             }
             "list_goals" -> {
-                val list = goals.list()
+                val list = goals.list(assistantId)
                 ok("${list.size} goals", goalsJson(list))
             }
             "list_workspace_files" -> {
@@ -545,7 +545,7 @@ class ToolExecutor(
                 ok("Role cleared", "${role.key} follows the current model again.")
             }
             ToolCatalog.LIST_TRIGGERS -> {
-                val items = triggers.list()
+                val items = triggers.list(assistantId)
                 if (items.isEmpty()) {
                     ok("No triggers", "No automatic triggers.")
                 } else {
@@ -729,6 +729,7 @@ class ToolExecutor(
                     dueAt = ToolTime.parse(args.text("due_at")),
                     category = args.text("category").orEmpty(),
                     icon = args.text("icon").orEmpty(),
+                    assistantId = assistantId,
                 )
                 ok("Created ${goal.title}", "Goal created: ${goal.title} (${goal.id}).")
             }

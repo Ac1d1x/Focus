@@ -70,9 +70,11 @@ fun ShellDrawer(
     onSelectAssistant: (String) -> Unit,
     onCreateAssistant: (String, String, String) -> Unit,
     onUpdateAssistant: (AssistantProfile) -> Unit,
+    onDeleteAssistant: (AssistantProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var editing by remember { mutableStateOf<AssistantDraft?>(null) }
+    var deleting by remember { mutableStateOf<AssistantProfile?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -184,7 +186,12 @@ fun ShellDrawer(
     editing?.let { draft ->
         AssistantEditorDialog(
             draft = draft,
+            canDelete = state.assistants.size > 1,
             onDismiss = { editing = null },
+            onDelete = { profile ->
+                editing = null
+                deleting = profile
+            },
             onSave = { name, role, emoji ->
                 val profile = draft.profile
                 if (profile == null) {
@@ -193,6 +200,31 @@ fun ShellDrawer(
                     onUpdateAssistant(profile.copy(name = name, role = role, emoji = emoji))
                 }
                 editing = null
+            },
+        )
+    }
+    deleting?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text(stringResource(R.string.drawer_assistant_delete_title)) },
+            text = { Text(stringResource(R.string.drawer_assistant_delete_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = hapticTap {
+                        onDeleteAssistant(profile)
+                        deleting = null
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.drawer_assistant_delete_confirm),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = hapticTap { deleting = null }) {
+                    Text(stringResource(R.string.drawer_assistant_cancel))
+                }
             },
         )
     }
@@ -336,7 +368,9 @@ private fun AssistantAvatar(assistant: AssistantProfile, size: Dp) {
 @Composable
 private fun AssistantEditorDialog(
     draft: AssistantDraft,
+    canDelete: Boolean,
     onDismiss: () -> Unit,
+    onDelete: (AssistantProfile) -> Unit,
     onSave: (String, String, String) -> Unit,
 ) {
     val editing = draft.profile != null
@@ -377,6 +411,16 @@ private fun AssistantEditorDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (editing && canDelete) {
+                    TextButton(
+                        onClick = hapticTap { draft.profile?.let(onDelete) },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.drawer_assistant_delete),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             }
         },
         confirmButton = {

@@ -5,8 +5,10 @@ import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.mvi.BaseViewModel
 import fan.x0.focus.data.assistant.Goal
 import fan.x0.focus.data.assistant.GoalStatus
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.GoalStore
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 import java.time.Instant
@@ -16,6 +18,7 @@ import java.time.format.DateTimeFormatter
 @KoinViewModel
 class GoalsViewModel(
     private val store: GoalStore,
+    private val profiles: AssistantProfileStore,
 ) : BaseViewModel<GoalsAction, GoalsUiState, GoalsEffect>(GoalsUiState()) {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("MM-dd")
@@ -23,6 +26,9 @@ class GoalsViewModel(
 
     init {
         viewModelScope.launch { reload() }
+        viewModelScope.launch {
+            profiles.activeId.collect { reload() }
+        }
     }
 
     override fun onAction(action: GoalsAction) {

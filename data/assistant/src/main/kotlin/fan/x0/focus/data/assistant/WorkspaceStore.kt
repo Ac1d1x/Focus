@@ -67,6 +67,15 @@ class WorkspaceStore(
         revisionCount.update { it + 1 }
     }
 
+    suspend fun delete(assistantId: String) {
+        withContext(Dispatchers.IO) {
+            directory(assistantId).deleteRecursively()
+            if (assistantId != AssistantProfile.DEFAULT_ID) {
+                directory(assistantId).parentFile?.deleteRecursively()
+            }
+        }
+    }
+
     suspend fun readAll(assistantId: String): List<WorkspaceDocument> = withContext(Dispatchers.IO) {
         ensureSeeded(assistantId)
         WorkspaceFile.entries.map { file ->

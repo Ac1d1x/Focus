@@ -4,6 +4,7 @@ import android.text.format.DateUtils
 import androidx.lifecycle.viewModelScope
 import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.mvi.BaseViewModel
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.Goal
 import fan.x0.focus.data.assistant.GoalStatus
@@ -13,6 +14,7 @@ import fan.x0.focus.data.assistant.LocaleController
 import fan.x0.focus.data.assistant.TodayStore
 import fan.x0.focus.data.assistant.Update
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -22,10 +24,14 @@ class TodayViewModel(
     private val goalStore: GoalStore,
     private val chat: ChatSwitcher,
     private val locale: LocaleController,
+    private val profiles: AssistantProfileStore,
 ) : BaseViewModel<TodayAction, TodayUiState, TodayEffect>(TodayUiState()) {
 
     init {
         viewModelScope.launch { reload() }
+        viewModelScope.launch {
+            profiles.activeId.collect { reload() }
+        }
     }
 
     override fun onAction(action: TodayAction) {

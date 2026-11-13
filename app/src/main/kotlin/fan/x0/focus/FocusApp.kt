@@ -217,6 +217,7 @@ private fun MainShell() {
                     navigate(FocusRoute.Chat)
                 },
                 onUpdateAssistant = shell::updateAssistant,
+                onDeleteAssistant = shell::deleteAssistant,
             )
         }
         val content: @Composable () -> Unit = {

@@ -7,7 +7,7 @@ import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 
 @Single
-class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 23) {
+class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 25) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -83,7 +83,8 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
                 category TEXT NOT NULL DEFAULT '',
-                icon TEXT NOT NULL DEFAULT ''
+                icon TEXT NOT NULL DEFAULT '',
+                assistant_id TEXT NOT NULL DEFAULT 'default'
             )
             """.trimIndent(),
         )
@@ -381,7 +382,8 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
                 last_run INTEGER NOT NULL DEFAULT 0,
                 last_status TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL,
-                updated_at INTEGER NOT NULL
+                updated_at INTEGER NOT NULL,
+                assistant_id TEXT NOT NULL DEFAULT 'default'
             )
             """.trimIndent(),
         )
@@ -778,6 +780,12 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS idx_agent_triggers_due ON agent_triggers(enabled, next_run)",
             )
+        }
+        if (oldVersion < 25) {
+            db.execSQL("ALTER TABLE agent_triggers ADD COLUMN assistant_id TEXT NOT NULL DEFAULT 'default'")
+        }
+        if (oldVersion < 24) {
+            db.execSQL("ALTER TABLE goals ADD COLUMN assistant_id TEXT NOT NULL DEFAULT 'default'")
         }
         if (oldVersion < 23) {
             db.execSQL("ALTER TABLE conversations ADD COLUMN assistant_id TEXT NOT NULL DEFAULT 'default'")

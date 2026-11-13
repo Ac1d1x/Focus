@@ -41,6 +41,13 @@ class PromptSettings(@Provided private val context: Context) {
         context.promptDataStore.edit { prefs -> prefs[sideKey(assistantId)] = value.take(MAX_PROMPT_CHARS) }
     }
 
+    suspend fun clear(assistantId: String) {
+        context.promptDataStore.edit { prefs ->
+            prefs.remove(mainKey(assistantId))
+            prefs.remove(sideKey(assistantId))
+        }
+    }
+
     private fun mainKey(assistantId: String) =
         if (assistantId == AssistantProfile.DEFAULT_ID) Keys.main else stringPreferencesKey("main_prompt:$assistantId")
 

@@ -8,25 +8,31 @@ import org.koin.core.annotation.Single
 import java.util.UUID
 
 @Single
-class GoalStore(private val database: AssistantDatabase) {
+class GoalStore(
+    private val database: AssistantDatabase,
+    private val profiles: AssistantProfileStore,
+) {
 
     private val columns =
-        "id, title, detail, status, due_at, progress, note, created_at, updated_at, category, icon"
+        "id, title, detail, status, due_at, progress, note, created_at, updated_at, category, icon, assistant_id"
 
-    suspend fun list(): List<Goal> = withContext(Dispatchers.IO) {
+    suspend fun list(assistantId: String? = null): List<Goal> = withContext(Dispatchers.IO) {
+        val scope = assistantId ?: profiles.activeOnce()
         database.readableDatabase.rawQuery(
             """
             SELECT $columns
             FROM goals
+            WHERE assistant_id = ?
             ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END, updated_at DESC
             """.trimIndent(),
-            null,
+            arrayOf(scope),
         ).use { cursor ->
             buildList { while (cursor.moveToNext()) add(cursor.toGoal()) }
         }
     }
 
-    suspend fun active(): List<Goal> = list().filter { it.status == GoalStatus.Active }
+    suspend fun active(assistantId: String? = null): List<Goal> =
+        list(assistantId).filter { it.status == GoalStatus.Active }
 
     suspend fun get(id: String): Goal? = withContext(Dispatchers.IO) {
         database.readableDatabase.rawQuery(
@@ -41,7 +47,9 @@ class GoalStore(private val database: AssistantDatabase) {
         dueAt: Long?,
         category: String = "",
         icon: String = "",
+        assistantId: String? = null,
     ): Goal = withContext(Dispatchers.IO) {
+        val scope = assistantId ?: profiles.activeOnce()
         val now = System.currentTimeMillis()
         val goal = Goal(
             id = UUID.randomUUID().toString(),
@@ -55,6 +63,7 @@ class GoalStore(private val database: AssistantDatabase) {
             updatedAt = now,
             category = category.trim(),
             icon = TodayIcons.sanitize(icon),
+            assistantId = scope,
         )
         val values = ContentValues().apply {
             put("id", goal.id)
@@ -68,6 +77,7 @@ class GoalStore(private val database: AssistantDatabase) {
             put("updated_at", now)
             put("category", goal.category)
             put("icon", goal.icon)
+            put("assistant_id", goal.assistantId)
         }
         database.writableDatabase.insertOrThrow("goals", null, values)
         goal
@@ -119,5 +129,6 @@ class GoalStore(private val database: AssistantDatabase) {
         updatedAt = getLong(8),
         category = getString(9),
         icon = getString(10),
+        assistantId = getString(11).orEmpty().ifBlank { AssistantProfile.DEFAULT_ID },
     )
 }

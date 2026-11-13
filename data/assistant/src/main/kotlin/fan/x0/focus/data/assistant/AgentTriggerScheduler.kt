@@ -93,6 +93,7 @@ class AgentTriggerScheduler(
                 prompt = trigger.prompt,
                 target = trigger.target,
                 runAt = trigger.nextRun,
+                assistantId = trigger.assistantId,
             ),
         )
         sync(trigger.copy(nextRun = next))
@@ -109,6 +110,7 @@ class AgentTriggerScheduler(
                     prompt = trigger.prompt,
                     target = trigger.target,
                     runAt = trigger.nextRun,
+                    assistantId = trigger.assistantId,
                 ),
             )
             sync(trigger.copy(nextRun = next))

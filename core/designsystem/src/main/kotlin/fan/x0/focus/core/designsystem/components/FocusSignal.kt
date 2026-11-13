@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -38,10 +40,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +55,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.theme.LocalFocusCornerScale
-import kotlinx.coroutines.flow.first
 
 enum class FocusSignalTone { Info, Success, Warning, Error }
 
@@ -70,20 +69,9 @@ internal data class FocusSignalData(
     val onFinished: (() -> Unit)?,
 )
 
-internal class FocusSignalEntry(val data: FocusSignalData) {
-    val visible = MutableTransitionState(false)
-    var dismissed = false
-        private set
-
-    fun dismiss() {
-        dismissed = true
-        visible.targetState = false
-    }
-}
-
 class FocusSignalState {
-    private val entries = mutableStateListOf<FocusSignalEntry>()
-    internal val signals: List<FocusSignalEntry> get() = entries
+    private val entries = mutableStateListOf<FocusSignalData>()
+    internal val signals: List<FocusSignalData> get() = entries
 
     private var counter = 0L
 
@@ -98,35 +86,28 @@ class FocusSignalState {
     ) {
         if (message.isBlank()) return
         entries.add(
-            0,
-            FocusSignalEntry(
-                FocusSignalData(
-                    id = ++counter,
-                    message = message,
-                    tone = tone,
-                    icon = icon,
-                    actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
-                    action = action,
-                    durationMs = durationMs.coerceAtLeast(1_200L),
-                    onFinished = onFinished,
-                ),
+            FocusSignalData(
+                id = ++counter,
+                message = message,
+                tone = tone,
+                icon = icon,
+                actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
+                action = action,
+                durationMs = durationMs.coerceAtLeast(1_200L),
+                onFinished = onFinished,
             ),
         )
         while (entries.size > MaxSignals) {
-            entries.removeAt(entries.lastIndex)
+            entries.removeAt(0)
         }
     }
 
     fun dismiss() {
-        entries.forEach { it.dismiss() }
+        entries.clear()
     }
 
     internal fun dismiss(id: Long) {
-        entries.firstOrNull { it.data.id == id }?.dismiss()
-    }
-
-    internal fun remove(id: Long) {
-        entries.removeAll { it.data.id == id }
+        entries.removeAll { it.id == id }
     }
 }
 
@@ -199,21 +180,27 @@ fun FocusSignalHost(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .widthIn(max = 520.dp)
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            signals.forEach { entry ->
-                key(entry.data.id) {
-                    FocusSignalItem(
-                        entry = entry,
-                        state = state,
-                        motion = motion,
-                    )
-                }
+            items(
+                items = signals,
+                key = { it.id },
+            ) { data ->
+                FocusSignalItem(
+                    data = data,
+                    motion = motion,
+                    onDismiss = { state.dismiss(data.id) },
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = motion.defaultEffectsSpec(),
+                        placementSpec = motion.defaultSpatialSpec(),
+                        fadeOutSpec = motion.fastEffectsSpec(),
+                    ),
+                )
             }
         }
     }
@@ -221,19 +208,18 @@ fun FocusSignalHost(
 
 @Composable
 private fun FocusSignalItem(
-    entry: FocusSignalEntry,
-    state: FocusSignalState,
+    data: FocusSignalData,
     motion: MotionScheme,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LaunchedEffect(entry) {
-        if (!entry.dismissed) entry.visible.targetState = true
-        snapshotFlow {
-            entry.visible.isIdle && !entry.visible.currentState && !entry.visible.targetState
-        }.first { it }
-        state.remove(entry.data.id)
+    val visible = remember(data.id) { MutableTransitionState(false) }
+    LaunchedEffect(data.id) {
+        visible.targetState = true
     }
     AnimatedVisibility(
-        visibleState = entry.visible,
+        visibleState = visible,
+        modifier = modifier,
         enter = slideInVertically(motion.defaultSpatialSpec()) { -it } +
             fadeIn(motion.defaultEffectsSpec()) +
             scaleIn(
@@ -241,17 +227,10 @@ private fun FocusSignalItem(
                 initialScale = 0.92f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
-        exit = slideOutVertically(motion.fastSpatialSpec()) { -it } +
-            fadeOut(motion.fastEffectsSpec()) +
-            scaleOut(
-                animationSpec = motion.fastSpatialSpec(),
-                targetScale = 0.92f,
-                transformOrigin = TransformOrigin(0.5f, 0f),
-            ),
     ) {
         FocusSignalCard(
-            data = entry.data,
-            onDismiss = { state.dismiss(entry.data.id) },
+            data = data,
+            onDismiss = onDismiss,
         )
     }
 }

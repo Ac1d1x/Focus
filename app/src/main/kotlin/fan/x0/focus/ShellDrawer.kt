@@ -500,26 +500,6 @@ private fun MoreSheet(
                     ) { onNavigate(FocusRoute.Library) }
                 }
             }
-            MoreSection(title = stringResource(R.string.drawer_connections_section)) {
-                if (!controlledOnly) {
-                    MoreTile(
-                        icon = FocusIcons.Terminal,
-                        label = stringResource(R.string.tab_bridge),
-                        selected = current == FocusRoute.Bridge,
-                        modifier = Modifier.fillMaxWidth(),
-                        container = MaterialTheme.colorScheme.tertiaryContainer,
-                        content = MaterialTheme.colorScheme.onTertiaryContainer,
-                    ) { onNavigate(FocusRoute.Bridge) }
-                }
-                MoreTile(
-                    icon = FocusIcons.Device,
-                    label = stringResource(R.string.device_title),
-                    selected = current == FocusRoute.Device,
-                    modifier = Modifier.fillMaxWidth(),
-                    container = MaterialTheme.colorScheme.tertiaryContainer,
-                    content = MaterialTheme.colorScheme.onTertiaryContainer,
-                ) { onNavigate(FocusRoute.Device) }
-            }
             if (!controlledOnly && pluginPages.isNotEmpty()) {
                 MoreSection(title = stringResource(R.string.plugins_drawer_section)) {
                     pluginPages.forEach { page ->

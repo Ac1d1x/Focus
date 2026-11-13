@@ -49,6 +49,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SettingsRoute(
     onExit: () -> Unit,
     onOpenPluginPage: (String, String) -> Unit,
+    onOpenBridge: (() -> Unit)?,
+    onOpenDevice: () -> Unit,
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -75,6 +77,8 @@ fun SettingsRoute(
         snackbar = snackbar,
         onExit = onExit,
         onOpenPluginPage = onOpenPluginPage,
+        onOpenBridge = onOpenBridge,
+        onOpenDevice = onOpenDevice,
     )
 }
 
@@ -85,6 +89,8 @@ internal fun SettingsScreen(
     snackbar: SnackbarHostState,
     onExit: () -> Unit,
     onOpenPluginPage: (String, String) -> Unit,
+    onOpenBridge: (() -> Unit)?,
+    onOpenDevice: () -> Unit,
 ) {
     val backStack = rememberSaveable(
         saver = listSaver(
@@ -138,6 +144,8 @@ internal fun SettingsScreen(
                 when (destination) {
                     SettingsDestination.Home -> SettingsHomePage(
                         onOpen = { backStack.add(it) },
+                        onOpenBridge = onOpenBridge,
+                        onOpenDevice = onOpenDevice,
                     )
                     SettingsDestination.Account -> SettingsAccountPage(
                         state = latestState.value,

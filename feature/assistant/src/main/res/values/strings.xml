@@ -235,6 +235,10 @@
     <string name="settings_page_chat_agent_body">Approval mode, tool rounds, and the Auto Pilot judge.</string>
     <string name="settings_page_tools">Tools</string>
     <string name="settings_page_tools_body">Web search, MCP servers, the bridge, the workspace index, and feed refresh.</string>
+    <string name="settings_page_bridge">Computer</string>
+    <string name="settings_page_bridge_body">Pair a computer and use its shell.</string>
+    <string name="settings_page_device">Device</string>
+    <string name="settings_page_device_body">Local control, remote control, and automation triggers.</string>
     <string name="settings_page_plugins">Plugins</string>
     <string name="settings_page_plugins_body">Install code that adds tools, pages, overlays, device access and automation.</string>
     <string name="settings_page_chat_detail">Chat details</string>

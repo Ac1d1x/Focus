@@ -365,6 +365,12 @@ private fun ShellContent(
                         onOpenPluginPage = { pluginId, pageId ->
                             backStack.push(FocusRoute.PluginPage(pluginId, pageId))
                         },
+                        onOpenBridge = if (controlledOnly) {
+                            null
+                        } else {
+                            { backStack.push(FocusRoute.Bridge) }
+                        },
+                        onOpenDevice = { backStack.push(FocusRoute.Device) },
                     )
                 }
                 FocusRoute.History -> NavEntry(key = route, contentKey = route.contentKey) {

@@ -20,7 +20,11 @@ import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.feature.assistant.R
 
 @Composable
-internal fun SettingsHomePage(onOpen: (SettingsDestination) -> Unit) {
+internal fun SettingsHomePage(
+    onOpen: (SettingsDestination) -> Unit,
+    onOpenBridge: (() -> Unit)?,
+    onOpenDevice: () -> Unit,
+) {
     SettingsPageScaffold(title = stringResource(R.string.settings_home_title)) {
         item(key = "intro") {
             FocusReveal {
@@ -50,6 +54,10 @@ internal fun SettingsHomePage(onOpen: (SettingsDestination) -> Unit) {
                 val superBody = stringResource(R.string.settings_page_automation_body)
                 val toolsTitle = stringResource(R.string.settings_page_tools)
                 val toolsBody = stringResource(R.string.settings_page_tools_body)
+                val bridgeTitle = stringResource(R.string.settings_page_bridge)
+                val bridgeBody = stringResource(R.string.settings_page_bridge_body)
+                val deviceTitle = stringResource(R.string.settings_page_device)
+                val deviceBody = stringResource(R.string.settings_page_device_body)
                 val pluginsTitle = stringResource(R.string.settings_page_plugins)
                 val pluginsBody = stringResource(R.string.settings_page_plugins_body)
                 val detailTitle = stringResource(R.string.settings_page_chat_detail)
@@ -98,6 +106,20 @@ internal fun SettingsHomePage(onOpen: (SettingsDestination) -> Unit) {
                         body = toolsBody,
                         icon = FocusIcons.Tool,
                         onClick = { onOpen(SettingsDestination.Tools) },
+                    )
+                    if (onOpenBridge != null) {
+                        pageItem(
+                            title = bridgeTitle,
+                            body = bridgeBody,
+                            icon = FocusIcons.Terminal,
+                            onClick = onOpenBridge,
+                        )
+                    }
+                    pageItem(
+                        title = deviceTitle,
+                        body = deviceBody,
+                        icon = FocusIcons.Device,
+                        onClick = onOpenDevice,
                     )
                     pageItem(
                         title = pluginsTitle,

@@ -235,6 +235,10 @@
     <string name="settings_page_chat_agent_body">批准方式、工具轮数和自动巡航判定。</string>
     <string name="settings_page_tools">工具</string>
     <string name="settings_page_tools_body">网页搜索、MCP、桥接、工作区索引和订阅刷新。</string>
+    <string name="settings_page_bridge">电脑</string>
+    <string name="settings_page_bridge_body">配对你的电脑，直接使用它的终端。</string>
+    <string name="settings_page_device">设备</string>
+    <string name="settings_page_device_body">本机控制、远程控制、自动化触发器。</string>
     <string name="settings_page_plugins">插件</string>
     <string name="settings_page_plugins_body">安装可以添加工具、页面、悬浮窗、设备访问和自动化的代码。</string>
     <string name="settings_page_chat_detail">聊天详情</string>

@@ -9,6 +9,7 @@ import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.Conversation
 import fan.x0.focus.data.assistant.SideChatManager
+import fan.x0.focus.data.assistant.WorkspaceStore
 import fan.x0.focus.data.assistant.sideChatRank
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ data class ShellState(
     val assistants: List<AssistantProfile> = emptyList(),
     val activeAssistantId: String = AssistantProfile.DEFAULT_ID,
     val activeAssistant: AssistantProfile? = null,
+    val name: String? = null,
     val main: Conversation? = null,
     val conversations: List<Conversation> = emptyList(),
     val sides: List<Conversation> = emptyList(),
@@ -38,6 +40,7 @@ class ShellViewModel(
     private val sideChats: SideChatManager,
     private val profiles: AssistantProfileStore,
     private val manager: AssistantManager,
+    private val workspace: WorkspaceStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShellState())
@@ -154,6 +157,7 @@ class ShellViewModel(
             assistants = list,
             activeAssistantId = active.id,
             activeAssistant = active,
+            name = workspace.userName(active.id),
             main = main,
             conversations = conversations,
             sides = sides,

@@ -1,33 +1,47 @@
 package fan.x0.focus
 
-import android.text.format.DateUtils
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,12 +49,17 @@ import fan.x0.focus.app.ShellState
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
 import fan.x0.focus.feature.assistant.AssistantAvatar
 import fan.x0.focus.feature.assistant.NewAssistantDialog
 import fan.x0.focus.plugin.PluginPageRef
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShellDrawer(
     state: ShellState,
@@ -56,102 +75,186 @@ fun ShellDrawer(
     onCreateAssistant: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showAssistants by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        DrawerHeader(
-            assistant = state.activeAssistant,
-            onOpenSettings = { onNavigate(FocusRoute.Settings) },
-        )
-        Spacer(Modifier.height(12.dp))
-        DrawerSectionLabel(stringResource(R.string.drawer_assistants))
-        state.assistants.forEach { assistant ->
-            AssistantRow(
-                assistant = assistant,
-                selected = assistant.id == state.activeAssistantId,
-                onClick = { onSelectAssistant(assistant.id) },
+    var query by rememberSaveable { mutableStateOf("") }
+    val assistant = state.activeAssistant ?: AssistantProfile(
+        id = state.activeAssistantId,
+        name = AssistantProfile.DEFAULT_NAME,
+    )
+    val sessions = remember(state.sides, state.conversations, state.main?.id) {
+        (state.sides + state.conversations)
+            .filter { it.id != state.main?.id }
+            .distinctBy { it.id }
+            .sortedByDescending { it.updatedAt }
+    }
+    val filtered = remember(sessions, query) {
+        if (query.isBlank()) sessions else sessions.filter { it.title.contains(query, ignoreCase = true) }
+    }
+    val today = LocalDate.now()
+    val groups = remember(filtered, today) {
+        if (query.isBlank()) filtered.groupBy { bucketOf(it.updatedAt, today) }.toSortedMap() else emptyMap()
+    }
+    val labels = listOf(
+        stringResource(R.string.drawer_today),
+        stringResource(R.string.drawer_yesterday),
+        stringResource(R.string.drawer_previous_7_days),
+        stringResource(R.string.drawer_older),
+    )
+    val compactHeight = LocalWindowInfo.current.containerDpSize.height < 600.dp
+    val header: @Composable () -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            UserHeader(name = state.name)
+            SearchField(
+                query = query,
+                onQueryChange = { query = it },
             )
-        }
-        NewAssistantRow(onClick = { creating = true })
-        Spacer(Modifier.height(8.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Spacer(Modifier.height(6.dp))
-        DrawerSectionLabel(stringResource(R.string.drawer_sessions))
-        DrawerEntry(
-            FocusIcons.Assistant,
-            stringResource(R.string.drawer_main_session),
-            current == FocusRoute.Chat && currentConversationId == state.main?.id,
-            onOpenMain,
-        )
-        if (!controlledOnly) {
-            DrawerEntry(
-                FocusIcons.Add,
-                stringResource(R.string.drawer_new_side_chat),
-                selected = false,
-                onClick = onNewSideChat,
-            )
-            state.recent.forEach { conversation ->
-                ConversationRow(
-                    conversation = conversation,
-                    selected = conversation.id == currentConversationId,
-                    onClick = { onOpenConversation(conversation.id) },
-                )
-            }
-            DrawerEntry(
-                icon = FocusIcons.History,
-                label = stringResource(R.string.drawer_history),
-                selected = current == FocusRoute.History,
-                onClick = { onNavigate(FocusRoute.History) },
-            )
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(6.dp))
-            DrawerEntry(FocusIcons.Today, stringResource(R.string.tab_today), current == FocusRoute.Today) {
-                onNavigate(FocusRoute.Today)
-            }
-            DrawerEntry(FocusIcons.Groups, stringResource(R.string.tab_groups), current == FocusRoute.Crew) {
-                onNavigate(FocusRoute.Crew)
-            }
-            DrawerEntry(FocusIcons.Goals, stringResource(R.string.tab_goals), current == FocusRoute.Goals) {
-                onNavigate(FocusRoute.Goals)
-            }
-            DrawerEntry(FocusIcons.Library, stringResource(R.string.tab_library), current == FocusRoute.Library) {
-                onNavigate(FocusRoute.Library)
-            }
-            DrawerEntry(FocusIcons.Terminal, stringResource(R.string.tab_bridge), current == FocusRoute.Bridge) {
-                onNavigate(FocusRoute.Bridge)
-            }
-        }
-        DrawerEntry(FocusIcons.Device, stringResource(R.string.device_title), current == FocusRoute.Device) {
-            onNavigate(FocusRoute.Device)
-        }
-        if (!controlledOnly) {
-            DrawerEntry(FocusIcons.Assistant, stringResource(R.string.drawer_assistant_context), current == FocusRoute.Assistant) {
-                onNavigate(FocusRoute.Assistant)
-            }
-        }
-        if (!controlledOnly && pluginPages.isNotEmpty()) {
-            DrawerSectionLabel(stringResource(R.string.plugins_drawer_section))
-            pluginPages.forEach { page ->
-                DrawerEntry(
-                    icon = FocusIcons.Tool,
-                    label = page.title,
-                    selected = current is FocusRoute.PluginPage &&
-                        current.pluginId == page.pluginId &&
-                        current.pageId == page.pageId,
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                QuickAction(
+                    icon = FocusIcons.History,
+                    label = stringResource(R.string.drawer_history),
+                    modifier = Modifier.weight(1f),
                 ) {
-                    onNavigate(FocusRoute.PluginPage(page.pluginId, page.pageId))
+                    query = ""
+                    onNavigate(FocusRoute.History)
+                }
+                QuickAction(
+                    icon = FocusIcons.Add,
+                    label = stringResource(R.string.drawer_new_chat),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    query = ""
+                    onNewSideChat()
                 }
             }
         }
-        DrawerEntry(FocusIcons.Settings, stringResource(R.string.settings_title), current == FocusRoute.Settings) {
-            onNavigate(FocusRoute.Settings)
+    }
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (!compactHeight) header()
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            if (compactHeight) {
+                item(key = "header") { header() }
+            }
+            if (query.isNotBlank()) {
+                if (filtered.isEmpty()) {
+                    item(key = "empty") { EmptyRow(stringResource(R.string.drawer_no_results)) }
+                } else {
+                    items(filtered, key = { it.id }) { conversation ->
+                        ConversationRow(
+                            conversation = conversation,
+                            selected = conversation.id == currentConversationId,
+                            onClick = {
+                                query = ""
+                                onOpenConversation(conversation.id)
+                            },
+                        )
+                    }
+                }
+            } else {
+                if (state.main != null) {
+                    item(key = "pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
+                    item(key = "main") {
+                        ConversationRow(
+                            conversation = state.main,
+                            selected = current == FocusRoute.Chat && currentConversationId == state.main.id,
+                            onClick = {
+                                query = ""
+                                onOpenMain()
+                            },
+                        )
+                    }
+                }
+                groups.forEach { (bucket, list) ->
+                    item(key = "date_$bucket") { SectionLabel(labels[bucket]) }
+                    items(list, key = { it.id }) { conversation ->
+                        ConversationRow(
+                            conversation = conversation,
+                            selected = conversation.id == currentConversationId,
+                            onClick = {
+                                query = ""
+                                onOpenConversation(conversation.id)
+                            },
+                        )
+                    }
+                }
+                if (filtered.isEmpty() && state.main == null) {
+                    item(key = "empty") { EmptyRow(stringResource(R.string.drawer_no_conversations)) }
+                }
+            }
         }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        AssistantPicker(
+            assistant = assistant,
+            onSwitch = { showAssistants = true },
+            onEdit = { onNavigate(FocusRoute.Assistant) },
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (!controlledOnly) {
+                BottomAction(
+                    icon = FocusIcons.Assistant,
+                    label = stringResource(R.string.drawer_context_short),
+                    selected = current == FocusRoute.Assistant,
+                    onClick = { onNavigate(FocusRoute.Assistant) },
+                )
+                BottomAction(
+                    icon = FocusIcons.MoreHoriz,
+                    label = stringResource(R.string.drawer_more),
+                    selected = false,
+                    onClick = { showMore = true },
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            BottomAction(
+                icon = FocusIcons.Settings,
+                label = stringResource(R.string.settings_title),
+                selected = current == FocusRoute.Settings,
+                onClick = { onNavigate(FocusRoute.Settings) },
+            )
+        }
+    }
+    if (showAssistants) {
+        AssistantSwitcherSheet(
+            assistants = state.assistants,
+            activeId = state.activeAssistantId,
+            onDismiss = { showAssistants = false },
+            onSelect = {
+                showAssistants = false
+                onSelectAssistant(it)
+            },
+            onCreate = {
+                showAssistants = false
+                creating = true
+            },
+        )
+    }
+    if (showMore) {
+        MoreSheet(
+            controlledOnly = controlledOnly,
+            pluginPages = pluginPages,
+            current = current,
+            onDismiss = { showMore = false },
+            onNavigate = {
+                showMore = false
+                onNavigate(it)
+            },
+        )
     }
     if (creating) {
         NewAssistantDialog(
@@ -164,112 +267,141 @@ fun ShellDrawer(
     }
 }
 
+private fun bucketOf(timestamp: Long, today: LocalDate): Int {
+    val date = Instant.ofEpochMilli(timestamp)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+    return when {
+        date == today -> 0
+        date == today.minusDays(1) -> 1
+        date.isAfter(today.minusDays(8)) -> 2
+        else -> 3
+    }
+}
+
 @Composable
-private fun DrawerHeader(assistant: AssistantProfile?, onOpenSettings: () -> Unit) {
+private fun UserHeader(name: String?) {
+    val label = name?.trim().takeUnless { it.isNullOrBlank() }
+        ?: stringResource(R.string.drawer_default_name)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AssistantAvatar(
-            assistant = assistant ?: AssistantProfile(AssistantProfile.DEFAULT_ID, AssistantProfile.DEFAULT_NAME),
-            size = 52.dp,
-        )
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = assistant?.name?.ifBlank { AssistantProfile.DEFAULT_NAME } ?: AssistantProfile.DEFAULT_NAME,
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = assistant?.role?.ifBlank { null } ?: stringResource(R.string.drawer_assistant_default_role),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        IconButton(onClick = hapticTap(onOpenSettings)) {
-            Icon(
-                imageVector = FocusIcons.Settings,
-                contentDescription = stringResource(R.string.settings_title),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun AssistantRow(
-    assistant: AssistantProfile,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val scheme = MaterialTheme.colorScheme
-    Surface(
-        onClick = hapticSelect(onClick),
-        shape = MaterialTheme.shapes.large,
-        color = if (selected) scheme.secondaryContainer else Color.Transparent,
-        contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(44.dp),
         ) {
-            AssistantAvatar(assistant = assistant, size = 32.dp)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = assistant.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) {
-                        scheme.onSecondaryContainer.copy(alpha = 0.72f)
-                    } else {
-                        scheme.onSurfaceVariant
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Box(contentAlignment = Alignment.Center) {
+                val initial = label.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
+                if (initial.isNotBlank()) {
+                    Text(
+                        text = initial,
+                        style = MaterialTheme.typography.titleMediumEmphasized,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                } else {
+                    Icon(
+                        imageVector = FocusIcons.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
             }
         }
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMediumEmphasized,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(R.string.drawer_greeting),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
 @Composable
-private fun NewAssistantRow(onClick: () -> Unit) {
-    NavigationDrawerItem(
-        label = { Text(stringResource(R.string.drawer_new_assistant)) },
-        selected = false,
-        onClick = hapticTap(onClick),
-        icon = {
-            Icon(
-                imageVector = FocusIcons.Add,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
+private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
+        leadingIcon = {
+            Icon(FocusIcons.Search, contentDescription = null, modifier = Modifier.size(18.dp))
         },
-        shape = MaterialTheme.shapes.medium,
+        trailingIcon = if (query.isBlank()) {
+            null
+        } else {
+            {
+                IconButton(onClick = hapticTap { onQueryChange("") }) {
+                    Icon(
+                        imageVector = FocusIcons.Close,
+                        contentDescription = stringResource(R.string.drawer_clear_search),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = FocusShapeTokens.input,
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 
 @Composable
-private fun DrawerSectionLabel(text: String) {
+private fun QuickAction(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = hapticTap(onClick),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 4.dp),
+        modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 2.dp),
+    )
+}
+
+@Composable
+private fun EmptyRow(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
     )
 }
 
@@ -279,63 +411,257 @@ private fun ConversationRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    NavigationDrawerItem(
-        label = {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = conversation.title.ifBlank { stringResource(R.string.drawer_untitled) },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = DateUtils.getRelativeTimeSpanString(
-                        conversation.updatedAt,
-                        System.currentTimeMillis(),
-                        DateUtils.MINUTE_IN_MILLIS,
-                        DateUtils.FORMAT_ABBREV_RELATIVE,
-                    ).toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Surface(
+        onClick = hapticSelect(onClick),
+        shape = FocusShapeTokens.pill,
+        color = if (selected) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = conversation.title.ifBlank { stringResource(R.string.drawer_untitled) },
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (conversation.taskStatus.active) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.tertiary),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AssistantPicker(
+    assistant: AssistantProfile,
+    onSwitch: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    NavigationDrawerItem(
+        icon = { Icon(FocusIcons.Assistant, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        label = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = assistant.name.ifBlank { AssistantProfile.DEFAULT_NAME },
+                        style = MaterialTheme.typography.titleSmallEmphasized,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(
+                            onClickLabel = stringResource(R.string.drawer_manage_assistant),
+                            onClick = hapticTap(onEdit),
+                        ),
+                ) {
+                    AssistantAvatar(assistant = assistant, size = 30.dp)
+                }
+            }
         },
-        selected = selected,
-        onClick = hapticSelect(onClick),
-        shape = MaterialTheme.shapes.medium,
-        colors = NavigationDrawerItemDefaults.colors(
-            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+        selected = false,
+        onClick = hapticSelect(onSwitch),
+        shape = MaterialTheme.shapes.large,
     )
 }
 
 @Composable
-private fun DrawerEntry(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun BottomAction(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = hapticTap(onClick)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AssistantSwitcherSheet(
+    assistants: List<AssistantProfile>,
+    activeId: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit,
+    onCreate: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.72f)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(R.string.drawer_assistants),
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = hapticTap(onCreate)) {
+                    Icon(FocusIcons.Add, contentDescription = stringResource(R.string.drawer_new_assistant))
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(assistants, key = { it.id }) { assistant ->
+                    val selected = assistant.id == activeId
+                    Card(
+                        onClick = hapticSelect { onSelect(assistant.id) },
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerLow
+                            },
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            AssistantAvatar(assistant = assistant, size = 40.dp)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = assistant.name,
+                                    style = MaterialTheme.typography.titleSmallEmphasized,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = assistant.role.ifBlank {
+                                        stringResource(R.string.drawer_assistant_default_role)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (selected) {
+                                Icon(FocusIcons.Check, contentDescription = null, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MoreSheet(
+    controlledOnly: Boolean,
+    pluginPages: List<PluginPageRef>,
+    current: FocusRoute,
+    onDismiss: () -> Unit,
+    onNavigate: (FocusRoute) -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.drawer_more),
+                style = MaterialTheme.typography.titleLargeEmphasized,
+            )
+            if (!controlledOnly) {
+                MoreRow(FocusIcons.Today, stringResource(R.string.tab_today), current == FocusRoute.Today) {
+                    onNavigate(FocusRoute.Today)
+                }
+                MoreRow(FocusIcons.Groups, stringResource(R.string.tab_groups), current == FocusRoute.Crew) {
+                    onNavigate(FocusRoute.Crew)
+                }
+                MoreRow(FocusIcons.Goals, stringResource(R.string.tab_goals), current == FocusRoute.Goals) {
+                    onNavigate(FocusRoute.Goals)
+                }
+                MoreRow(FocusIcons.Library, stringResource(R.string.tab_library), current == FocusRoute.Library) {
+                    onNavigate(FocusRoute.Library)
+                }
+                MoreRow(FocusIcons.Terminal, stringResource(R.string.tab_bridge), current == FocusRoute.Bridge) {
+                    onNavigate(FocusRoute.Bridge)
+                }
+            }
+            MoreRow(FocusIcons.Device, stringResource(R.string.device_title), current == FocusRoute.Device) {
+                onNavigate(FocusRoute.Device)
+            }
+            if (!controlledOnly && pluginPages.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.plugins_drawer_section),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
+                )
+                pluginPages.forEach { page ->
+                    MoreRow(
+                        icon = FocusIcons.Tool,
+                        label = page.title,
+                        selected = current is FocusRoute.PluginPage &&
+                            current.pluginId == page.pluginId &&
+                            current.pageId == page.pageId,
+                    ) {
+                        onNavigate(FocusRoute.PluginPage(page.pluginId, page.pageId))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoreRow(
+    icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
     NavigationDrawerItem(
-        label = {
-            Text(
-                text = label,
-                style = if (selected) {
-                    MaterialTheme.typography.labelLargeEmphasized
-                } else {
-                    MaterialTheme.typography.labelLarge
-                },
-            )
-        },
+        label = { Text(label) },
         selected = selected,
         onClick = hapticSelect(onClick),
-        icon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-        },
+        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        shape = MaterialTheme.shapes.medium,
     )
 }

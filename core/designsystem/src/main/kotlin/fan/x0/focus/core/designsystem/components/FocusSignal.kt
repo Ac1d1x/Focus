@@ -1,8 +1,9 @@
 package fan.x0.focus.core.designsystem.components
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,7 +11,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -37,10 +38,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,6 +55,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.theme.LocalFocusCornerScale
+import kotlinx.coroutines.flow.first
 
 enum class FocusSignalTone { Info, Success, Warning, Error }
 
@@ -68,9 +70,20 @@ internal data class FocusSignalData(
     val onFinished: (() -> Unit)?,
 )
 
-class FocusSignalState {
-    internal var current by mutableStateOf<FocusSignalData?>(null)
+internal class FocusSignalEntry(val data: FocusSignalData) {
+    val visible = MutableTransitionState(false)
+    var dismissed = false
         private set
+
+    fun dismiss() {
+        dismissed = true
+        visible.targetState = false
+    }
+}
+
+class FocusSignalState {
+    private val entries = mutableStateListOf<FocusSignalEntry>()
+    internal val signals: List<FocusSignalEntry> get() = entries
 
     private var counter = 0L
 
@@ -84,26 +97,40 @@ class FocusSignalState {
         onFinished: (() -> Unit)? = null,
     ) {
         if (message.isBlank()) return
-        current = FocusSignalData(
-            id = ++counter,
-            message = message,
-            tone = tone,
-            icon = icon,
-            actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
-            action = action,
-            durationMs = durationMs.coerceAtLeast(1_200L),
-            onFinished = onFinished,
+        entries.add(
+            0,
+            FocusSignalEntry(
+                FocusSignalData(
+                    id = ++counter,
+                    message = message,
+                    tone = tone,
+                    icon = icon,
+                    actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
+                    action = action,
+                    durationMs = durationMs.coerceAtLeast(1_200L),
+                    onFinished = onFinished,
+                ),
+            ),
         )
+        while (entries.size > MaxSignals) {
+            entries.removeAt(entries.lastIndex)
+        }
     }
 
     fun dismiss() {
-        current = null
+        entries.forEach { it.dismiss() }
     }
 
     internal fun dismiss(id: Long) {
-        if (current?.id == id) current = null
+        entries.firstOrNull { it.data.id == id }?.dismiss()
+    }
+
+    internal fun remove(id: Long) {
+        entries.removeAll { it.data.id == id }
     }
 }
+
+private const val MaxSignals = 4
 
 val LocalFocusSignal = staticCompositionLocalOf { FocusSignalState() }
 
@@ -163,7 +190,7 @@ fun FocusSignalHost(
     modifier: Modifier = Modifier,
     statusBarPadding: Boolean = true,
 ) {
-    val notice = state.current
+    val signals = state.signals
     val motion = MaterialTheme.motionScheme
     Box(
         modifier = modifier
@@ -172,37 +199,60 @@ fun FocusSignalHost(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
-        AnimatedContent(
-            targetState = notice,
-            contentKey = { it?.id },
-            transitionSpec = {
-                (
-                    slideInVertically(motion.defaultSpatialSpec()) { -it } +
-                        fadeIn(motion.defaultEffectsSpec()) +
-                        scaleIn(
-                            animationSpec = motion.defaultSpatialSpec(),
-                            initialScale = 0.92f,
-                            transformOrigin = TransformOrigin(0.5f, 0f),
-                        )
-                    ) togetherWith (
-                    slideOutVertically(motion.fastSpatialSpec()) { -it } +
-                        fadeOut(motion.fastEffectsSpec()) +
-                        scaleOut(
-                            animationSpec = motion.fastSpatialSpec(),
-                            targetScale = 0.92f,
-                            transformOrigin = TransformOrigin(0.5f, 0f),
-                        )
+        Column(
+            modifier = Modifier
+                .widthIn(max = 520.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            signals.forEach { entry ->
+                key(entry.data.id) {
+                    FocusSignalItem(
+                        entry = entry,
+                        state = state,
+                        motion = motion,
                     )
-            },
-            label = "focusSignal",
-        ) { data ->
-            if (data != null) {
-                FocusSignalCard(
-                    data = data,
-                    onDismiss = { state.dismiss(data.id) },
-                )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun FocusSignalItem(
+    entry: FocusSignalEntry,
+    state: FocusSignalState,
+    motion: MotionScheme,
+) {
+    LaunchedEffect(entry) {
+        if (!entry.dismissed) entry.visible.targetState = true
+        snapshotFlow {
+            entry.visible.isIdle && !entry.visible.currentState && !entry.visible.targetState
+        }.first { it }
+        state.remove(entry.data.id)
+    }
+    AnimatedVisibility(
+        visibleState = entry.visible,
+        enter = slideInVertically(motion.defaultSpatialSpec()) { -it } +
+            fadeIn(motion.defaultEffectsSpec()) +
+            scaleIn(
+                animationSpec = motion.defaultSpatialSpec(),
+                initialScale = 0.92f,
+                transformOrigin = TransformOrigin(0.5f, 0f),
+            ),
+        exit = slideOutVertically(motion.fastSpatialSpec()) { -it } +
+            fadeOut(motion.fastEffectsSpec()) +
+            scaleOut(
+                animationSpec = motion.fastSpatialSpec(),
+                targetScale = 0.92f,
+                transformOrigin = TransformOrigin(0.5f, 0f),
+            ),
+    ) {
+        FocusSignalCard(
+            data = entry.data,
+            onDismiss = { state.dismiss(entry.data.id) },
+        )
     }
 }
 

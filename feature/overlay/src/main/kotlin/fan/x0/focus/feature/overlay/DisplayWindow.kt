@@ -192,7 +192,7 @@ private fun DisplayWindowMenu(
     onMinimize: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = MaterialTheme.shapes.large
     val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = modifier.border(1.dp, scheme.outlineVariant.copy(alpha = 0.5f), shape),
@@ -412,7 +412,7 @@ private fun DisplayWindowHover(
     onDragEnd: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(24.dp)
+    val shape = FocusShapeTokens.rounded(24.dp)
     val description = stringResource(R.string.overlay_display_window_restore)
     Surface(
         modifier = Modifier

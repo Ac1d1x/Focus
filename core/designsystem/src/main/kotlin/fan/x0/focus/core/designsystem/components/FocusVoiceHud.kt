@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -24,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.R
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 data class FocusVoiceUi(
     val active: Boolean = false,
@@ -48,7 +48,7 @@ fun FocusVoiceHud(
     val error = voice.error != null
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = FocusShapeTokens.rounded(14.dp),
         color = if (error) scheme.errorContainer else scheme.secondaryContainer,
         contentColor = if (error) scheme.onErrorContainer else scheme.onSecondaryContainer,
     ) {

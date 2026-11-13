@@ -45,6 +45,7 @@ import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RssFeed
+import androidx.compose.material.icons.rounded.RoundedCorner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material.icons.rounded.Settings
@@ -103,6 +104,7 @@ object FocusIcons {
     val Notification: ImageVector = Icons.Rounded.Notifications
     val Language: ImageVector = Icons.Rounded.Language
     val Tune: ImageVector = Icons.Rounded.Tune
+    val Corner: ImageVector = Icons.Rounded.RoundedCorner
     val History: ImageVector = Icons.Rounded.History
     val Person: ImageVector = Icons.Rounded.Person
     val Warning: ImageVector = Icons.Rounded.Warning

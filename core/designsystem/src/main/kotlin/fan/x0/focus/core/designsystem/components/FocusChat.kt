@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -52,7 +51,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import fan.x0.focus.core.designsystem.theme.FocusRadii
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import kotlinx.coroutines.flow.first
@@ -190,7 +188,7 @@ private fun AssistantBubble(
     val motion = LocalFocusMotion.current
     val shape = when (style) {
         FocusChatBubbleStyle.Flat -> RectangleShape
-        FocusChatBubbleStyle.Bubble -> RoundedCornerShape(6.dp, 24.dp, 24.dp, 24.dp)
+        FocusChatBubbleStyle.Bubble -> FocusShapeTokens.assistantBubble
         FocusChatBubbleStyle.Card -> MaterialTheme.shapes.extraLarge
     }
     val container by animateColorAsState(
@@ -386,7 +384,7 @@ private fun BubbleReaction(
                 }
             },
             modifier = Modifier.clearAndSetSemantics { contentDescription = "$reaction, $count" },
-            shape = RoundedCornerShape(FocusRadii.extraLarge),
+            shape = MaterialTheme.shapes.extraLarge,
             colors = if (fromUser) {
                 FilterChipDefaults.filterChipColors(
                     selectedContainerColor = scheme.onPrimary.copy(alpha = 0.16f),

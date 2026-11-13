@@ -100,7 +100,7 @@ private fun MessageQuote(
         onClick = hapticTap(onClick),
         enabled = !quote.deleted,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         color = content.copy(alpha = 0.12f),
         contentColor = content,
     ) {

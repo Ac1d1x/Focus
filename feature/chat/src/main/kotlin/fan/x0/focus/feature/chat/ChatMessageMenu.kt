@@ -2,7 +2,6 @@ package fan.x0.focus.feature.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +18,6 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusMenuAction
 import fan.x0.focus.core.designsystem.components.FocusMessageActionPopup
 import fan.x0.focus.core.designsystem.components.hapticSelect
-import fan.x0.focus.core.designsystem.theme.FocusRadii
 
 @Composable
 internal fun MessageActionPopup(
@@ -93,7 +91,7 @@ internal fun MessageReactionChip(
                 }
             },
             modifier = Modifier.clearAndSetSemantics { contentDescription = "$reaction, $count" },
-            shape = RoundedCornerShape(FocusRadii.extraLarge),
+            shape = MaterialTheme.shapes.extraLarge,
         )
     }
 }

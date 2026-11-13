@@ -2,10 +2,18 @@ package fan.x0.focus.feature.assistant.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -14,10 +22,12 @@ import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.theme.FocusLook
 import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
+import kotlin.math.roundToInt
 
 @Composable
 internal fun SettingsAppearancePage(
@@ -25,6 +35,7 @@ internal fun SettingsAppearancePage(
     onAction: (SettingsAction) -> Unit,
     onBack: () -> Unit,
 ) {
+    var corner by remember { mutableFloatStateOf(FocusLook.cornerScale) }
     SettingsPageScaffold(
         title = stringResource(R.string.settings_page_appearance),
         onBack = onBack,
@@ -77,8 +88,47 @@ internal fun SettingsAppearancePage(
                 }
             }
         }
-        item(key = "reply_style") {
+        item(key = "corner") {
             FocusReveal(index = 2) {
+                FocusCardGroup(title = stringResource(R.string.settings_corner_title)) {
+                    formItem(
+                        headlineContent = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = stringResource(R.string.settings_corner_item),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Text(
+                                    text = "${(corner * 100).roundToInt()}%",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        },
+                        supportingContent = { Text(stringResource(R.string.settings_corner_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Corner,
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                    ) {
+                        Slider(
+                            value = corner,
+                            onValueChange = {
+                                corner = it
+                                FocusLook.updateCornerScale(it)
+                            },
+                            valueRange = FocusLook.MIN..FocusLook.MAX,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        }
+        item(key = "reply_style") {
+            FocusReveal(index = 3) {
                 FocusCardGroup(title = stringResource(R.string.settings_reply_style_title)) {
                     formItem(
                         headlineContent = { Text(stringResource(R.string.settings_reply_style_item)) },

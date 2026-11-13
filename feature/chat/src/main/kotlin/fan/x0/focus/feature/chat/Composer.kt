@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -59,6 +58,7 @@ import fan.x0.focus.core.modelpicker.ModelPickerSheet
 import fan.x0.focus.core.modelpicker.rememberModelPickerLabels
 import fan.x0.focus.core.modelpicker.toModelPickerDetail
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.voice.rememberVoiceInput
@@ -301,7 +301,7 @@ private fun ReplyPreview(
     val author = reply.author.ifBlank { stringResource(R.string.chat_quote_you) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     ) {
@@ -377,7 +377,7 @@ internal fun AttachmentChip(
 ) {
     val scheme = MaterialTheme.colorScheme
     Surface(
-        shape = RoundedCornerShape(18.dp),
+        shape = FocusShapeTokens.rounded(18.dp),
         color = scheme.surfaceContainer,
         tonalElevation = 1.dp,
         border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.35f)),
@@ -394,7 +394,7 @@ internal fun AttachmentChip(
                         bitmap = bitmap,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(34.dp).clip(RoundedCornerShape(12.dp)),
+                        modifier = Modifier.size(34.dp).clip(MaterialTheme.shapes.medium),
                     )
                 } else {
                     Icon(
@@ -448,12 +448,12 @@ internal fun UserAttachmentStrip(attachments: List<AttachmentUi>) {
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(72.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(MaterialTheme.shapes.large)
                         .clickable(role = Role.Button, onClick = hapticTap { preview = attachment }),
                 )
             } else {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     Row(

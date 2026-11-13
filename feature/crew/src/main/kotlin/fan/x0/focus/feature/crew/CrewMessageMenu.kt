@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +22,6 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusMenuAction
 import fan.x0.focus.core.designsystem.components.FocusMessageActionPopup
 import fan.x0.focus.core.designsystem.components.hapticSelect
-import fan.x0.focus.core.designsystem.theme.FocusRadii
 
 @Composable
 internal fun CrewMessageActionPopup(
@@ -112,7 +110,7 @@ internal fun CrewMessageActionPopup(
                                 style = MaterialTheme.typography.labelMedium,
                             )
                         },
-                        shape = RoundedCornerShape(FocusRadii.extraLarge),
+                        shape = MaterialTheme.shapes.extraLarge,
                     )
                 }
             }

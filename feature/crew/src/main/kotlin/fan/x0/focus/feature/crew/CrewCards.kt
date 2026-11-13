@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -520,7 +519,7 @@ internal fun CrewAttachmentStrip(attachments: List<ChatAttachment>) {
                     },
                 )
                 AttachmentKind.Text -> Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {
                     Row(
@@ -558,7 +557,7 @@ private fun CrewImageAttachment(attachment: ChatAttachment, onClick: () -> Unit)
     val bitmap = remember(attachment.id) { attachment.decodeBitmap() }
     Surface(
         modifier = Modifier.size(72.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         onClick = hapticTap(onClick),
     ) {

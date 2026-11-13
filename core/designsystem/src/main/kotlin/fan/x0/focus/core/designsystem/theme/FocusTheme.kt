@@ -36,7 +36,10 @@ fun FocusTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    remember(context) { FocusLook.init(context) }
+    val cornerScale = FocusLook.cornerScale
     val scheme = focusColorScheme(context, darkTheme)
+    val shapes = remember(cornerScale) { focusShapes(cornerScale) }
     val typography = FocusTypography()
     val hapticFeedback = LocalHapticFeedback.current
     val haptics = remember(hapticFeedback) { FocusHaptics(hapticFeedback) }
@@ -44,12 +47,13 @@ fun FocusTheme(
         LocalFocusTypography provides typography,
         LocalFocusMotion provides FocusMotionDefaults,
         LocalFocusHaptics provides haptics,
+        LocalFocusCornerScale provides cornerScale,
     ) {
         MaterialExpressiveTheme(
             colorScheme = scheme,
             motionScheme = MotionScheme.expressive(),
             typography = typography.baseline,
-            shapes = FocusShapes,
+            shapes = shapes,
             content = content,
         )
     }

@@ -327,7 +327,7 @@ private fun CodeBlock(block: MdBlock.Code, fade: StreamFadeState?) {
     var copied by remember(block.text) { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column {
@@ -408,7 +408,7 @@ private fun TableBlock(
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(modifier = Modifier.horizontalScroll(rememberScrollState())) {

@@ -2,6 +2,10 @@ package fan.x0.focus.core.designsystem.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 object FocusRadii {
@@ -13,29 +17,50 @@ object FocusRadii {
     val extraExtraLarge = 48.dp
 }
 
-val FocusShapes = Shapes(
-    extraSmall = RoundedCornerShape(4.dp),
-    small = RoundedCornerShape(8.dp),
-    medium = RoundedCornerShape(FocusRadii.medium),
-    large = RoundedCornerShape(FocusRadii.large),
-    largeIncreased = RoundedCornerShape(FocusRadii.largeIncreased),
-    extraLarge = RoundedCornerShape(FocusRadii.extraLarge),
-    extraLargeIncreased = RoundedCornerShape(FocusRadii.extraLargeIncreased),
-    extraExtraLarge = RoundedCornerShape(FocusRadii.extraExtraLarge),
+val LocalFocusCornerScale = staticCompositionLocalOf { 1f }
+
+fun focusShapes(scale: Float): Shapes = Shapes(
+    extraSmall = RoundedCornerShape(4.dp * scale),
+    small = RoundedCornerShape(8.dp * scale),
+    medium = RoundedCornerShape(FocusRadii.medium * scale),
+    large = RoundedCornerShape(FocusRadii.large * scale),
+    largeIncreased = RoundedCornerShape(FocusRadii.largeIncreased * scale),
+    extraLarge = RoundedCornerShape(FocusRadii.extraLarge * scale),
+    extraLargeIncreased = RoundedCornerShape(FocusRadii.extraLargeIncreased * scale),
+    extraExtraLarge = RoundedCornerShape(FocusRadii.extraExtraLarge * scale),
 )
 
+@Composable
+private fun Dp.scaled(): Dp = this * LocalFocusCornerScale.current
+
 object FocusShapeTokens {
-    val card = RoundedCornerShape(FocusRadii.largeIncreased)
-    val cardLarge = RoundedCornerShape(FocusRadii.extraLarge)
-    val sheet = RoundedCornerShape(FocusRadii.extraLargeIncreased)
-    val hero = RoundedCornerShape(FocusRadii.extraExtraLarge)
+    val card: Shape
+        @Composable get() = RoundedCornerShape(FocusRadii.largeIncreased.scaled())
+
+    val cardLarge: Shape
+        @Composable get() = RoundedCornerShape(FocusRadii.extraLarge.scaled())
+
+    val sheet: Shape
+        @Composable get() = RoundedCornerShape(FocusRadii.extraLargeIncreased.scaled())
+
+    val hero: Shape
+        @Composable get() = RoundedCornerShape(FocusRadii.extraExtraLarge.scaled())
+
     val pill = RoundedCornerShape(percent = 50)
 
-    // Chat bubble: one speaker-side corner tightened. Design decision, not an M3 token.
-    val bubbleIncoming = RoundedCornerShape(28.dp, 28.dp, 28.dp, 8.dp)
-    val bubbleOutgoing = RoundedCornerShape(28.dp, 28.dp, 8.dp, 28.dp)
+    val bubbleIncoming: Shape
+        @Composable get() = RoundedCornerShape(28.dp.scaled(), 28.dp.scaled(), 28.dp.scaled(), 8.dp.scaled())
 
-    // Inner radius = outer radius - padding.
-    fun inner(outer: androidx.compose.ui.unit.Dp, padding: androidx.compose.ui.unit.Dp) =
-        RoundedCornerShape((outer - padding).coerceAtLeast(0.dp))
+    val bubbleOutgoing: Shape
+        @Composable get() = RoundedCornerShape(28.dp.scaled(), 28.dp.scaled(), 8.dp.scaled(), 28.dp.scaled())
+
+    val assistantBubble: Shape
+        @Composable get() = RoundedCornerShape(6.dp.scaled(), 24.dp.scaled(), 24.dp.scaled(), 24.dp.scaled())
+
+    @Composable
+    fun inner(outer: Dp, padding: Dp): Shape =
+        RoundedCornerShape((outer.scaled() - padding).coerceAtLeast(0.dp))
+
+    @Composable
+    fun rounded(radius: Dp): Shape = RoundedCornerShape(radius.scaled())
 }

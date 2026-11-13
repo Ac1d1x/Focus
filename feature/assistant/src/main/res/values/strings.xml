@@ -107,6 +107,9 @@
     <string name="settings_language_title">Language</string>
     <string name="settings_language_item">App language</string>
     <string name="settings_language_body">Applies to the interface and to content Focus writes.</string>
+    <string name="settings_corner_title">Shape</string>
+    <string name="settings_corner_item">Corner roundness</string>
+    <string name="settings_corner_body">Affects cards, inputs and sheets across the app.</string>
     <string name="settings_reply_style_title">Message style</string>
     <string name="settings_reply_style_item">Assistant replies</string>
     <string name="settings_reply_style_body">How the assistant\'s answers are framed.</string>

@@ -46,11 +46,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import fan.x0.focus.core.designsystem.theme.FocusRadii
+import fan.x0.focus.core.designsystem.theme.LocalFocusCornerScale
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 
-private val GroupCorner = 20.dp
+private val GroupCorner: Dp
+    @Composable get() = FocusRadii.largeIncreased * LocalFocusCornerScale.current
 private val GroupSpacing = 2.dp
-private val InnerCorner = 4.dp
+private val InnerCorner: Dp
+    @Composable get() = 4.dp * LocalFocusCornerScale.current
 
 private data class GroupItem(
     val selected: Boolean = false,
@@ -437,6 +441,7 @@ private fun GroupListItem(item: GroupItem, index: Int, count: Int) {
     )
 }
 
+@Composable
 private fun itemShape(index: Int, count: Int): RoundedCornerShape {
     val top = if (index == 0) GroupCorner else InnerCorner
     val bottom = if (index == count - 1) GroupCorner else InnerCorner

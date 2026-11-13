@@ -90,6 +90,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -115,6 +116,7 @@ import fan.x0.focus.core.designsystem.components.FocusMarkdown
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.core.designsystem.theme.FocusTheme
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import fan.x0.focus.data.assistant.AskAnswer
 import fan.x0.focus.data.assistant.AskKind
@@ -126,7 +128,8 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 private val InputShape = RoundedCornerShape(50)
-private val ResultShape = RoundedCornerShape(24.dp)
+private val ResultShape: Shape
+    @Composable get() = FocusShapeTokens.rounded(24.dp)
 
 private data class OverlaySuggestion(
     val label: String,
@@ -1030,7 +1033,7 @@ private fun VoiceDock(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 44.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(MaterialTheme.shapes.large)
                         .clickable(onClick = typingClick)
                         .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.CenterStart,

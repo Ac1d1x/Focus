@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +42,7 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.data.assistant.Conversation
 
 @Composable
@@ -54,7 +56,22 @@ fun HistoryRoute(
     onPromote: (String) -> Unit,
 ) {
     var section by rememberSaveable { mutableStateOf(0) }
+    var query by rememberSaveable { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<Conversation?>(null) }
+    val active = remember(conversations, query) {
+        if (query.isBlank()) {
+            conversations
+        } else {
+            conversations.filter { it.title.contains(query, ignoreCase = true) }
+        }
+    }
+    val archivedFiltered = remember(archived, query) {
+        if (query.isBlank()) {
+            archived
+        } else {
+            archived.filter { it.title.contains(query, ignoreCase = true) }
+        }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -67,6 +84,13 @@ fun HistoryRoute(
                 .fillMaxSize()
                 .padding(inner),
         ) {
+            SearchField(
+                query = query,
+                onQueryChange = { query = it },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp),
+            )
             FocusTabSwitcher(
                 labels = listOf(
                     stringResource(R.string.history_tab_active),
@@ -79,11 +103,19 @@ fun HistoryRoute(
             FocusTabContent(selectedIndex = section) { tab ->
                 if (tab == 0) {
                     ConversationList(
-                        conversations = conversations,
+                        conversations = active,
                         archived = false,
-                        emptyIcon = FocusIcons.History,
-                        emptyTitle = stringResource(R.string.history_empty),
-                        emptyBody = stringResource(R.string.history_empty_body),
+                        emptyIcon = if (query.isBlank()) FocusIcons.History else FocusIcons.Search,
+                        emptyTitle = if (query.isBlank()) {
+                            stringResource(R.string.history_empty)
+                        } else {
+                            stringResource(R.string.history_no_results)
+                        },
+                        emptyBody = if (query.isBlank()) {
+                            stringResource(R.string.history_empty_body)
+                        } else {
+                            stringResource(R.string.history_no_results_body)
+                        },
                         onOpen = { onOpen(it.id) },
                         onArchive = { onArchive(it.id) },
                         onDelete = { deleteTarget = it },
@@ -91,11 +123,19 @@ fun HistoryRoute(
                     )
                 } else {
                     ConversationList(
-                        conversations = archived,
+                        conversations = archivedFiltered,
                         archived = true,
-                        emptyIcon = FocusIcons.Archive,
-                        emptyTitle = stringResource(R.string.history_archived_empty),
-                        emptyBody = stringResource(R.string.history_archived_empty_body),
+                        emptyIcon = if (query.isBlank()) FocusIcons.Archive else FocusIcons.Search,
+                        emptyTitle = if (query.isBlank()) {
+                            stringResource(R.string.history_archived_empty)
+                        } else {
+                            stringResource(R.string.history_no_results)
+                        },
+                        emptyBody = if (query.isBlank()) {
+                            stringResource(R.string.history_archived_empty_body)
+                        } else {
+                            stringResource(R.string.history_no_results_body)
+                        },
                         onOpen = { onOpenArchived(it.id) },
                         onArchive = {},
                         onDelete = { deleteTarget = it },
@@ -132,6 +172,38 @@ fun HistoryRoute(
             },
         )
     }
+}
+
+@Composable
+private fun SearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text(stringResource(R.string.history_search_hint)) },
+        leadingIcon = {
+            Icon(FocusIcons.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+        },
+        trailingIcon = if (query.isBlank()) {
+            null
+        } else {
+            {
+                IconButton(onClick = hapticTap { onQueryChange("") }) {
+                    Icon(
+                        imageVector = FocusIcons.Close,
+                        contentDescription = stringResource(R.string.history_clear_search),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        },
+        singleLine = true,
+        shape = FocusShapeTokens.input,
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

@@ -54,9 +54,9 @@
     <string name="drawer_yesterday">Yesterday</string>
     <string name="drawer_previous_7_days">Previous 7 days</string>
     <string name="drawer_older">Older</string>
-    <string name="drawer_search_hint">Search chats</string>
-    <string name="drawer_clear_search">Clear search</string>
-    <string name="drawer_no_results">No matching chats</string>
+    <string name="history_search_hint">Search chats</string>
+    <string name="history_clear_search">Clear search</string>
+    <string name="history_no_results">No matching chats</string>
     <string name="drawer_more_body">Other places in the app</string>
     <string name="drawer_workspace_section">Workspace</string>
     <string name="drawer_connections_section">Connections</string>
@@ -76,6 +76,7 @@
     <string name="history_tab_active">Chats</string>
     <string name="history_tab_archived">Archived</string>
     <string name="history_empty">No conversations yet.</string>
+    <string name="history_no_results_body">Try a different keyword.</string>
     <string name="history_empty_body">Your conversations will appear here.</string>
     <string name="history_archived_empty">No archived chats.</string>
     <string name="history_archived_empty_body">Chats you archive will appear here.</string>

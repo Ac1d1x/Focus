@@ -31,7 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -39,14 +38,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,7 +80,6 @@ fun ShellDrawer(
     var showAssistants by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
     var creating by remember { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
     val assistant = state.activeAssistant ?: AssistantProfile(
         id = state.activeAssistantId,
         name = AssistantProfile.DEFAULT_NAME,
@@ -94,12 +90,9 @@ fun ShellDrawer(
             .distinctBy { it.id }
             .sortedByDescending { it.updatedAt }
     }
-    val filtered = remember(sessions, query) {
-        if (query.isBlank()) sessions else sessions.filter { it.title.contains(query, ignoreCase = true) }
-    }
     val today = LocalDate.now()
-    val groups = remember(filtered, today) {
-        if (query.isBlank()) filtered.groupBy { bucketOf(it.updatedAt, today) }.toSortedMap() else emptyMap()
+    val groups = remember(sessions, today) {
+        sessions.groupBy { bucketOf(it.updatedAt, today) }.toSortedMap()
     }
     val labels = listOf(
         stringResource(R.string.drawer_today),
@@ -107,97 +100,41 @@ fun ShellDrawer(
         stringResource(R.string.drawer_previous_7_days),
         stringResource(R.string.drawer_older),
     )
-    val compactHeight = LocalWindowInfo.current.containerDpSize.height < 600.dp
-    val header: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchField(
-                query = query,
-                onQueryChange = { query = it },
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconOnlyAction(
-                    icon = FocusIcons.History,
-                    label = stringResource(R.string.drawer_history),
-                    selected = false,
-                    onClick = {
-                        query = ""
-                        onNavigate(FocusRoute.History)
-                    },
-                )
-                IconOnlyAction(
-                    icon = FocusIcons.Add,
-                    label = stringResource(R.string.drawer_new_chat),
-                    selected = false,
-                    onClick = {
-                        query = ""
-                        onNewSideChat()
-                    },
-                )
-            }
-        }
-    }
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (!compactHeight) header()
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 8.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            if (compactHeight) {
-                item(key = "shell:header") { header() }
+            if (state.main != null) {
+                item(key = "shell:pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
+                item(key = "shell:main") {
+                    ConversationRow(
+                        conversation = state.main,
+                        selected = current == FocusRoute.Chat && currentConversationId == state.main.id,
+                        onClick = onOpenMain,
+                    )
+                }
             }
-            if (query.isNotBlank()) {
-                if (filtered.isEmpty()) {
-                    item(key = "shell:empty") { EmptyRow(stringResource(R.string.drawer_no_results)) }
-                } else {
-                    items(filtered, key = { "conversation:${it.id}" }) { conversation ->
-                        ConversationRow(
-                            conversation = conversation,
-                            selected = conversation.id == currentConversationId,
-                            onClick = {
-                                query = ""
-                                onOpenConversation(conversation.id)
-                            },
-                        )
-                    }
+            groups.forEach { (bucket, list) ->
+                item(key = "shell:date_$bucket") { SectionLabel(labels[bucket]) }
+                items(list, key = { "conversation:${it.id}" }) { conversation ->
+                    ConversationRow(
+                        conversation = conversation,
+                        selected = conversation.id == currentConversationId,
+                        onClick = { onOpenConversation(conversation.id) },
+                    )
                 }
-            } else {
-                if (state.main != null) {
-                    item(key = "shell:pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
-                    item(key = "shell:main") {
-                        ConversationRow(
-                            conversation = state.main,
-                            selected = current == FocusRoute.Chat && currentConversationId == state.main.id,
-                            onClick = {
-                                query = ""
-                                onOpenMain()
-                            },
-                        )
-                    }
-                }
-                groups.forEach { (bucket, list) ->
-                    item(key = "shell:date_$bucket") { SectionLabel(labels[bucket]) }
-                    items(list, key = { "conversation:${it.id}" }) { conversation ->
-                        ConversationRow(
-                            conversation = conversation,
-                            selected = conversation.id == currentConversationId,
-                            onClick = {
-                                query = ""
-                                onOpenConversation(conversation.id)
-                            },
-                        )
-                    }
-                }
-                if (filtered.isEmpty() && state.main == null) {
-                    item(key = "shell:empty") { EmptyRow(stringResource(R.string.drawer_no_conversations)) }
-                }
+            }
+            if (sessions.isEmpty() && state.main == null) {
+                item(key = "shell:empty") { EmptyRow(stringResource(R.string.drawer_no_conversations)) }
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -213,6 +150,18 @@ fun ShellDrawer(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            IconOnlyAction(
+                icon = FocusIcons.History,
+                label = stringResource(R.string.drawer_history),
+                selected = current == FocusRoute.History,
+                onClick = { onNavigate(FocusRoute.History) },
+            )
+            IconOnlyAction(
+                icon = FocusIcons.Add,
+                label = stringResource(R.string.drawer_new_chat),
+                selected = false,
+                onClick = onNewSideChat,
+            )
             if (!controlledOnly) {
                 IconOnlyAction(
                     icon = FocusIcons.Assistant,
@@ -284,34 +233,6 @@ private fun bucketOf(timestamp: Long, today: LocalDate): Int {
         date.isAfter(today.minusDays(8)) -> 2
         else -> 3
     }
-}
-
-@Composable
-private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text(stringResource(R.string.drawer_search_hint)) },
-        leadingIcon = {
-            Icon(FocusIcons.Search, contentDescription = null, modifier = Modifier.size(18.dp))
-        },
-        trailingIcon = if (query.isBlank()) {
-            null
-        } else {
-            {
-                IconButton(onClick = hapticTap { onQueryChange("") }) {
-                    Icon(
-                        imageVector = FocusIcons.Close,
-                        contentDescription = stringResource(R.string.drawer_clear_search),
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-        },
-        singleLine = true,
-        shape = FocusShapeTokens.input,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }
 
 @Composable

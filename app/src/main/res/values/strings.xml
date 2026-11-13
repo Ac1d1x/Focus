@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="crash_notification_channel">Crash reports</string>
+    <string name="crash_notification_title">Focus crashed</string>
+    <string name="crash_notification_body">Tap to read the crash log.</string>
+    <string name="crash_page_title">Crash logs</string>
+    <string name="crash_page_body">Focus closed unexpectedly. You can read or share the log, then continue.</string>
+    <string name="crash_page_empty">No crash logs.</string>
+    <string name="crash_page_view">View</string>
+    <string name="crash_page_share">Share</string>
+    <string name="crash_page_delete">Delete</string>
+    <string name="crash_page_clear">Clear all</string>
+    <string name="crash_page_continue">Continue to app</string>
+    <string name="crash_page_close">Close</string>
+    <string name="crash_page_share_title">Share crash log</string>
+    <string name="crash_page_unknown">Unknown error</string>
     <string name="app_name">Focus</string>
     <string name="tile_focus_label">Focus assistant</string>
     <string name="widget_title">Focus</string>

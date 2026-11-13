@@ -26,6 +26,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Focus">
 
+        <activity
+            android:name=".CrashLogActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
         <service
             android:name=".app.ChatTurnService"
             android:exported="false"

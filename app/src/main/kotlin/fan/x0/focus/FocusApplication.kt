@@ -91,11 +91,13 @@ class FocusApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLogStore(this).install { throwable ->
+            CrashNotifier.notify(this, throwable)
+        }
         startKoin<FocusApplication> {
             androidLogger()
             androidContext(this@FocusApplication)
         }
-        KoinPlatform.getKoin().get<CrashLogStore>().install()
         registerActivityLifecycleCallbacks(
             AppPresenceCallbacks(KoinPlatform.getKoin().get<AppPresence>()),
         )

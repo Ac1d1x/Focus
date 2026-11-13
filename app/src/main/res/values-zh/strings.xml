@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="crash_notification_channel">崩溃报告</string>
+    <string name="crash_notification_title">Focus 崩溃了</string>
+    <string name="crash_notification_body">点按查看崩溃日志。</string>
+    <string name="crash_page_title">崩溃日志</string>
+    <string name="crash_page_body">Focus 异常退出了。可以查看或分享日志，然后继续进入应用。</string>
+    <string name="crash_page_empty">没有崩溃日志。</string>
+    <string name="crash_page_view">查看</string>
+    <string name="crash_page_share">分享</string>
+    <string name="crash_page_delete">删除</string>
+    <string name="crash_page_clear">清空全部</string>
+    <string name="crash_page_continue">继续进入应用</string>
+    <string name="crash_page_close">关闭</string>
+    <string name="crash_page_share_title">分享崩溃日志</string>
+    <string name="crash_page_unknown">未知错误</string>
     <string name="app_name">Focus</string>
     <string name="tile_focus_label">Focus 助手</string>
     <string name="widget_title">Focus</string>

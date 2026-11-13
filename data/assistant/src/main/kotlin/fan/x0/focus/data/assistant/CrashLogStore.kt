@@ -24,15 +24,20 @@ class CrashLogStore(@Provided private val context: Context) {
     private val folder: File
         get() = File(context.filesDir, FOLDER).apply { mkdirs() }
 
+    private val prefs by lazy {
+        context.getSharedPreferences("crash_logs", Context.MODE_PRIVATE)
+    }
+
     @Volatile
     private var installed = false
 
-    fun install() {
+    fun install(notify: ((Throwable) -> Unit)? = null) {
         if (installed) return
         installed = true
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             runCatching { write(thread, throwable) }
+            runCatching { notify?.invoke(throwable) }
             if (previous != null) {
                 previous.uncaughtException(thread, throwable)
             } else {
@@ -40,6 +45,19 @@ class CrashLogStore(@Provided private val context: Context) {
                 kotlin.system.exitProcess(10)
             }
         }
+    }
+
+    fun hasUnreviewed(): Boolean {
+        val newest = folder.listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.name.startsWith(PREFIX) }
+            .maxOfOrNull { it.lastModified() }
+            ?: return false
+        return newest > prefs.getLong(KEY_REVIEWED_AT, 0L)
+    }
+
+    fun markReviewed() {
+        prefs.edit().putLong(KEY_REVIEWED_AT, System.currentTimeMillis()).apply()
     }
 
     suspend fun list(): List<CrashLogEntry> = withContext(Dispatchers.IO) {
@@ -116,6 +134,7 @@ class CrashLogStore(@Provided private val context: Context) {
         private const val PREFIX = "crash-"
         private const val SUFFIX = ".log"
         private const val MAX_LOGS = 20
+        private const val KEY_REVIEWED_AT = "reviewed_at"
         private const val MAX_READ_CHARS = 256_000
         private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
     }

@@ -249,18 +249,18 @@ private fun FocusSignalItem(
     AnimatedVisibility(
         visibleState = entry.visible,
         modifier = modifier,
-        enter = slideInVertically(motion.defaultSpatialSpec()) { -it } +
+        enter = slideInVertically(motion.defaultSpatialSpec()) { -it / 6 } +
             fadeIn(motion.defaultEffectsSpec()) +
             scaleIn(
                 animationSpec = SignalScaleIn,
-                initialScale = 0.52f,
+                initialScale = 0.5f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
-        exit = slideOutVertically(motion.fastSpatialSpec()) { -it } +
+        exit = slideOutVertically(motion.fastSpatialSpec()) { -it / 3 } +
             fadeOut(motion.fastEffectsSpec()) +
             scaleOut(
                 animationSpec = motion.fastSpatialSpec(),
-                targetScale = 0.58f,
+                targetScale = 0.55f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
     ) {

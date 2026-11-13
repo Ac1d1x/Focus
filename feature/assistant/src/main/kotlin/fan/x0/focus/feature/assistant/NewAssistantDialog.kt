@@ -16,27 +16,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.hapticTap
-import fan.x0.focus.data.assistant.AssistantProfile
 
 @Composable
-fun AssistantProfileDialog(
-    profile: AssistantProfile?,
+fun NewAssistantDialog(
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit,
 ) {
-    val editing = profile != null
-    var name by remember(profile) { mutableStateOf(profile?.name.orEmpty()) }
-    var role by remember(profile) { mutableStateOf(profile?.role.orEmpty()) }
-    var emoji by remember(profile) { mutableStateOf(profile?.emoji.orEmpty()) }
+    var name by remember { mutableStateOf("") }
+    var role by remember { mutableStateOf("") }
+    var emoji by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                stringResource(
-                    if (editing) R.string.assistant_profile_edit else R.string.assistant_profile_new,
-                ),
-            )
-        },
+        title = { Text(stringResource(R.string.assistant_profile_new)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -69,11 +60,7 @@ fun AssistantProfileDialog(
                 onClick = hapticTap { onSave(name.trim(), role.trim(), emoji.trim()) },
                 enabled = name.isNotBlank(),
             ) {
-                Text(
-                    stringResource(
-                        if (editing) R.string.assistant_profile_save else R.string.assistant_profile_create,
-                    ),
-                )
+                Text(stringResource(R.string.assistant_profile_create))
             }
         },
         dismissButton = {

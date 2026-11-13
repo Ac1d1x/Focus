@@ -44,7 +44,7 @@ import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
-import fan.x0.focus.feature.assistant.AssistantProfileDialog
+import fan.x0.focus.feature.assistant.NewAssistantDialog
 import fan.x0.focus.plugin.PluginPageRef
 
 @Composable
@@ -160,8 +160,7 @@ fun ShellDrawer(
         }
     }
     if (creating) {
-        AssistantProfileDialog(
-            profile = null,
+        NewAssistantDialog(
             onDismiss = { creating = false },
             onSave = { name, role, emoji ->
                 onCreateAssistant(name, role, emoji)

@@ -32,6 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +63,6 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
-import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -93,7 +93,6 @@ fun AssistantScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val openSettings = LocalFocusSettingsOpener.current
-    var editingProfile by remember { mutableStateOf(false) }
     var deletingProfile by remember { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -136,7 +135,9 @@ fun AssistantScreen(
                 FocusReveal(index = 1) {
                     ProfileGroup(
                         state = state,
-                        onEdit = { editingProfile = true },
+                        onSave = { name, role, emoji ->
+                            onAction(AssistantAction.SaveProfile(name, role, emoji))
+                        },
                         onDelete = { deletingProfile = true },
                     )
                 }
@@ -177,21 +178,6 @@ fun AssistantScreen(
                 }
             }
         }
-    }
-    if (editingProfile) {
-        AssistantProfileDialog(
-            profile = AssistantProfile(
-                id = state.assistantId,
-                name = state.assistantName,
-                emoji = state.assistantEmoji,
-                role = state.assistantRole,
-            ),
-            onDismiss = { editingProfile = false },
-            onSave = { name, role, emoji ->
-                onAction(AssistantAction.SaveProfile(name, role, emoji))
-                editingProfile = false
-            },
-        )
     }
     if (deletingProfile) {
         AlertDialog(
@@ -238,15 +224,31 @@ fun AssistantScreen(
 @Composable
 private fun ProfileGroup(
     state: AssistantUiState,
-    onEdit: () -> Unit,
+    onSave: (String, String, String) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val defaultRole = stringResource(R.string.assistant_profile_default_role)
-    val automatic = stringResource(R.string.assistant_profile_emoji_auto)
+    var name by remember(state.assistantId) { mutableStateOf(state.assistantName) }
+    var role by remember(state.assistantId) { mutableStateOf(state.assistantRole) }
+    var emoji by remember(state.assistantId) { mutableStateOf(state.assistantEmoji) }
+    var dirty by remember(state.assistantId) { mutableStateOf(false) }
+    LaunchedEffect(state.assistantId) {
+        dirty = false
+        name = state.assistantName
+        role = state.assistantRole
+        emoji = state.assistantEmoji
+    }
+    val changed = name != state.assistantName || role != state.assistantRole || emoji != state.assistantEmoji
+    LaunchedEffect(state.assistantName, state.assistantRole, state.assistantEmoji) {
+        if (!dirty) {
+            name = state.assistantName
+            role = state.assistantRole
+            emoji = state.assistantEmoji
+        }
+    }
     FocusCardGroup(title = stringResource(R.string.assistant_profile_section)) {
-        item(
-            headlineContent = { Text(stringResource(R.string.assistant_profile_name_item)) },
-            supportingContent = { Text(state.assistantName.ifBlank { stringResource(R.string.assistant_hero_default) }) },
+        formItem(
+            headlineContent = { Text(stringResource(R.string.assistant_profile_form_title)) },
+            supportingContent = { Text(stringResource(R.string.assistant_profile_form_body)) },
             leadingContent = {
                 FocusCardGroupIcon(
                     icon = FocusIcons.Person,
@@ -254,65 +256,66 @@ private fun ProfileGroup(
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             },
-            trailingContent = {
-                Icon(
-                    FocusIcons.Chevron,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it.take(40)
+                        dirty = true
+                    },
+                    label = { Text(stringResource(R.string.assistant_profile_name_item)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-            },
-            onClick = onEdit,
-        )
-        item(
-            headlineContent = { Text(stringResource(R.string.assistant_profile_role_item)) },
-            supportingContent = { Text(state.assistantRole.ifBlank { defaultRole }) },
-            leadingContent = {
-                FocusCardGroupIcon(
-                    icon = FocusIcons.Task,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                OutlinedTextField(
+                    value = role,
+                    onValueChange = {
+                        role = it.take(120)
+                        dirty = true
+                    },
+                    label = { Text(stringResource(R.string.assistant_profile_role_item)) },
+                    placeholder = { Text(stringResource(R.string.assistant_profile_role_hint)) },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-            },
-            trailingContent = {
-                Icon(
-                    FocusIcons.Chevron,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                OutlinedTextField(
+                    value = emoji,
+                    onValueChange = {
+                        emoji = it.take(8)
+                        dirty = true
+                    },
+                    label = { Text(stringResource(R.string.assistant_profile_emoji_item)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
-            },
-            onClick = onEdit,
-        )
-        item(
-            headlineContent = { Text(stringResource(R.string.assistant_profile_emoji_item)) },
-            supportingContent = { Text(state.assistantEmoji.ifBlank { automatic }) },
-            leadingContent = {
-                FocusCardGroupIcon(
-                    icon = FocusIcons.Assistant,
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-            },
-            trailingContent = {
-                Icon(
-                    FocusIcons.Chevron,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            onClick = onEdit,
-        )
-        if (state.canDelete) {
-            item(
-                headlineContent = { Text(stringResource(R.string.assistant_profile_delete_item)) },
-                leadingContent = {
-                    FocusCardGroupIcon(
-                        icon = FocusIcons.Delete,
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (state.canDelete) {
+                        TextButton(onClick = hapticTap(onDelete)) {
+                            Text(
+                                text = stringResource(R.string.assistant_profile_delete_item),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    FocusPrimaryButton(
+                        text = stringResource(R.string.assistant_profile_save),
+                        onClick = {
+                            val nextName = name.trim()
+                            val nextRole = role.trim()
+                            val nextEmoji = emoji.trim()
+                            name = nextName
+                            role = nextRole
+                            emoji = nextEmoji
+                            dirty = false
+                            onSave(nextName, nextRole, nextEmoji)
+                        },
+                        enabled = name.isNotBlank() && changed,
                     )
-                },
-                onClick = onDelete,
-            )
+                }
+            }
         }
     }
 }

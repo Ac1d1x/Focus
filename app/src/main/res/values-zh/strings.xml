@@ -56,6 +56,10 @@
     <string name="drawer_search_hint">搜索对话</string>
     <string name="drawer_clear_search">清除搜索</string>
     <string name="drawer_no_results">没有匹配的对话</string>
+    <string name="drawer_more_body">应用的其他入口</string>
+    <string name="drawer_workspace_section">工作区</string>
+    <string name="drawer_connections_section">连接</string>
+    <string name="drawer_assistants_body">每个助手有独立的提示词、上下文文件和会话。</string>
     <string name="drawer_more">更多</string>
     <string name="drawer_manage_assistant">管理助手</string>
     <string name="drawer_context_short">上下文</string>

@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -41,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -444,18 +449,26 @@ private fun AssistantSwitcherSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.72f)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = 24.dp)
+                .padding(top = 4.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.drawer_assistants),
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = hapticTap(onCreate)) {
-                    Icon(FocusIcons.Add, contentDescription = stringResource(R.string.drawer_new_assistant))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = stringResource(R.string.drawer_assistants),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilledTonalIconButton(onClick = hapticTap(onCreate)) {
+                        Icon(FocusIcons.Add, contentDescription = stringResource(R.string.drawer_new_assistant))
+                    }
                 }
+                Text(
+                    text = stringResource(R.string.drawer_assistants_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -521,50 +534,87 @@ private fun MoreSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(top = 4.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(
-                text = stringResource(R.string.drawer_more),
-                style = MaterialTheme.typography.titleLargeEmphasized,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.drawer_more),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = stringResource(R.string.drawer_more_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (!controlledOnly) {
-                MoreRow(FocusIcons.Today, stringResource(R.string.tab_today), current == FocusRoute.Today) {
-                    onNavigate(FocusRoute.Today)
-                }
-                MoreRow(FocusIcons.Groups, stringResource(R.string.tab_groups), current == FocusRoute.Crew) {
-                    onNavigate(FocusRoute.Crew)
-                }
-                MoreRow(FocusIcons.Goals, stringResource(R.string.tab_goals), current == FocusRoute.Goals) {
-                    onNavigate(FocusRoute.Goals)
-                }
-                MoreRow(FocusIcons.Library, stringResource(R.string.tab_library), current == FocusRoute.Library) {
-                    onNavigate(FocusRoute.Library)
-                }
-                MoreRow(FocusIcons.Terminal, stringResource(R.string.tab_bridge), current == FocusRoute.Bridge) {
-                    onNavigate(FocusRoute.Bridge)
+                MoreSection(title = stringResource(R.string.drawer_workspace_section)) {
+                    MoreTile(
+                        icon = FocusIcons.Today,
+                        label = stringResource(R.string.tab_today),
+                        selected = current == FocusRoute.Today,
+                        modifier = Modifier.weight(1f),
+                    ) { onNavigate(FocusRoute.Today) }
+                    MoreTile(
+                        icon = FocusIcons.Groups,
+                        label = stringResource(R.string.tab_groups),
+                        selected = current == FocusRoute.Crew,
+                        modifier = Modifier.weight(1f),
+                    ) { onNavigate(FocusRoute.Crew) }
+                    MoreTile(
+                        icon = FocusIcons.Goals,
+                        label = stringResource(R.string.tab_goals),
+                        selected = current == FocusRoute.Goals,
+                        modifier = Modifier.weight(1f),
+                    ) { onNavigate(FocusRoute.Goals) }
+                    MoreTile(
+                        icon = FocusIcons.Library,
+                        label = stringResource(R.string.tab_library),
+                        selected = current == FocusRoute.Library,
+                        modifier = Modifier.weight(1f),
+                    ) { onNavigate(FocusRoute.Library) }
                 }
             }
-            MoreRow(FocusIcons.Device, stringResource(R.string.device_title), current == FocusRoute.Device) {
-                onNavigate(FocusRoute.Device)
+            MoreSection(title = stringResource(R.string.drawer_connections_section)) {
+                if (!controlledOnly) {
+                    MoreTile(
+                        icon = FocusIcons.Terminal,
+                        label = stringResource(R.string.tab_bridge),
+                        selected = current == FocusRoute.Bridge,
+                        modifier = Modifier.weight(1f),
+                        container = MaterialTheme.colorScheme.tertiaryContainer,
+                        content = MaterialTheme.colorScheme.onTertiaryContainer,
+                    ) { onNavigate(FocusRoute.Bridge) }
+                }
+                MoreTile(
+                    icon = FocusIcons.Device,
+                    label = stringResource(R.string.device_title),
+                    selected = current == FocusRoute.Device,
+                    modifier = Modifier.weight(1f),
+                    container = MaterialTheme.colorScheme.tertiaryContainer,
+                    content = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) { onNavigate(FocusRoute.Device) }
             }
             if (!controlledOnly && pluginPages.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.plugins_drawer_section),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp),
-                )
-                pluginPages.forEach { page ->
-                    MoreRow(
-                        icon = FocusIcons.Tool,
-                        label = page.title,
-                        selected = current is FocusRoute.PluginPage &&
-                            current.pluginId == page.pluginId &&
-                            current.pageId == page.pageId,
-                    ) {
-                        onNavigate(FocusRoute.PluginPage(page.pluginId, page.pageId))
+                MoreSection(title = stringResource(R.string.plugins_drawer_section)) {
+                    pluginPages.forEach { page ->
+                        MoreTile(
+                            icon = FocusIcons.Tool,
+                            label = page.title,
+                            selected = current is FocusRoute.PluginPage &&
+                                current.pluginId == page.pluginId &&
+                                current.pageId == page.pageId,
+                            modifier = Modifier.fillMaxWidth(),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ) {
+                            onNavigate(FocusRoute.PluginPage(page.pluginId, page.pageId))
+                        }
                     }
                 }
             }
@@ -573,17 +623,65 @@ private fun MoreSheet(
 }
 
 @Composable
-private fun MoreRow(
+private fun MoreSection(
+    title: String,
+    content: @Composable FlowRowScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmallEmphasized,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun MoreTile(
     icon: ImageVector,
     label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
+    container: Color = MaterialTheme.colorScheme.primaryContainer,
+    content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     onClick: () -> Unit,
 ) {
-    NavigationDrawerItem(
-        label = { Text(label) },
-        selected = selected,
-        onClick = hapticSelect(onClick),
-        icon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-        shape = MaterialTheme.shapes.medium,
-    )
+    Surface(
+        onClick = hapticTap(onClick),
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) MaterialTheme.colorScheme.secondary else container),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (selected) MaterialTheme.colorScheme.onSecondary else content,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }

@@ -57,6 +57,10 @@
     <string name="drawer_search_hint">Search chats</string>
     <string name="drawer_clear_search">Clear search</string>
     <string name="drawer_no_results">No matching chats</string>
+    <string name="drawer_more_body">Other places in the app</string>
+    <string name="drawer_workspace_section">Workspace</string>
+    <string name="drawer_connections_section">Connections</string>
+    <string name="drawer_assistants_body">Each assistant keeps its own prompts, context files and chats.</string>
     <string name="drawer_more">More</string>
     <string name="drawer_manage_assistant">Manage assistant</string>
     <string name="drawer_context_short">Context</string>

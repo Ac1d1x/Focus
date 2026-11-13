@@ -81,12 +81,8 @@
     <string name="chat_greeting_evening">Good evening</string>
     <string name="chat_greeting_night">Still awake</string>
     <string name="chat_home_tagline">Ask a question, or start with one of these.</string>
-    <string name="chat_home_suggestions">Try asking</string>
-    <string name="chat_suggest_schedule">What\'s on today?</string>
     <string name="chat_suggest_schedule_prompt">What\'s on my calendar today?</string>
-    <string name="chat_suggest_reading">Catch up on reading</string>
     <string name="chat_suggest_reading_prompt">What should I read from my feeds?</string>
-    <string name="chat_suggest_goals">Move a goal</string>
     <string name="chat_suggest_goals_prompt">What should I focus on to move my goals forward?</string>
     <string name="chat_attach">Attach file</string>
     <string name="chat_attach_remove">Remove attachment</string>

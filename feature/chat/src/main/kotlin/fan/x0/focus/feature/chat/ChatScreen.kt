@@ -19,7 +19,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.DragInteraction
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,8 +38,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -71,7 +68,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.ClipEntry
@@ -81,7 +77,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.hazeSource
@@ -93,11 +89,11 @@ import fan.x0.focus.core.designsystem.components.AvatarStyle
 import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusActivity
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
+import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.FocusTraceCard
 import fan.x0.focus.core.designsystem.components.FocusTraceStep
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
-import fan.x0.focus.core.designsystem.components.FocusIconBadge
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.designsystem.components.LocalFocusSignal
@@ -109,7 +105,6 @@ import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.designsystem.components.FocusTimelineStep
 import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
-import fan.x0.focus.core.designsystem.components.pressScale
 import fan.x0.focus.core.designsystem.components.shimmer
 import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
@@ -521,141 +516,64 @@ private fun ChatHome(
     val suggestions = if (generated.isEmpty()) {
         defaultSuggestions()
     } else {
-        generated.map { Suggestion(suggestionIcon(it.icon), it.title, it.prompt) }
+        generated.map { Suggestion(it.text) }
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 20.dp,
-            top = 12.dp,
-            end = 20.dp,
-            bottom = bottomPadding + 12.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp),
     ) {
-        item(key = "hero") {
-            FocusReveal {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 96.dp)
-                    Text(
-                        text = title,
-                        style = LocalFocusTypography.current.displaySmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                    Text(
-                        text = stringResource(R.string.chat_home_tagline),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        FocusReveal {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 96.dp)
+                Text(
+                    text = title,
+                    style = LocalFocusTypography.current.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(R.string.chat_home_tagline),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(bottom = bottomPadding + 4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            suggestions.forEachIndexed { index, suggestion ->
+                FocusReveal(index = index) {
+                    FocusTextButton(
+                        text = suggestion.text,
+                        onClick = { onAction(ChatAction.Suggest(suggestion.text)) },
                     )
                 }
             }
         }
-        item(key = "suggestions-label") {
-            FocusReveal(index = 1) {
-                Text(
-                    text = stringResource(R.string.chat_home_suggestions),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp),
-                )
-            }
-        }
-        items(
-            suggestions,
-            key = { it.prompt },
-        ) { suggestion ->
-            FocusReveal(index = 2) {
-                SuggestionCard(
-                    suggestion = suggestion,
-                    onClick = { onAction(ChatAction.Suggest(suggestion.prompt)) },
-                )
-            }
-        }
     }
 }
 
-private data class Suggestion(
-    val icon: ImageVector,
-    val title: String,
-    val prompt: String,
-)
+private data class Suggestion(val text: String)
 
 @Composable
 private fun defaultSuggestions(): List<Suggestion> = listOf(
-    Suggestion(
-        icon = FocusIcons.Calendar,
-        title = stringResource(R.string.chat_suggest_schedule),
-        prompt = stringResource(R.string.chat_suggest_schedule_prompt),
-    ),
-    Suggestion(
-        icon = FocusIcons.Feed,
-        title = stringResource(R.string.chat_suggest_reading),
-        prompt = stringResource(R.string.chat_suggest_reading_prompt),
-    ),
-    Suggestion(
-        icon = FocusIcons.Goals,
-        title = stringResource(R.string.chat_suggest_goals),
-        prompt = stringResource(R.string.chat_suggest_goals_prompt),
-    ),
+    Suggestion(text = stringResource(R.string.chat_suggest_schedule_prompt)),
+    Suggestion(text = stringResource(R.string.chat_suggest_reading_prompt)),
+    Suggestion(text = stringResource(R.string.chat_suggest_goals_prompt)),
 )
-
-private fun suggestionIcon(key: String): ImageVector = when (key) {
-    "calendar" -> FocusIcons.Calendar
-    "feed" -> FocusIcons.Feed
-    "goals" -> FocusIcons.Goals
-    "task" -> FocusIcons.Check
-    "idea" -> FocusIcons.Idea
-    "folder" -> FocusIcons.Folder
-    "today" -> FocusIcons.Today
-    else -> FocusIcons.Assistant
-}
-
-@Composable
-private fun SuggestionCard(suggestion: Suggestion, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Card(
-        onClick = hapticTap(onClick),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pressScale(interaction),
-        shape = MaterialTheme.shapes.largeIncreased,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        interactionSource = interaction,
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            FocusIconBadge(icon = suggestion.icon, size = 40.dp)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = suggestion.title,
-                    style = MaterialTheme.typography.titleSmallEmphasized,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = suggestion.prompt,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Icon(
-                imageVector = FocusIcons.Chevron,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
-}
 
 internal const val ChatThreadTag = "chat-thread"
 

@@ -1550,9 +1550,7 @@ class ChatViewModel(
         if (currentState.conversationId != conversationId || currentState.history.isNotEmpty()) return
         updateState {
             copy(
-                suggestions = generated.map {
-                    SuggestionUi(title = it.title, prompt = it.prompt, icon = it.icon)
-                },
+                suggestions = generated.map { SuggestionUi(text = it.text) },
             )
         }
     }

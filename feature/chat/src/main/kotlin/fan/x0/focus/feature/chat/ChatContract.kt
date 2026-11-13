@@ -281,11 +281,7 @@ data class ModelOption(
     val meta: ModelMeta = ModelMeta(),
 )
 
-data class SuggestionUi(
-    val title: String,
-    val prompt: String,
-    val icon: String = "",
-)
+data class SuggestionUi(val text: String)
 
 data class ImSourceUi(
     val accountName: String,

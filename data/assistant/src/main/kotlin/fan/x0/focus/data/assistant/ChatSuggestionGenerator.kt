@@ -13,11 +13,7 @@ import kotlinx.serialization.json.Json
 import org.koin.core.annotation.Single
 import java.util.Locale
 
-data class ChatSuggestion(
-    val title: String,
-    val prompt: String,
-    val icon: String,
-)
+data class ChatSuggestion(val text: String)
 
 @Single
 class ChatSuggestionGenerator(
@@ -134,11 +130,10 @@ class ChatSuggestionGenerator(
             json.decodeFromString(ListSerializer(SuggestionDto.serializer()), payload)
         }.getOrNull().orEmpty()
         return items.mapNotNull { item ->
-            val title = item.title.trim().take(MAX_TITLE_LENGTH)
-            val prompt = item.prompt.trim().take(MAX_PROMPT_LENGTH)
-            if (title.isBlank() || prompt.isBlank()) return@mapNotNull null
-            ChatSuggestion(title = title, prompt = prompt, icon = icon(item.icon))
-        }.distinctBy { it.prompt }.take(3)
+            val text = item.text.trim().take(MAX_TEXT_LENGTH)
+            if (text.isBlank()) return@mapNotNull null
+            ChatSuggestion(text)
+        }.distinctBy { it.text }.take(3)
             .takeIf { it.size == 3 }
             .orEmpty()
     }
@@ -151,38 +146,19 @@ class ChatSuggestionGenerator(
         default
     }
 
-    private fun icon(raw: String): String {
-        val key = raw.trim().lowercase()
-        return if (key in ICONS) key else "assistant"
-    }
-
     @Serializable
     private data class SuggestionDto(
-        val title: String = "",
-        val prompt: String = "",
-        val icon: String = "",
+        val text: String = "",
     )
 
     companion object {
-        private const val MAX_TITLE_LENGTH = 40
-        private const val MAX_PROMPT_LENGTH = 240
-        private val ICONS = setOf(
-            "calendar",
-            "feed",
-            "goals",
-            "task",
-            "idea",
-            "folder",
-            "today",
-            "assistant",
-        )
+        private const val MAX_TEXT_LENGTH = 240
         private const val SYSTEM_PROMPT =
             "You suggest what the user might ask their personal assistant next. " +
                 "Use only the context provided. Never invent calendar events, articles, goals, or past conversations. " +
                 "Reply with a JSON array of exactly 3 objects. Each object has " +
-                "\"title\", a short label, and \"prompt\", a natural first-person question the user can send as is, " +
-                "and \"icon\", one of: calendar, feed, goals, task, idea, folder, today, assistant. " +
-                "Write titles and prompts in the user's preferred language. " +
+                "\"text\", a short natural first-person question the user can send as is. " +
+                "Write the questions in the user's preferred language. " +
                 "Make the three suggestions distinct and specific to the context. " +
                 "Return only the JSON array, no markdown."
     }

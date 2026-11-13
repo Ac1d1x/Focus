@@ -80,12 +80,8 @@
     <string name="chat_greeting_evening">晚上好</string>
     <string name="chat_greeting_night">还没睡</string>
     <string name="chat_home_tagline">直接问，或者从下面挑一个。</string>
-    <string name="chat_home_suggestions">可以这样问</string>
-    <string name="chat_suggest_schedule">今天有什么</string>
     <string name="chat_suggest_schedule_prompt">今天我的日历上有什么？</string>
-    <string name="chat_suggest_reading">看看订阅</string>
     <string name="chat_suggest_reading_prompt">我的订阅里有什么值得读的？</string>
-    <string name="chat_suggest_goals">推进目标</string>
     <string name="chat_suggest_goals_prompt">为了推进目标，我现在应该专注什么？</string>
     <string name="chat_attach">添加附件</string>
     <string name="chat_attach_remove">移除附件</string>

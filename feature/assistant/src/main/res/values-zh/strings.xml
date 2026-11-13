@@ -617,7 +617,6 @@
     <string name="settings_page_automation">自动化</string>
     <string name="settings_page_automation_body">触发器、事件来源、旁聊并发和看门狗。</string>
     <string name="settings_super_title">自动化</string>
-    <string name="settings_super_intro">触发器决定任务进主会话还是开旁聊。这里的开关决定哪些事件能进来。</string>
     <string name="settings_super_sources">事件来源</string>
     <string name="settings_super_source_side_chat">旁聊结果</string>
     <string name="settings_super_source_side_chat_body">旁聊的完成、失败和审批事件。</string>
@@ -645,11 +644,6 @@
     <string name="settings_super_today">结果发到 Today</string>
     <string name="settings_super_today_body">显示旁聊结果卡片时，在 Today 里也放一张。</string>
     <string name="settings_super_saved">已保存</string>
-    <string name="settings_super_hero_title">自动化</string>
-    <string name="settings_super_sources_count">%1$d/%2$d 个来源</string>
-    <string name="settings_super_concurrency_pill">%1$d 路并行</string>
-    <string name="settings_super_watchdog_on">看门狗开启</string>
-    <string name="settings_super_watchdog_off">看门狗关闭</string>
     <string name="settings_super_sources_body">只有开启的来源会进入自动化分发。</string>
     <string name="settings_super_group_background">后台</string>
     <string name="settings_super_runtime_body">同时能跑多少旁聊、事件进入的频率，以及什么时候停止任务。</string>

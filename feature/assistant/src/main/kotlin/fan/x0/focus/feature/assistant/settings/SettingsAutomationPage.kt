@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,16 +33,13 @@ import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusChoiceButtons
-import fan.x0.focus.core.designsystem.components.FocusIconBadge
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.designsystem.components.FocusSectionHeader
-import fan.x0.focus.core.designsystem.components.FocusStatusPill
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.FocusTonalButton
-import fan.x0.focus.core.designsystem.components.StatusTone
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.switchItem
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
@@ -84,11 +80,6 @@ fun SettingsAutomationRoute(
         onBack = onBack,
         snackbar = snackbar,
     ) {
-        item(key = "hero") {
-            FocusReveal {
-                HeroCard(state)
-            }
-        }
         item(key = "triggers") {
             FocusReveal(index = 1) {
                 TriggerSection(state, viewModel::onAction)
@@ -111,72 +102,6 @@ fun SettingsAutomationRoute(
         }
     }
     TriggerEditorSheet(state, viewModel::onAction)
-}
-
-@Composable
-private fun HeroCard(state: AutomationUiState) {
-    val scheme = MaterialTheme.colorScheme
-    val enabled = state.sources.count { it.enabled }
-    FocusCard(
-        containerColor = scheme.primaryContainer,
-        contentPadding = 20.dp,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            FocusIconBadge(
-                icon = FocusIcons.Bolt,
-                tint = scheme.onPrimaryContainer,
-                container = scheme.primary,
-                size = 56.dp,
-            )
-            Spacer(Modifier.size(16.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_super_hero_title),
-                    style = LocalFocusTypography.current.titleLarge,
-                    color = scheme.onPrimaryContainer,
-                )
-                Text(
-                    text = stringResource(R.string.settings_super_intro),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = scheme.onPrimaryContainer.copy(alpha = 0.78f),
-                )
-            }
-        }
-        Spacer(Modifier.height(16.dp))
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FocusStatusPill(
-                text = stringResource(
-                    R.string.settings_super_sources_count,
-                    enabled,
-                    state.sources.size,
-                ),
-                tone = StatusTone.Active,
-            )
-            FocusStatusPill(
-                text = stringResource(
-                    R.string.settings_super_concurrency_pill,
-                    state.maxConcurrent,
-                ),
-                tone = StatusTone.Neutral,
-            )
-            FocusStatusPill(
-                text = stringResource(
-                    if (state.watchdog) {
-                        R.string.settings_super_watchdog_on
-                    } else {
-                        R.string.settings_super_watchdog_off
-                    },
-                ),
-                tone = if (state.watchdog) StatusTone.Success else StatusTone.Warning,
-            )
-        }
-    }
 }
 
 @Composable

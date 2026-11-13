@@ -617,7 +617,6 @@
     <string name="settings_page_automation">Automation</string>
     <string name="settings_page_automation_body">Triggers, event sources, side chat concurrency, and the watchdog.</string>
     <string name="settings_super_title">Automation</string>
-    <string name="settings_super_intro">Triggers decide whether work enters the main session or a side chat. These switches decide which events enter at all.</string>
     <string name="settings_super_sources">Sources</string>
     <string name="settings_super_source_side_chat">Side chat results</string>
     <string name="settings_super_source_side_chat_body">Completion, failure, and approval events from side chats.</string>
@@ -645,11 +644,6 @@
     <string name="settings_super_today">Post results to Today</string>
     <string name="settings_super_today_body">Add a card to Today when a side chat result is shown.</string>
     <string name="settings_super_saved">Saved</string>
-    <string name="settings_super_hero_title">Automation</string>
-    <string name="settings_super_sources_count">%1$d/%2$d sources</string>
-    <string name="settings_super_concurrency_pill">%1$d parallel</string>
-    <string name="settings_super_watchdog_on">Watchdog on</string>
-    <string name="settings_super_watchdog_off">Watchdog off</string>
     <string name="settings_super_sources_body">Only enabled sources enter automation. Side chat events still arrive as they finish.</string>
     <string name="settings_super_group_background">Background</string>
     <string name="settings_super_runtime_body">How many side chats can run, how often events enter, and when work is stopped.</string>

@@ -80,7 +80,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -550,7 +549,7 @@ private fun ChatHome(
             }
         }
         Spacer(Modifier.height(16.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             suggestions.forEachIndexed { index, suggestion ->
                 FocusReveal(index = index) {
                     SuggestionButton(
@@ -569,7 +568,6 @@ private fun SuggestionButton(text: String, onClick: () -> Unit) {
     FilledTonalButton(
         onClick = hapticTap(onClick),
         modifier = Modifier
-            .fillMaxWidth()
             .heightIn(min = 48.dp)
             .pressScale(interaction, pressedScale = 0.98f),
         interactionSource = interaction,
@@ -578,10 +576,8 @@ private fun SuggestionButton(text: String, onClick: () -> Unit) {
         Text(
             text = text,
             style = LocalFocusTypography.current.labelLarge,
-            textAlign = TextAlign.Start,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,7 +31,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -111,22 +112,24 @@ fun ShellDrawer(
                 onQueryChange = { query = it },
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickAction(
+                IconOnlyAction(
                     icon = FocusIcons.History,
                     label = stringResource(R.string.drawer_history),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    query = ""
-                    onNavigate(FocusRoute.History)
-                }
-                QuickAction(
+                    selected = false,
+                    onClick = {
+                        query = ""
+                        onNavigate(FocusRoute.History)
+                    },
+                )
+                IconOnlyAction(
                     icon = FocusIcons.Add,
                     label = stringResource(R.string.drawer_new_chat),
-                    modifier = Modifier.weight(1f),
-                ) {
-                    query = ""
-                    onNewSideChat()
-                }
+                    selected = false,
+                    onClick = {
+                        query = ""
+                        onNewSideChat()
+                    },
+                )
             }
         }
     }
@@ -205,15 +208,16 @@ fun ShellDrawer(
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (!controlledOnly) {
-                BottomAction(
+                IconOnlyAction(
                     icon = FocusIcons.Assistant,
                     label = stringResource(R.string.drawer_context_short),
                     selected = current == FocusRoute.Assistant,
                     onClick = { onNavigate(FocusRoute.Assistant) },
                 )
-                BottomAction(
+                IconOnlyAction(
                     icon = FocusIcons.MoreHoriz,
                     label = stringResource(R.string.drawer_more),
                     selected = false,
@@ -221,7 +225,7 @@ fun ShellDrawer(
                 )
             }
             Spacer(Modifier.weight(1f))
-            BottomAction(
+            IconOnlyAction(
                 icon = FocusIcons.Settings,
                 label = stringResource(R.string.settings_title),
                 selected = current == FocusRoute.Settings,
@@ -357,35 +361,6 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
 }
 
 @Composable
-private fun QuickAction(
-    icon: ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        onClick = hapticTap(onClick),
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionLabel(text: String) {
     Text(
         text = text,
@@ -487,31 +462,19 @@ private fun AssistantPicker(
 }
 
 @Composable
-private fun BottomAction(
+private fun IconOnlyAction(
     icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Surface(
-        onClick = hapticTap(onClick),
-        shape = MaterialTheme.shapes.large,
-        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-            )
+    if (selected) {
+        FilledIconButton(onClick = hapticTap(onClick)) {
+            Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp))
+        }
+    } else {
+        FilledTonalIconButton(onClick = hapticTap(onClick)) {
+            Icon(icon, contentDescription = label, modifier = Modifier.size(24.dp))
         }
     }
 }

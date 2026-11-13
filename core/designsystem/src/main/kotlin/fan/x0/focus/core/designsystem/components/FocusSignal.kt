@@ -42,6 +42,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.theme.LocalFocusCornerScale
+import kotlinx.coroutines.flow.first
 
 enum class FocusSignalTone { Info, Success, Warning, Error }
 
@@ -69,9 +71,20 @@ internal data class FocusSignalData(
     val onFinished: (() -> Unit)?,
 )
 
+internal class FocusSignalEntry(val data: FocusSignalData) {
+    val visible = MutableTransitionState(false)
+    var dismissed = false
+        private set
+
+    fun dismiss() {
+        dismissed = true
+        visible.targetState = false
+    }
+}
+
 class FocusSignalState {
-    private val entries = mutableStateListOf<FocusSignalData>()
-    internal val signals: List<FocusSignalData> get() = entries
+    private val entries = mutableStateListOf<FocusSignalEntry>()
+    internal val signals: List<FocusSignalEntry> get() = entries
 
     private var counter = 0L
 
@@ -86,15 +99,17 @@ class FocusSignalState {
     ) {
         if (message.isBlank()) return
         entries.add(
-            FocusSignalData(
-                id = ++counter,
-                message = message,
-                tone = tone,
-                icon = icon,
-                actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
-                action = action,
-                durationMs = durationMs.coerceAtLeast(1_200L),
-                onFinished = onFinished,
+            FocusSignalEntry(
+                FocusSignalData(
+                    id = ++counter,
+                    message = message,
+                    tone = tone,
+                    icon = icon,
+                    actionLabel = actionLabel.takeIf { action != null && !it.isNullOrBlank() },
+                    action = action,
+                    durationMs = durationMs.coerceAtLeast(1_200L),
+                    onFinished = onFinished,
+                ),
             ),
         )
         while (entries.size > MaxSignals) {
@@ -103,11 +118,15 @@ class FocusSignalState {
     }
 
     fun dismiss() {
-        entries.clear()
+        entries.forEach { it.dismiss() }
     }
 
     internal fun dismiss(id: Long) {
-        entries.removeAll { it.id == id }
+        entries.firstOrNull { it.data.id == id }?.dismiss()
+    }
+
+    internal fun remove(id: Long) {
+        entries.removeAll { it.data.id == id }
     }
 }
 
@@ -189,12 +208,12 @@ fun FocusSignalHost(
         ) {
             items(
                 items = signals,
-                key = { it.id },
-            ) { data ->
+                key = { it.data.id },
+            ) { entry ->
                 FocusSignalItem(
-                    data = data,
+                    entry = entry,
+                    state = state,
                     motion = motion,
-                    onDismiss = { state.dismiss(data.id) },
                     modifier = Modifier.animateItem(
                         fadeInSpec = motion.defaultEffectsSpec(),
                         placementSpec = motion.defaultSpatialSpec(),
@@ -208,17 +227,20 @@ fun FocusSignalHost(
 
 @Composable
 private fun FocusSignalItem(
-    data: FocusSignalData,
+    entry: FocusSignalEntry,
+    state: FocusSignalState,
     motion: MotionScheme,
-    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val visible = remember(data.id) { MutableTransitionState(false) }
-    LaunchedEffect(data.id) {
-        visible.targetState = true
+    LaunchedEffect(entry) {
+        if (!entry.dismissed) entry.visible.targetState = true
+        snapshotFlow {
+            entry.visible.isIdle && !entry.visible.currentState && !entry.visible.targetState
+        }.first { it }
+        state.remove(entry.data.id)
     }
     AnimatedVisibility(
-        visibleState = visible,
+        visibleState = entry.visible,
         modifier = modifier,
         enter = slideInVertically(motion.defaultSpatialSpec()) { -it } +
             fadeIn(motion.defaultEffectsSpec()) +
@@ -227,10 +249,17 @@ private fun FocusSignalItem(
                 initialScale = 0.92f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
+        exit = slideOutVertically(motion.fastSpatialSpec()) { -it } +
+            fadeOut(motion.fastEffectsSpec()) +
+            scaleOut(
+                animationSpec = motion.fastSpatialSpec(),
+                targetScale = 0.92f,
+                transformOrigin = TransformOrigin(0.5f, 0f),
+            ),
     ) {
         FocusSignalCard(
-            data = data,
-            onDismiss = onDismiss,
+            data = entry.data,
+            onDismiss = { state.dismiss(entry.data.id) },
         )
     }
 }

@@ -106,7 +106,6 @@ fun ShellDrawer(
     val compactHeight = LocalWindowInfo.current.containerDpSize.height < 600.dp
     val header: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            UserHeader(name = state.name)
             SearchField(
                 query = query,
                 onQueryChange = { query = it },
@@ -280,55 +279,6 @@ private fun bucketOf(timestamp: Long, today: LocalDate): Int {
         date == today.minusDays(1) -> 1
         date.isAfter(today.minusDays(8)) -> 2
         else -> 3
-    }
-}
-
-@Composable
-private fun UserHeader(name: String?) {
-    val label = name?.trim().takeUnless { it.isNullOrBlank() }
-        ?: stringResource(R.string.drawer_default_name)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(44.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                val initial = label.firstOrNull()?.uppercaseChar()?.toString().orEmpty()
-                if (initial.isNotBlank()) {
-                    Text(
-                        text = initial,
-                        style = MaterialTheme.typography.titleMediumEmphasized,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                } else {
-                    Icon(
-                        imageVector = FocusIcons.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMediumEmphasized,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = stringResource(R.string.drawer_greeting),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

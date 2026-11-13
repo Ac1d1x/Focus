@@ -424,7 +424,6 @@ sealed interface ChatAction : UiAction {
     data object RetryBtw : ChatAction
     data class OpenPicker(val picker: ComposerPicker?) : ChatAction
     data class SelectModel(val providerId: String, val model: String) : ChatAction
-    data object PromoteToMain : ChatAction
     data class ModelQueryChanged(val value: String) : ChatAction
     data object RefreshModels : ChatAction
     data class SelectReasoning(val level: ReasoningLevel) : ChatAction

@@ -339,13 +339,6 @@ fun ChatScreen(
                                 }
                             }
                         } else {
-                            IconButton(onClick = hapticTap { onAction(ChatAction.PromoteToMain) }) {
-                                Icon(
-                                    FocusIcons.Assistant,
-                                    contentDescription = stringResource(R.string.chat_promote_main),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                             IconButton(onClick = hapticTap { onAction(ChatAction.NewConversation) }) {
                                 Icon(
                                     FocusIcons.Add,

@@ -325,7 +325,6 @@ class ChatViewModel(
             ChatAction.RetryLast -> retryLast()
             ChatAction.OpenSessions -> sendEffect(ChatEffect.OpenSessions)
             ChatAction.OpenSettings -> sendEffect(ChatEffect.OpenSettings)
-            ChatAction.PromoteToMain -> promoteToMain()
             ChatAction.ConsumeMessage -> updateState { copy(message = null) }
             ChatAction.OpenSidePanel -> openSidePanel()
             ChatAction.CloseSidePanel -> updateState { copy(sidePanel = sidePanel.copy(open = false)) }
@@ -1317,18 +1316,6 @@ class ChatViewModel(
         }
         turns.stop(conversationId)
         updateState { copy(sending = false, workingText = "") }
-    }
-
-    private fun promoteToMain() {
-        val id = currentState.conversationId
-        if (id.isBlank() || currentState.isMain) return
-        viewModelScope.launch {
-            if (chats.promoteToMain(id)) {
-                updateState { copy(kind = ConversationKind.Main) }
-                refreshSidePanel()
-                switchTo(id, force = true)
-            }
-        }
     }
 
     private fun openSidePanel() {

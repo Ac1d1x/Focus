@@ -5,8 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -356,7 +355,7 @@ private fun ConversationRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
             if (conversation.taskStatus.active) {
                 Box(
@@ -458,7 +457,7 @@ private fun AssistantSwitcherSheet(
                     Text(
                         text = stringResource(R.string.drawer_assistants),
                         style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     FilledTonalIconButton(onClick = hapticTap(onCreate)) {
                         Icon(FocusIcons.Add, contentDescription = stringResource(R.string.drawer_new_assistant))
@@ -558,25 +557,25 @@ private fun MoreSheet(
                         icon = FocusIcons.Today,
                         label = stringResource(R.string.tab_today),
                         selected = current == FocusRoute.Today,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) { onNavigate(FocusRoute.Today) }
                     MoreTile(
                         icon = FocusIcons.Groups,
                         label = stringResource(R.string.tab_groups),
                         selected = current == FocusRoute.Crew,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) { onNavigate(FocusRoute.Crew) }
                     MoreTile(
                         icon = FocusIcons.Goals,
                         label = stringResource(R.string.tab_goals),
                         selected = current == FocusRoute.Goals,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) { onNavigate(FocusRoute.Goals) }
                     MoreTile(
                         icon = FocusIcons.Library,
                         label = stringResource(R.string.tab_library),
                         selected = current == FocusRoute.Library,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                     ) { onNavigate(FocusRoute.Library) }
                 }
             }
@@ -586,7 +585,7 @@ private fun MoreSheet(
                         icon = FocusIcons.Terminal,
                         label = stringResource(R.string.tab_bridge),
                         selected = current == FocusRoute.Bridge,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         container = MaterialTheme.colorScheme.tertiaryContainer,
                         content = MaterialTheme.colorScheme.onTertiaryContainer,
                     ) { onNavigate(FocusRoute.Bridge) }
@@ -595,7 +594,7 @@ private fun MoreSheet(
                     icon = FocusIcons.Device,
                     label = stringResource(R.string.device_title),
                     selected = current == FocusRoute.Device,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     content = MaterialTheme.colorScheme.onTertiaryContainer,
                 ) { onNavigate(FocusRoute.Device) }
@@ -625,7 +624,7 @@ private fun MoreSheet(
 @Composable
 private fun MoreSection(
     title: String,
-    content: @Composable FlowRowScope.() -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -633,9 +632,8 @@ private fun MoreSection(
             style = MaterialTheme.typography.titleSmallEmphasized,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
         )
     }

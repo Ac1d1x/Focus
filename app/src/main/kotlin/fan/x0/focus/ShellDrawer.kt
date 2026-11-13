@@ -145,13 +145,13 @@ fun ShellDrawer(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             if (compactHeight) {
-                item(key = "header") { header() }
+                item(key = "shell:header") { header() }
             }
             if (query.isNotBlank()) {
                 if (filtered.isEmpty()) {
-                    item(key = "empty") { EmptyRow(stringResource(R.string.drawer_no_results)) }
+                    item(key = "shell:empty") { EmptyRow(stringResource(R.string.drawer_no_results)) }
                 } else {
-                    items(filtered, key = { it.id }) { conversation ->
+                    items(filtered, key = { "conversation:${it.id}" }) { conversation ->
                         ConversationRow(
                             conversation = conversation,
                             selected = conversation.id == currentConversationId,
@@ -164,8 +164,8 @@ fun ShellDrawer(
                 }
             } else {
                 if (state.main != null) {
-                    item(key = "pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
-                    item(key = "main") {
+                    item(key = "shell:pinned") { SectionLabel(stringResource(R.string.drawer_pinned)) }
+                    item(key = "shell:main") {
                         ConversationRow(
                             conversation = state.main,
                             selected = current == FocusRoute.Chat && currentConversationId == state.main.id,
@@ -177,8 +177,8 @@ fun ShellDrawer(
                     }
                 }
                 groups.forEach { (bucket, list) ->
-                    item(key = "date_$bucket") { SectionLabel(labels[bucket]) }
-                    items(list, key = { it.id }) { conversation ->
+                    item(key = "shell:date_$bucket") { SectionLabel(labels[bucket]) }
+                    items(list, key = { "conversation:${it.id}" }) { conversation ->
                         ConversationRow(
                             conversation = conversation,
                             selected = conversation.id == currentConversationId,
@@ -190,7 +190,7 @@ fun ShellDrawer(
                     }
                 }
                 if (filtered.isEmpty() && state.main == null) {
-                    item(key = "empty") { EmptyRow(stringResource(R.string.drawer_no_conversations)) }
+                    item(key = "shell:empty") { EmptyRow(stringResource(R.string.drawer_no_conversations)) }
                 }
             }
         }
@@ -480,6 +480,9 @@ private fun AssistantPicker(
         selected = false,
         onClick = hapticSelect(onSwitch),
         shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.NavigationDrawerItemDefaults.colors(
+            unselectedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
     )
 }
 
@@ -490,18 +493,24 @@ private fun BottomAction(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    TextButton(onClick = hapticTap(onClick)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Surface(
+        onClick = hapticTap(onClick),
+        shape = MaterialTheme.shapes.large,
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+        contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

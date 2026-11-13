@@ -66,6 +66,8 @@ internal fun SettingsHomePage(onOpen: (SettingsDestination) -> Unit) {
                 val notificationsBody = stringResource(R.string.settings_page_notifications_body)
                 val dataTitle = stringResource(R.string.settings_page_data)
                 val dataBody = stringResource(R.string.settings_page_data_body)
+                val crashTitle = stringResource(R.string.settings_page_crash_logs)
+                val crashBody = stringResource(R.string.settings_page_crash_logs_body)
                 FocusCardGroup {
                     pageItem(
                         title = accountTitle,
@@ -144,6 +146,12 @@ internal fun SettingsHomePage(onOpen: (SettingsDestination) -> Unit) {
                         body = dataBody,
                         icon = FocusIcons.Folder,
                         onClick = { onOpen(SettingsDestination.Data) },
+                    )
+                    pageItem(
+                        title = crashTitle,
+                        body = crashBody,
+                        icon = FocusIcons.Warning,
+                        onClick = { onOpen(SettingsDestination.CrashLogs) },
                     )
                 }
             }

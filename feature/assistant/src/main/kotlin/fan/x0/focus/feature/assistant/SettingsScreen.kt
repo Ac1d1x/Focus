@@ -24,6 +24,7 @@ import fan.x0.focus.feature.assistant.settings.SettingsAccountPage
 import fan.x0.focus.feature.assistant.settings.SettingsAppearancePage
 import fan.x0.focus.feature.assistant.settings.SettingsChatAgentPage
 import fan.x0.focus.feature.assistant.settings.SettingsChatDetailRoute
+import fan.x0.focus.feature.assistant.settings.SettingsCrashLogsRoute
 import fan.x0.focus.feature.assistant.settings.SettingsDataPage
 import fan.x0.focus.feature.assistant.settings.SettingsDestination
 import fan.x0.focus.feature.assistant.settings.SettingsHomePage
@@ -217,6 +218,10 @@ internal fun SettingsScreen(
                         onAction = onAction,
                         snackbar = snackbar,
                         onBack = { backStack.removeLastOrNull() },
+                    )
+                    SettingsDestination.CrashLogs -> SettingsCrashLogsRoute(
+                        onBack = { backStack.removeLastOrNull() },
+                        snackbar = snackbar,
                     )
                 }
             }

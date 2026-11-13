@@ -246,6 +246,16 @@
     <string name="settings_notifications_title">Message push</string>
     <string name="settings_notifications_item">Push notifications</string>
     <string name="settings_notifications_body">Notify when a reply is ready, the assistant needs you, or feeds have new articles.</string>
+    <string name="settings_page_crash_logs">Crash logs</string>
+    <string name="settings_page_crash_logs_body">Uncaught exceptions saved on this device.</string>
+    <string name="crash_logs_empty_title">No crash logs</string>
+    <string name="crash_logs_empty_body">Crashes will appear here with their stack traces.</string>
+    <string name="crash_logs_title">Recent crashes</string>
+    <string name="crash_logs_clear">Clear all</string>
+    <string name="crash_logs_delete">Delete</string>
+    <string name="crash_logs_copy">Copy</string>
+    <string name="crash_logs_copied">Copied</string>
+    <string name="crash_logs_unknown">Unknown error</string>
     <string name="settings_page_data">Data and privacy</string>
     <string name="settings_page_data_body">Local stats, data management, and about.</string>
     <string name="settings_chat_detail_body">Stats appear under the last assistant reply. Turn fields on or off and move them into the order you want.</string>

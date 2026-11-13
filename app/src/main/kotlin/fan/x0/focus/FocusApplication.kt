@@ -19,6 +19,7 @@ import fan.x0.focus.data.assistant.ApprovalStore
 import fan.x0.focus.data.assistant.AssistantEventSink
 import fan.x0.focus.data.assistant.AssistantModule
 import fan.x0.focus.data.assistant.ChatStore
+import fan.x0.focus.data.assistant.CrashLogStore
 import fan.x0.focus.data.assistant.CrewRunner
 import fan.x0.focus.data.assistant.ReminderWorker
 import fan.x0.focus.data.device.DeviceAutomationState
@@ -94,6 +95,7 @@ class FocusApplication : Application() {
             androidLogger()
             androidContext(this@FocusApplication)
         }
+        KoinPlatform.getKoin().get<CrashLogStore>().install()
         registerActivityLifecycleCallbacks(
             AppPresenceCallbacks(KoinPlatform.getKoin().get<AppPresence>()),
         )

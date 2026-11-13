@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -132,6 +134,11 @@ class FocusSignalState {
 
 private const val MaxSignals = 4
 
+private val SignalScaleIn = spring<Float>(
+    dampingRatio = 0.55f,
+    stiffness = Spring.StiffnessMediumLow,
+)
+
 val LocalFocusSignal = staticCompositionLocalOf { FocusSignalState() }
 
 @Composable
@@ -245,15 +252,15 @@ private fun FocusSignalItem(
         enter = slideInVertically(motion.defaultSpatialSpec()) { -it } +
             fadeIn(motion.defaultEffectsSpec()) +
             scaleIn(
-                animationSpec = motion.defaultSpatialSpec(),
-                initialScale = 0.92f,
+                animationSpec = SignalScaleIn,
+                initialScale = 0.52f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
         exit = slideOutVertically(motion.fastSpatialSpec()) { -it } +
             fadeOut(motion.fastEffectsSpec()) +
             scaleOut(
                 animationSpec = motion.fastSpatialSpec(),
-                targetScale = 0.92f,
+                targetScale = 0.58f,
                 transformOrigin = TransformOrigin(0.5f, 0f),
             ),
     ) {

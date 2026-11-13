@@ -9,16 +9,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,14 +37,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,33 +81,34 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import fan.x0.focus.core.designsystem.components.AvatarState
 import fan.x0.focus.core.designsystem.components.AvatarStyle
-import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusActivity
+import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
-import fan.x0.focus.core.designsystem.components.FocusTextButton
-import fan.x0.focus.core.designsystem.components.FocusTraceCard
-import fan.x0.focus.core.designsystem.components.FocusTraceStep
-import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
 import fan.x0.focus.core.designsystem.components.FocusIcons
-import fan.x0.focus.core.designsystem.components.FocusSignalTone
-import fan.x0.focus.core.designsystem.components.LocalFocusSignal
 import fan.x0.focus.core.designsystem.components.FocusJumpToLatest
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
 import fan.x0.focus.core.designsystem.components.FocusMarkdown
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.designsystem.components.FocusTimelineStep
+import fan.x0.focus.core.designsystem.components.FocusTraceCard
+import fan.x0.focus.core.designsystem.components.FocusTraceStep
 import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
+import fan.x0.focus.core.designsystem.components.LocalFocusSignal
+import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.components.pressScale
 import fan.x0.focus.core.designsystem.components.shimmer
 import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
@@ -114,14 +118,14 @@ import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.core.notify.AppPresence
 import fan.x0.focus.core.notify.MessageNotifier
+import java.io.File
+import java.time.LocalTime
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import java.io.File
-import java.time.LocalTime
 
 @Composable
 fun ChatRoute(viewModel: ChatViewModel = koinViewModel()) {
@@ -519,18 +523,17 @@ private fun ChatHome(
         generated.map { Suggestion(it.text) }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 20.dp)
+            .padding(bottom = bottomPadding + 4.dp),
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = Alignment.Start,
     ) {
         FocusReveal {
             Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 96.dp)
@@ -538,31 +541,48 @@ private fun ChatHome(
                     text = title,
                     style = LocalFocusTypography.current.displaySmall,
                     color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
                 )
                 Text(
                     text = stringResource(R.string.chat_home_tagline),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
                 )
             }
         }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(bottom = bottomPadding + 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
+        Spacer(Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             suggestions.forEachIndexed { index, suggestion ->
                 FocusReveal(index = index) {
-                    FocusTextButton(
+                    SuggestionButton(
                         text = suggestion.text,
                         onClick = { onAction(ChatAction.Suggest(suggestion.text)) },
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SuggestionButton(text: String, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    TextButton(
+        onClick = hapticTap(onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .pressScale(interaction, pressedScale = 0.98f),
+        interactionSource = interaction,
+        contentPadding = ButtonDefaults.TextButtonContentPadding,
+    ) {
+        Text(
+            text = text,
+            style = LocalFocusTypography.current.labelLarge,
+            textAlign = TextAlign.Start,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

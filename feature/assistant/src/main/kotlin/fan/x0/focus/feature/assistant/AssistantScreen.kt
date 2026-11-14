@@ -70,6 +70,7 @@ import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.data.assistant.AssistantAvatarStore
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 import kotlinx.coroutines.CancellationException
@@ -158,9 +159,17 @@ fun AssistantScreen(
                     WorkspaceGroup(state = state, onAction = onAction)
                 }
             }
-            item(key = "prompts") {
-                FocusReveal(index = 3) {
-                    PromptGroup(state = state, onAction = onAction)
+            if (state.assistantKind == AssistantKind.Roleplay) {
+                item(key = "roleplay") {
+                    FocusReveal(index = 3) {
+                        RoleplayCardGroup(state = state, onAction = onAction)
+                    }
+                }
+            } else {
+                item(key = "prompts") {
+                    FocusReveal(index = 3) {
+                        PromptGroup(state = state, onAction = onAction)
+                    }
                 }
             }
             item(key = "more") {
@@ -407,6 +416,82 @@ private fun ProfileGroup(
                             onSave(nextName, nextRole, nextEmoji, avatar)
                         },
                         enabled = name.isNotBlank() && changed,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoleplayCardGroup(state: AssistantUiState, onAction: (AssistantAction) -> Unit) {
+    var greeting by remember(state.assistantId) { mutableStateOf(state.roleplayGreeting) }
+    var prompt by remember(state.assistantId) { mutableStateOf(state.roleplayPrompt) }
+    var examples by remember(state.assistantId) { mutableStateOf(state.roleplayExamples) }
+    LaunchedEffect(state.assistantId, state.roleplayGreeting, state.roleplayPrompt, state.roleplayExamples) {
+        greeting = state.roleplayGreeting
+        prompt = state.roleplayPrompt
+        examples = state.roleplayExamples
+    }
+    FocusCardGroup(title = stringResource(R.string.assistant_roleplay_card_title)) {
+        formItem(
+            headlineContent = { Text(stringResource(R.string.assistant_roleplay_card_form_title)) },
+            supportingContent = { Text(stringResource(R.string.assistant_roleplay_card_form_body)) },
+            leadingContent = {
+                FocusCardGroupIcon(
+                    icon = FocusIcons.Chat,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = greeting,
+                    onValueChange = { greeting = it.take(4000) },
+                    label = { Text(stringResource(R.string.assistant_roleplay_greeting)) },
+                    placeholder = { Text(stringResource(R.string.assistant_roleplay_greeting_hint)) },
+                    minLines = 2,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
+                )
+                OutlinedTextField(
+                    value = prompt,
+                    onValueChange = { prompt = it.take(12000) },
+                    label = { Text(stringResource(R.string.assistant_roleplay_prompt)) },
+                    placeholder = { Text(stringResource(R.string.assistant_roleplay_prompt_hint)) },
+                    minLines = 5,
+                    maxLines = 12,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
+                )
+                OutlinedTextField(
+                    value = examples,
+                    onValueChange = { examples = it.take(8000) },
+                    label = { Text(stringResource(R.string.assistant_roleplay_examples)) },
+                    placeholder = { Text(stringResource(R.string.assistant_roleplay_examples_hint)) },
+                    minLines = 3,
+                    maxLines = 8,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    FocusPrimaryButton(
+                        text = stringResource(R.string.assistant_profile_save),
+                        onClick = {
+                            onAction(
+                                AssistantAction.SaveRoleplayCard(
+                                    greeting = greeting.trim(),
+                                    prompt = prompt.trim(),
+                                    examples = examples.trim(),
+                                ),
+                            )
+                        },
+                        enabled = greeting.trim() != state.roleplayGreeting ||
+                            prompt.trim() != state.roleplayPrompt ||
+                            examples.trim() != state.roleplayExamples,
                     )
                 }
             }

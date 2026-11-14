@@ -23,6 +23,16 @@ import fan.x0.focus.core.network.openai.ThinkingDto
 import fan.x0.focus.core.network.openai.TitleDto
 import fan.x0.focus.core.network.openai.ToolCallDto
 import fan.x0.focus.core.network.openai.ToolDto
+import fan.x0.focus.data.roleplay.RoleplayBubble
+import fan.x0.focus.data.roleplay.RoleplayBubbleParser
+import fan.x0.focus.data.roleplay.RoleplayCard
+import fan.x0.focus.data.roleplay.RoleplayConfig
+import fan.x0.focus.data.roleplay.RoleplayPromptBuilder
+import fan.x0.focus.data.roleplay.RoleplayPromptInput
+import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStateView
+import fan.x0.focus.data.roleplay.applyPunctuation
+import fan.x0.focus.data.roleplay.cleanBubble
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -34,6 +44,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -60,6 +71,8 @@ data class TurnOptions(
     val mentionedSkills: List<String> = emptyList(),
     val silentReply: Boolean = false,
     val autoTitle: Boolean = true,
+    val turnId: String = "",
+    val proactive: String = "",
 )
 
 sealed interface ChatEvent {
@@ -107,6 +120,13 @@ sealed interface ChatEvent {
         val tokensAfter: Int = 0,
     ) : ChatEvent
     data class RetryScheduled(val attempt: Int, val max: Int, val reason: String) : ChatEvent
+    data class RoleplayBubbleShown(
+        val messageId: Long,
+        val text: String,
+        val delayMs: Int,
+        val kind: String = "text",
+        val meta: String = "",
+    ) : ChatEvent
     data object RetryReset : ChatEvent
     data object Completed : ChatEvent
     data class Failed(val error: AppError) : ChatEvent
@@ -126,6 +146,9 @@ class ChatEngine(
     private val workspaceTrust: WorkspaceTrustService,
     private val deepSeekSettings: DeepSeekSettings,
     private val locale: LocaleController,
+    private val profiles: AssistantProfileStore,
+    private val roleplaySettings: RoleplaySettings,
+    private val roleplayPrompt: RoleplayPromptBuilder,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val waivers = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
@@ -151,6 +174,22 @@ class ChatEngine(
         mode: ChatMode = ChatMode.Chat,
         options: TurnOptions = TurnOptions(),
         appendUser: Boolean = true,
+    ): Flow<ChatEvent> = flow {
+        val info = chats.conversation(conversationId)
+        val profile = info?.let { profiles.profileOnce(it.assistantId) }
+        if (mode == ChatMode.Chat && profile?.kind == AssistantKind.Roleplay) {
+            emitAll(roleplaySend(conversationId, text, options, appendUser, profile))
+        } else {
+            emitAll(assistantSend(conversationId, text, mode, options, appendUser))
+        }
+    }
+
+    private fun assistantSend(
+        conversationId: String,
+        text: String,
+        mode: ChatMode,
+        options: TurnOptions,
+        appendUser: Boolean,
     ): Flow<ChatEvent> = flow {
         val config = settings.configOnce()
         val provider = config.providers.firstOrNull { it.id == options.providerId } ?: config.activeProvider
@@ -603,6 +642,293 @@ class ChatEngine(
             ),
         )
         emit(ChatEvent.Completed)
+    }
+
+    private fun roleplaySend(
+        conversationId: String,
+        text: String,
+        options: TurnOptions,
+        appendUser: Boolean,
+        profile: AssistantProfile,
+    ): Flow<ChatEvent> = flow {
+        val config = settings.configOnce()
+        val provider = config.providers.firstOrNull { it.id == options.providerId } ?: config.activeProvider
+        val providerId = provider?.id ?: config.activeProviderId.orEmpty()
+        val baseUrl = provider?.baseUrl ?: config.baseUrl.orEmpty()
+        val protocol = provider?.protocol ?: ChatProtocol.ChatCompletions
+        val model = options.model.ifBlank { provider?.model.orEmpty() }
+        val endpoint = ModelEndpoint(baseUrl, model)
+        if (!endpoint.isUsable) {
+            emit(ChatEvent.Failed(AppError(AppErrorType.Generic, serverMessage = "Set the model connection first.")))
+            return@flow
+        }
+        val apiKey = secrets.apiKey(providerId).orEmpty()
+        if (apiKey.isBlank() && provider?.requiresKey != false) {
+            emit(ChatEvent.Failed(AppError(AppErrorType.Unauthorized, serverMessage = "Set the API key first.")))
+            return@flow
+        }
+        val requestConfig = provider?.requestConfig(apiKey) ?: ProviderRequestConfig(apiKey = apiKey)
+        val roleplayConfig = roleplaySettings.effectiveOnce(profile.id)
+        val userPersona = roleplaySettings.userPersonaOnce()
+        val turnId = options.turnId.ifBlank { System.currentTimeMillis().toString() }
+        val startedAt = System.currentTimeMillis()
+        val retry = agent.configOnce().retry
+        try {
+            if (appendUser && (text.isNotBlank() || options.attachments.isNotEmpty())) {
+                chats.append(
+                    conversationId = conversationId,
+                    role = ChatRole.User,
+                    content = text,
+                    attachments = options.attachments,
+                    replyToId = options.replyToId,
+                )
+                emit(ChatEvent.UserMessageAppended(chats.userTurnCount(conversationId)))
+            }
+            if (compactor.shouldCompact(conversationId, providerId, model)) {
+                emit(ChatEvent.CompactionStarted(automatic = true))
+                val compacted = compactor.compact(conversationId, providerId, model) { delta ->
+                    emit(ChatEvent.CompactionDelta(delta))
+                }
+                emit(
+                    ChatEvent.CompactionFinished(
+                        automatic = true,
+                        ok = compacted != null,
+                        tokensBefore = compacted?.tokensBefore ?: 0,
+                        tokensAfter = compacted?.tokensAfter ?: 0,
+                    ),
+                )
+            }
+            val context = chats.context(conversationId)
+            val system = roleplayPrompt.build(
+                RoleplayPromptInput(
+                    assistantName = profile.name,
+                    userName = userPersona.name.ifBlank { "the user" },
+                    userDescription = userPersona.description,
+                    role = profile.role,
+                    card = profile.roleplay ?: RoleplayCard(),
+                    config = roleplayConfig,
+                    state = RoleplayStateView(conversationId = conversationId),
+                    currentTime = ToolTime.full(ToolTime.now()),
+                    language = locale.current() ?: "zh",
+                    proactive = options.proactive,
+                ),
+            ).withSummary(context.summary)
+            val request = buildRequest(
+                endpoint = endpoint,
+                system = system,
+                context = context,
+                pendingMedia = emptyList(),
+                providerId = providerId,
+                wire = "",
+                deepSeekEnabled = false,
+                deepSeekConfig = DeepSeekConfig(),
+                options = options,
+                specs = emptyList(),
+                userTurns = chats.userTurnCount(conversationId),
+                round = 1,
+                roleplay = true,
+            )
+            val bubbles = mutableListOf<RoleplayBubble>()
+            val parser = RoleplayBubbleParser(
+                enabled = roleplayConfig.splitBubbles,
+                defaultDelayMs = 600,
+                autoSplitChars = if (roleplayConfig.splitBubbles) 72 else 0,
+            )
+            var totalStats = MessageStats(
+                providerId = providerId,
+                providerName = provider?.name ?: providerId,
+                model = model,
+            )
+            val roundResult = streamRound(
+                endpoint = endpoint,
+                protocol = protocol,
+                config = requestConfig,
+                request = request,
+                retry = retry,
+                round = 1,
+                step = 0,
+                totalStats = totalStats,
+                startedAt = startedAt,
+                emitDelta = { delta -> bubbles += parser.push(delta) },
+                emitReasoningDelta = { delta ->
+                    if (roleplayConfig.showToolTrace) emit(ChatEvent.ReasoningDelta(delta))
+                },
+                emitStats = { stats -> emit(ChatEvent.StatsUpdated(stats)) },
+                emitRetry = { attempt, max, reason -> emit(ChatEvent.RetryScheduled(attempt, max, reason)) },
+                emitReset = { emit(ChatEvent.RetryReset) },
+                emitEvent = { emit(it) },
+            )
+            if (roundResult.reasoningMs > 0 && roleplayConfig.showToolTrace) {
+                emit(ChatEvent.ReasoningTimed(roundResult.reasoningMs))
+            }
+            if (roundResult.refusal) {
+                emit(ChatEvent.Refused(roundResult.refusalMessage))
+                return@flow
+            }
+            bubbles += parser.finish()
+            val message = roundResult.message
+            val citations = parseCitations(message.text, message.annotations)
+            totalStats = roundResult.stats.copy(
+                round = 1,
+                step = 0,
+                durationMs = System.currentTimeMillis() - startedAt,
+            )
+            emit(ChatEvent.StatsUpdated(totalStats))
+            persistRoleplayRound(
+                conversationId = conversationId,
+                bubbles = bubbles,
+                calls = message.toolCalls.map {
+                    ToolCallRecord(it.id, it.name, tools.redactArguments(it.name, it.arguments))
+                },
+                message = message,
+                totalStats = totalStats,
+                reasoningMs = roundResult.reasoningMs,
+                citations = citations,
+                wire = "",
+                turnId = turnId,
+                proactive = options.proactive.isNotBlank(),
+                config = roleplayConfig,
+            ).forEach { (id, bubble) ->
+                emit(ChatEvent.RoleplayBubbleShown(id, bubble.text, bubble.delayMs))
+            }
+            emit(ChatEvent.Completed)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            emit(ChatEvent.Failed(e.toAppError()))
+        }
+    }
+
+    private suspend fun buildRequest(
+        endpoint: ModelEndpoint,
+        system: String,
+        context: ChatContext,
+        pendingMedia: List<ChatAttachment>,
+        providerId: String,
+        wire: String,
+        deepSeekEnabled: Boolean,
+        deepSeekConfig: DeepSeekConfig,
+        options: TurnOptions,
+        specs: List<ToolSpec>,
+        userTurns: Int,
+        round: Int,
+        roleplay: Boolean,
+    ): ChatCompletionRequest {
+        val messages = buildList {
+            add(ChatMessageDto(role = "system", content = system))
+            addAll(context.messages.toDtos(deepSeekEnabled, providerId, wire))
+            val media = pendingMedia.mapNotNull { it.dataUrl }
+            if (media.isNotEmpty()) {
+                add(
+                    ChatMessageDto(
+                        role = "user",
+                        content = MessageContent.of("Images returned by the tool calls above.", media),
+                    ),
+                )
+            }
+            if (context.messages.isEmpty() && context.summary.isBlank()) {
+                add(ChatMessageDto(role = "user", content = "Begin the setup conversation now."))
+            }
+        }.let { base ->
+            if (deepSeekEnabled && deepSeekConfig.userMeta && base.lastOrNull()?.role == "user") {
+                base.toMutableList().apply {
+                    add(
+                        lastIndex,
+                        ChatMessageDto(
+                            role = "latest_reminder",
+                            content = latestReminder(deepSeekConfig.location),
+                        ),
+                    )
+                }
+            } else {
+                base
+            }
+        }
+        val toolDtos = specs.map { it.toDto() }.toMutableList().apply {
+            if (deepSeekEnabled) {
+                if (deepSeekConfig.webSearch) add(ToolDto.server("deepseek_web_search"))
+                if (deepSeekConfig.readLinks) add(ToolDto.server("deepseek_read_url"))
+            }
+        }
+        return ChatCompletionRequest(
+            model = endpoint.model,
+            messages = messages,
+            stream = true,
+            streamOptions = StreamOptionsDto(includeUsage = true),
+            tools = toolDtos.takeIf { it.isNotEmpty() },
+            toolChoice = "auto",
+            temperature = when {
+                deepSeekEnabled -> null
+                roleplay -> 1.0
+                else -> 0.4
+            },
+            maxTokens = if (deepSeekEnabled) 8192 else null,
+            reasoningEffort = if (deepSeekEnabled) null else options.reasoning.wire,
+            thinking = if (deepSeekEnabled && options.reasoning.isEnabled) ThinkingDto() else null,
+            title = if (!roleplay && deepSeekEnabled && deepSeekConfig.title && userTurns == 1 && round == 1) {
+                TitleDto()
+            } else {
+                null
+            },
+        )
+    }
+
+    private suspend fun persistRoleplayRound(
+        conversationId: String,
+        bubbles: List<RoleplayBubble>,
+        calls: List<ToolCallRecord>,
+        message: CompletedMessage,
+        totalStats: MessageStats,
+        reasoningMs: Long,
+        citations: List<ChatCitation>,
+        wire: String,
+        turnId: String,
+        proactive: Boolean,
+        config: RoleplayConfig,
+    ): List<Pair<Long, RoleplayBubble>> {
+        val cleaned = bubbles.mapNotNull { bubble ->
+            val text = applyPunctuation(
+                cleanBubble(bubble.text, config.stripMarkdown),
+                config.punctuationStyle,
+            )
+            if (text.isBlank()) null else RoleplayBubble(text, bubble.delayMs)
+        }
+        if (cleaned.isEmpty()) {
+            if (calls.isEmpty()) return emptyList()
+            chats.append(
+                conversationId = conversationId,
+                role = ChatRole.Assistant,
+                content = "",
+                reasoning = message.reasoning,
+                toolCalls = calls,
+                stats = totalStats,
+                elapsedMs = reasoningMs,
+                serverBlocks = message.serverToolCalls?.toString(),
+                citations = citations,
+                wire = wire,
+                turnId = turnId,
+                proactive = proactive,
+            )
+            return emptyList()
+        }
+        return cleaned.mapIndexed { index, bubble ->
+            val last = index == cleaned.lastIndex
+            val id = chats.append(
+                conversationId = conversationId,
+                role = ChatRole.Assistant,
+                content = bubble.text,
+                reasoning = if (index == 0) message.reasoning else "",
+                toolCalls = if (last) calls else emptyList(),
+                stats = if (last) totalStats else null,
+                elapsedMs = if (index == 0) reasoningMs else 0,
+                serverBlocks = if (last) message.serverToolCalls?.toString() else null,
+                citations = if (last) citations else emptyList(),
+                wire = wire,
+                turnId = turnId,
+                proactive = proactive,
+            )
+            id to bubble
+        }
     }
 
     private suspend fun executeTools(

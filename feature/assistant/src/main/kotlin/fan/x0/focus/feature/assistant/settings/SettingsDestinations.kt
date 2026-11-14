@@ -8,6 +8,7 @@ enum class SettingsDestination : NavKey {
     Home,
     Account,
     ChatAgent,
+    Roleplay,
     Models,
     Automation,
     Tools,

@@ -50,6 +50,7 @@ import fan.x0.focus.core.designsystem.components.LocalFocusDrawerAvailable
 import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
 import fan.x0.focus.core.designsystem.theme.FocusMotionDefaults
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.ChatTurnRunner
@@ -162,6 +163,16 @@ private fun MainShell() {
     LaunchedEffect(backStack.current) {
         shell.refresh()
     }
+    LaunchedEffect(shell) {
+        shell.created.collect { id ->
+            val kind = shell.state.value.assistants.firstOrNull { it.id == id }?.kind
+            if (kind == AssistantKind.Roleplay) {
+                backStack.open(FocusRoute.Assistant)
+            } else {
+                backStack.open(FocusRoute.Chat)
+            }
+        }
+    }
     LaunchedEffect(openRequest) {
         if (openRequest != null) {
             backStack.open(FocusRoute.Chat)
@@ -213,9 +224,8 @@ private fun MainShell() {
                     shell.selectAssistant(id)
                     navigate(FocusRoute.Chat)
                 },
-                onCreateAssistant = { name, role, emoji ->
-                    shell.createAssistant(name, role, emoji)
-                    navigate(FocusRoute.Chat)
+                onCreateAssistant = { kind, name, role, emoji ->
+                    shell.createAssistant(kind, name, role, emoji)
                 },
             )
         }
@@ -247,6 +257,7 @@ private fun MainShell() {
                         },
                         controlledOnly = deviceRole == DeviceRole.Controlled,
                         onExit = { activity?.finish() },
+                        onOpenRoleplayAssistant = { id -> shell.selectAssistant(id) },
                     )
                     UpdateHost()
                 }
@@ -301,6 +312,7 @@ private fun ShellContent(
     onPromoteConversation: (String) -> Unit,
     controlledOnly: Boolean,
     onExit: () -> Unit,
+    onOpenRoleplayAssistant: (String) -> Unit,
 ) {
     val motion = FocusMotionDefaults
     NavDisplay(
@@ -372,6 +384,10 @@ private fun ShellContent(
                             { backStack.push(FocusRoute.Bridge) }
                         },
                         onOpenDevice = { backStack.push(FocusRoute.Device) },
+                        onOpenRoleplayAssistant = { id ->
+                            onOpenRoleplayAssistant(id)
+                            backStack.open(FocusRoute.Assistant)
+                        },
                     )
                 }
                 FocusRoute.History -> NavEntry(key = route, contentKey = route.contentKey) {

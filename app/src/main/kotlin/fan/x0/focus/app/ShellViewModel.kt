@@ -2,6 +2,7 @@ package fan.x0.focus.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantManager
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
@@ -10,8 +11,11 @@ import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.assistant.Conversation
 import fan.x0.focus.data.assistant.SideChatManager
 import fan.x0.focus.data.assistant.sideChatRank
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
@@ -42,6 +46,9 @@ class ShellViewModel(
 
     private val _state = MutableStateFlow(ShellState())
     val state: StateFlow<ShellState> = _state.asStateFlow()
+
+    private val _created = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val created: SharedFlow<String> = _created.asSharedFlow()
 
     init {
         refresh()
@@ -118,16 +125,19 @@ class ShellViewModel(
     fun selectAssistant(id: String) {
         viewModelScope.launch {
             profiles.setActive(id)
+            val profile = profiles.profileOnce(id)
+            if (profile != null) manager.ensureGreeting(profile)
             val main = chats.ensureMainConversation(id)
             switcher.open(main.id)
             load()
         }
     }
 
-    fun createAssistant(name: String, role: String, emoji: String) {
+    fun createAssistant(kind: AssistantKind, name: String, role: String, emoji: String) {
         viewModelScope.launch {
-            manager.create(name, role, emoji)
+            val profile = manager.create(name, role, emoji, kind)
             load()
+            _created.tryEmit(profile.id)
         }
     }
 

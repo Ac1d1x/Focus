@@ -10,6 +10,7 @@ import fan.x0.focus.data.assistant.AskKind
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.AttachmentException
 import fan.x0.focus.data.assistant.AttachmentLoader
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.AssistantSettings
@@ -732,7 +733,7 @@ class ChatViewModel(
             agentMode = state.mode,
             replyToId = replyToId,
             mentionedSkills = mentionedSkills,
-            autoTitle = !state.isMain,
+            autoTitle = !state.isMain && state.assistantKind != AssistantKind.Roleplay,
         )
         lastSend = PendingSend(text, attachments, replyToId, mentionedSkills)
         redoEntry = null
@@ -1413,6 +1414,7 @@ class ChatViewModel(
         val generation = loadGeneration
         val messages = chats.messages(id)
         val conversation = chats.conversation(id)
+        val assistantProfile = conversation?.let { profiles.profileOnce(it.assistantId) }
         val compaction = chats.compaction(id)
         val config = settings.configOnce()
         val providerId = conversation?.providerId?.takeIf { candidate ->
@@ -1432,8 +1434,10 @@ class ChatViewModel(
                 history = entries,
                 live = emptyList(),
                 sending = false,
+                typing = false,
                 compacting = false,
                 workingText = "",
+                assistantKind = assistantProfile?.kind ?: AssistantKind.Assistant,
                 kind = conversation?.kind ?: ConversationKind.Side,
                 taskStatus = conversation?.taskStatus ?: TaskStatus.None,
                 sideActiveCount = sideChats.countsFor(conversation?.assistantId ?: currentState.assistantId).active,
@@ -1512,12 +1516,14 @@ class ChatViewModel(
                 name = name,
                 assistantName = assistantName,
                 assistantId = assistantId,
+                assistantKind = assistantProfile?.kind ?: AssistantKind.Assistant,
                 assistantEmoji = assistantProfile?.emoji.orEmpty(),
                 assistantAvatar = assistantProfile?.avatar.orEmpty(),
                 history = entries,
                 live = emptyList(),
                 suggestions = emptyList(),
                 sending = false,
+                typing = false,
                 compacting = false,
                 workingText = "",
                 input = "",
@@ -1615,6 +1621,7 @@ class ChatViewModel(
             updateState {
                 copy(
                     sending = false,
+                    typing = false,
                     compacting = false,
                     live = emptyList(),
                     workingText = "",
@@ -1639,17 +1646,20 @@ class ChatViewModel(
         } else {
             null
         }
+        val roleplay = currentState.assistantKind == AssistantKind.Roleplay
         val answer = turn.entries.filterIsInstance<ChatTurnEntry.Answer>().lastOrNull()?.text.orEmpty()
-        updateDisplayTarget(turn.conversationId, turn.turnId, answer)
+        if (!roleplay) updateDisplayTarget(turn.conversationId, turn.turnId, answer)
         val shown = displayTarget.take(displayText.length)
         updateState {
+            val liveEntries = turn.entries
+                .mapIndexed { index, entry -> entry.toUi("live-${turn.turnId}", index) }
             copy(
                 sending = true,
+                typing = turn.typing,
                 compacting = turn.compacting,
                 workingText = turn.workingText,
-                live = listOfNotNull(userEntry) + turn.entries
-                    .mapIndexed { index, entry -> entry.toUi("live-${turn.turnId}", index) }
-                    .withDisplayText(shown),
+                live = listOfNotNull(userEntry) +
+                    (if (roleplay) liveEntries else liveEntries.withDisplayText(shown)),
                 retry = turn.retry?.let { RetryUi(it.attempt, it.max, it.reason) },
                 liveStats = when {
                     turn.stats.hasUsage || turn.stats.round > 0 -> turn.stats.copy(
@@ -1714,6 +1724,7 @@ class ChatViewModel(
 
     private suspend fun completeDisplay(result: ChatTurnResult) {
         if (currentState.conversationId != result.conversationId) return
+        if (currentState.assistantKind == AssistantKind.Roleplay) return
         val last = chats.messages(result.conversationId).lastOrNull()
         if (currentState.conversationId != result.conversationId) return
         val observed = displayConversationId == result.conversationId && displayTurnId == result.turnId
@@ -1815,13 +1826,19 @@ class ChatViewModel(
 
     private fun ChatTurnEntry.toUi(prefix: String, index: Int): ChatEntry = when (this) {
         is ChatTurnEntry.Answer -> ChatEntry.Assistant(
-            key = "$prefix-answer-$index",
+            key = if (messageId > 0) "m$messageId" else "$prefix-answer-$index",
             text = text,
             live = true,
             reasoning = reasoning,
             reasoningMs = reasoningMs,
             reasoningStartedAt = reasoningStartedAt,
+            messageId = messageId.takeIf { it > 0 },
             citations = citations.map { it.toCitationUi() },
+            kind = kind,
+            meta = meta,
+            recalled = recalled,
+            edited = edited,
+            proactive = proactive,
         )
         is ChatTurnEntry.Trace -> ChatEntry.Trace(
             key = "$prefix-trace-$index",
@@ -1969,6 +1986,11 @@ class ChatViewModel(
                             reactions = message.reactions.filter { it.isNotBlank() },
                             stats = stats,
                             citations = message.citations.map { it.toCitationUi() },
+                            kind = message.kind,
+                            meta = message.meta,
+                            recalled = message.recalled,
+                            edited = message.edited,
+                            proactive = message.proactive,
                         )
                     } else if (stats != null) {
                         pendingStats = stats

@@ -3,6 +3,7 @@ package fan.x0.focus.feature.assistant
 import fan.x0.focus.core.mvi.UiAction
 import fan.x0.focus.core.mvi.UiEffect
 import fan.x0.focus.core.mvi.UiState
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 
@@ -31,6 +32,10 @@ data class AssistantUiState(
     val assistantRole: String = "",
     val assistantEmoji: String = "",
     val assistantAvatar: String = "",
+    val assistantKind: AssistantKind = AssistantKind.Assistant,
+    val roleplayGreeting: String = "",
+    val roleplayPrompt: String = "",
+    val roleplayExamples: String = "",
     val canDelete: Boolean = false,
     val documents: List<WorkspaceDocumentUi> = emptyList(),
     val openDocument: WorkspaceDocumentUi? = null,
@@ -48,6 +53,7 @@ sealed interface AssistantAction : UiAction {
     data object ClosePrompt : AssistantAction
     data object SavePrompt : AssistantAction
     data class SaveProfile(val name: String, val role: String, val emoji: String, val avatar: String) : AssistantAction
+    data class SaveRoleplayCard(val greeting: String, val prompt: String, val examples: String) : AssistantAction
     data object DeleteProfile : AssistantAction
 }
 

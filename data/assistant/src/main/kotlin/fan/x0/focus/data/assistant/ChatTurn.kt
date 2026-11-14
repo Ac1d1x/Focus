@@ -55,6 +55,12 @@ sealed interface ChatTurnEntry {
         val reasoningMs: Long = 0,
         val reasoningStartedAt: Long = 0,
         val citations: List<ChatCitation> = emptyList(),
+        val messageId: Long = 0,
+        val kind: String = "text",
+        val meta: String = "",
+        val recalled: Boolean = false,
+        val edited: Boolean = false,
+        val proactive: Boolean = false,
     ) : ChatTurnEntry
     data class Trace(val steps: List<ChatTurnStep>) : ChatTurnEntry
     data class Approval(val card: ChatTurnApproval) : ChatTurnEntry
@@ -82,6 +88,7 @@ data class ChatTurnState(
     val plan: ProposedPlan? = null,
     val planRequestId: String = "",
     val compacting: Boolean = false,
+    val typing: Boolean = false,
 )
 
 data class RetryState(

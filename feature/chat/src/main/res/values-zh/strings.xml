@@ -219,4 +219,6 @@
     <string name="chat_btw_question">问题</string>
     <string name="chat_btw_close">关闭</string>
     <string name="chat_im_source">%1$s / %2$s</string>
+    <string name="chat_typing">正在输入…</string>
+    <string name="chat_recalled_other">你撤回了一条消息</string>
 </resources>

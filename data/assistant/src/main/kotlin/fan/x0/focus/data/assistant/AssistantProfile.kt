@@ -13,10 +13,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import fan.x0.focus.data.roleplay.RoleplayCard
 import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 import java.io.File
 import java.util.UUID
+
+enum class AssistantKind {
+    Assistant,
+    Roleplay,
+    ;
+
+    companion object {
+        fun fromWire(value: String?): AssistantKind =
+            entries.firstOrNull { it.name.equals(value, ignoreCase = true) } ?: Assistant
+    }
+}
 
 @Serializable
 data class AssistantProfile(
@@ -25,6 +37,8 @@ data class AssistantProfile(
     val emoji: String = "",
     val role: String = "",
     val avatar: String = "",
+    val kind: AssistantKind = AssistantKind.Assistant,
+    val roleplay: RoleplayCard? = null,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 ) {
@@ -72,6 +86,11 @@ class AssistantProfileStore(@Provided private val context: Context) {
         return profiles.first().firstOrNull { it.id == active } ?: defaultProfile
     }
 
+    suspend fun profileOnce(id: String): AssistantProfile? {
+        ensureSeed()
+        return profiles.first().firstOrNull { it.id == id }
+    }
+
     suspend fun ensureSeed() {
         context.assistantProfileDataStore.edit { prefs ->
             if (prefs[Keys.profiles].isNullOrBlank()) {
@@ -85,7 +104,13 @@ class AssistantProfileStore(@Provided private val context: Context) {
         }
     }
 
-    suspend fun create(name: String, role: String, emoji: String): AssistantProfile {
+    suspend fun create(
+        name: String,
+        role: String,
+        emoji: String,
+        kind: AssistantKind = AssistantKind.Assistant,
+        roleplay: RoleplayCard? = null,
+    ): AssistantProfile {
         ensureSeed()
         val now = System.currentTimeMillis()
         val profile = AssistantProfile(
@@ -93,6 +118,8 @@ class AssistantProfileStore(@Provided private val context: Context) {
             name = name.trim().ifBlank { AssistantProfile.DEFAULT_NAME },
             emoji = emoji.trim().take(8),
             role = role.trim().take(MAX_ROLE_CHARS),
+            kind = kind,
+            roleplay = roleplay,
             createdAt = now,
             updatedAt = now,
         )

@@ -5,6 +5,9 @@ import fan.x0.focus.core.error.AppErrorType
 import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.notify.MessageNotifier
 import fan.x0.focus.core.notify.NotifyActionKind
+import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.jitterMillis
+import fan.x0.focus.data.roleplay.typingMillis
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +60,8 @@ class ChatTurnRunner(
     private val events: AssistantEventSink,
     private val turnGuard: AssistantTurnGuard,
     private val journal: TurnJournalStore,
+    private val profiles: AssistantProfileStore,
+    private val roleplaySettings: RoleplaySettings,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -96,8 +101,8 @@ class ChatTurnRunner(
         options = options,
         userText = text,
         progress = progress,
-    ) {
-        engine.send(conversationId, text, ChatMode.Chat, options, appendUser)
+    ) { turnOptions ->
+        engine.send(conversationId, text, ChatMode.Chat, turnOptions, appendUser)
     }
 
     suspend fun startAndAwait(
@@ -118,8 +123,8 @@ class ChatTurnRunner(
     }
 
     fun compact(conversationId: String, options: TurnOptions) {
-        launch(conversationId, manualCompact = true, options = options) {
-            engine.compact(conversationId, options)
+        launch(conversationId, manualCompact = true, options = options) { turnOptions ->
+            engine.compact(conversationId, turnOptions)
         }
     }
 
@@ -129,7 +134,7 @@ class ChatTurnRunner(
         options: TurnOptions,
         userText: String = "",
         progress: Channel<ChatTurnProgress>? = null,
-        flow: () -> Flow<ChatEvent>,
+        flow: (TurnOptions) -> Flow<ChatEvent>,
     ): ChatTurnHandle? {
         if (conversationId.isBlank() || isRunning(conversationId)) return null
         val turnId = nextTurnId.incrementAndGet()
@@ -162,11 +167,47 @@ class ChatTurnRunner(
                 journal.begin(conversationId, turnId, userText)
             } catch (_: Throwable) {
             }
+            val roleplayConfig = chats.conversation(conversationId)?.let { info ->
+                profiles.profileOnce(info.assistantId)
+                    ?.takeIf { it.kind == AssistantKind.Roleplay }
+                    ?.let { roleplaySettings.effectiveOnce(it.id) }
+            }
+            var firstBubble = true
+            val bubbleRandom = kotlin.random.Random(System.currentTimeMillis())
             try {
-                flow().collect { event ->
+                flow(options.copy(turnId = turnId.toString())).collect { event ->
                     when (event) {
                         is ChatEvent.Delta -> updateEntries(conversationId, turnId) { entries ->
                             entries.appendAnswer(event.text, reasoning = false, now = System.currentTimeMillis())
+                        }
+                        is ChatEvent.RoleplayBubbleShown -> {
+                            if (roleplayConfig != null) {
+                                if (firstBubble) {
+                                    firstBubble = false
+                                    delay(jitterMillis(roleplayConfig.readDelayMs, bubbleRandom, roleplayConfig.jitter).toLong())
+                                }
+                                if (roleplayConfig.typing) {
+                                    updateState(conversationId, turnId) { state -> state.copy(typing = true) }
+                                    delay(
+                                        (typingMillis(event.text, bubbleRandom, roleplayConfig.jitter) *
+                                            roleplayConfig.paceScale).toLong().coerceAtLeast(0),
+                                    )
+                                    updateState(conversationId, turnId) { state -> state.copy(typing = false) }
+                                }
+                            }
+                            updateEntries(conversationId, turnId) { entries ->
+                                entries + ChatTurnEntry.Answer(
+                                    text = event.text,
+                                    reasoning = "",
+                                    messageId = event.messageId,
+                                    kind = event.kind,
+                                    meta = event.meta,
+                                )
+                            }
+                            val gap = (event.delayMs.takeIf { it > 0 } ?: roleplayConfig?.bubbleGapMs ?: 0)
+                            if (gap > 0) {
+                                delay((gap * (roleplayConfig?.paceScale ?: 1f)).toLong())
+                            }
                         }
                         is ChatEvent.ReasoningDelta -> {
                             updateEntries(conversationId, turnId) { entries ->

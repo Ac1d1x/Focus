@@ -53,6 +53,8 @@ internal fun SettingsHomePage(
     val modelsBody = stringResource(R.string.settings_page_models_body)
     val chatTitle = stringResource(R.string.settings_page_chat_agent)
     val chatBody = stringResource(R.string.settings_page_chat_agent_body)
+    val roleplayTitle = stringResource(R.string.settings_page_roleplay)
+    val roleplayBody = stringResource(R.string.settings_page_roleplay_body)
     val detailTitle = stringResource(R.string.settings_page_chat_detail)
     val detailBody = stringResource(R.string.settings_page_chat_detail_body)
     val toolsTitle = stringResource(R.string.settings_page_tools)
@@ -95,6 +97,9 @@ internal fun SettingsHomePage(
                 },
                 SettingsEntry(chatTitle, chatBody, FocusIcons.Bolt) {
                     onOpen(SettingsDestination.ChatAgent)
+                },
+                SettingsEntry(roleplayTitle, roleplayBody, FocusIcons.Assistant) {
+                    onOpen(SettingsDestination.Roleplay)
                 },
                 SettingsEntry(detailTitle, detailBody, FocusIcons.Chat) {
                     onOpen(SettingsDestination.ChatDetail)

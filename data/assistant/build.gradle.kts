@@ -13,6 +13,7 @@ dependencies {
     implementation(projects.core.network)
     implementation(projects.core.notify)
     implementation(projects.data.sources)
+    implementation(projects.data.roleplay)
     implementation(projects.data.bridge)
     implementation(libs.androidx.exifinterface)
     implementation(libs.koin.core)

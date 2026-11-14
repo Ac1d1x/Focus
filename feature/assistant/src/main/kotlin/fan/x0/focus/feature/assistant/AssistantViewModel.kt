@@ -8,6 +8,7 @@ import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.PromptSettings
 import fan.x0.focus.data.assistant.WorkspaceStore
+import fan.x0.focus.data.roleplay.RoleplayCard
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -58,6 +59,10 @@ class AssistantViewModel(
                     assistantRole = profile?.role.orEmpty(),
                     assistantEmoji = profile?.emoji.orEmpty(),
                     assistantAvatar = profile?.avatar.orEmpty(),
+                    assistantKind = profile?.kind ?: fan.x0.focus.data.assistant.AssistantKind.Assistant,
+                    roleplayGreeting = profile?.roleplay?.greeting.orEmpty(),
+                    roleplayPrompt = profile?.roleplay?.prompt.orEmpty(),
+                    roleplayExamples = profile?.roleplay?.examples.orEmpty(),
                     canDelete = all.size > 1,
                     documents = documents.map { WorkspaceDocumentUi(it.file, it.content) },
                     openDocument = openDocument?.let { open ->
@@ -101,6 +106,7 @@ class AssistantViewModel(
             AssistantAction.ClosePrompt -> updateState { copy(promptEditor = null) }
             AssistantAction.SavePrompt -> savePrompt()
             is AssistantAction.SaveProfile -> saveProfile(action)
+            is AssistantAction.SaveRoleplayCard -> saveRoleplayCard(action)
             AssistantAction.DeleteProfile -> deleteProfile()
         }
     }
@@ -116,6 +122,20 @@ class AssistantViewModel(
                     avatar = action.avatar,
                 ),
             )
+            load()
+            sendEffect(AssistantEffect.ProfileSaved)
+        }
+    }
+
+    private fun saveRoleplayCard(action: AssistantAction.SaveRoleplayCard) {
+        viewModelScope.launch {
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            val card = (profile.roleplay ?: RoleplayCard()).copy(
+                greeting = action.greeting.trim(),
+                prompt = action.prompt.trim(),
+                examples = action.examples.trim(),
+            )
+            manager.update(profile.copy(roleplay = card))
             load()
             sendEffect(AssistantEffect.ProfileSaved)
         }

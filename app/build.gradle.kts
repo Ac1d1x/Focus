@@ -100,6 +100,7 @@ dependencies {
     implementation(projects.pluginSdk)
     implementation(projects.data.plugin)
     implementation(projects.data.assistant)
+    implementation(projects.data.roleplay)
     implementation(projects.data.voice)
     implementation(projects.data.device)
     implementation(projects.data.sources)

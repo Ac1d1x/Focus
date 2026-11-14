@@ -309,6 +309,7 @@ fun ChatScreen(
                     subtitle = when {
                         retry != null -> stringResource(R.string.chat_retrying, retry.attempt, retry.max)
                         state.compacting -> stringResource(R.string.chat_compacting)
+                        state.typing -> stringResource(R.string.chat_typing)
                         state.sending -> state.workingText.ifBlank {
                             stringResource(R.string.chat_working)
                         }
@@ -336,7 +337,7 @@ fun ChatScreen(
                                     .onGloballyPositioned { mascotTop = it.positionInRoot() },
                             )
                         }
-                        if (state.isMain) {
+                        if (state.isMain && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
                             val unread = state.sideUnreadCount
                             val badge = if (unread > 0) unread else state.sideActiveCount
                             IconButton(onClick = hapticTap { onAction(ChatAction.OpenSidePanel) }) {
@@ -650,6 +651,20 @@ private fun SuggestionButton(text: String, onClick: () -> Unit) {
     }
 }
 
+@Composable
+private fun RecalledLine(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 private data class Suggestion(val text: String)
 
 @Composable
@@ -802,8 +817,11 @@ private fun ChatThread(
                                 }
                             }
                         }
-                        is ChatEntry.Assistant -> if (entry.text.isNotBlank()) {
-                            ChatMessageBubble(
+                        is ChatEntry.Assistant -> when {
+                            entry.recalled -> RecalledLine(
+                                text = stringResource(R.string.chat_recalled_other),
+                            )
+                            entry.text.isNotBlank() -> ChatMessageBubble(
                                 entry = entry,
                                 fromUser = false,
                                 state = state,

@@ -480,7 +480,7 @@ class ChatStore(
             ChatContext(
                 summary = compaction?.summary.orEmpty(),
                 upToId = compaction?.upToId ?: 0,
-                messages = messagesSince(conversationId, compaction?.upToId ?: 0, limit),
+                messages = messagesSince(conversationId, compaction?.upToId ?: 0, limit).groupRoleplayTurns(),
             )
         }
 
@@ -555,6 +555,12 @@ class ChatStore(
         serverBlocks: String? = null,
         citations: List<ChatCitation> = emptyList(),
         wire: String = "",
+        turnId: String = "",
+        kind: String = "text",
+        meta: String = "",
+        recalled: Boolean = false,
+        edited: Boolean = false,
+        proactive: Boolean = false,
     ): Long = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val values = ContentValues().apply {
@@ -579,6 +585,12 @@ class ChatStore(
             put("server_blocks", serverBlocks)
             put("citations", if (citations.isEmpty()) null else json.encodeToString(citationsSerializer, citations))
             put("wire", wire)
+            put("turn_id", turnId)
+            put("kind", kind)
+            put("meta_json", meta.ifBlank { null })
+            put("recalled", if (recalled) 1 else 0)
+            put("edited", if (edited) 1 else 0)
+            put("proactive", if (proactive) 1 else 0)
         }
         val id = database.writableDatabase.insertOrThrow("messages", null, values)
         val touch = ContentValues().apply { put("updated_at", now) }
@@ -590,6 +602,51 @@ class ChatStore(
     suspend fun updateContent(id: Long, content: String) = withContext(Dispatchers.IO) {
         val values = ContentValues().apply { put("content", content) }
         database.writableDatabase.update("messages", values, "id = ?", arrayOf(id.toString()))
+    }
+
+    suspend fun markRecalled(id: Long) = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply { put("recalled", 1) }
+        database.writableDatabase.update("messages", values, "id = ?", arrayOf(id.toString()))
+        _changes.tryEmit("")
+    }
+
+    suspend fun markEdited(id: Long, content: String) = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply {
+            put("content", content)
+            put("edited", 1)
+        }
+        database.writableDatabase.update("messages", values, "id = ?", arrayOf(id.toString()))
+        _changes.tryEmit("")
+    }
+
+    private fun List<ChatMessage>.groupRoleplayTurns(): List<ChatMessage> {
+        val out = mutableListOf<ChatMessage>()
+        forEach { message ->
+            val last = out.lastOrNull()
+            if (message.role == ChatRole.Assistant && last?.role == ChatRole.Assistant &&
+                message.turnId.isNotBlank() && last.turnId == message.turnId
+            ) {
+                out[out.lastIndex] = last.copy(
+                    content = listOf(last.content, message.content).filter { it.isNotBlank() }.joinToString("\n"),
+                    reasoning = listOf(last.reasoning, message.reasoning).filter { it.isNotBlank() }.joinToString("\n"),
+                    toolCalls = last.toolCalls + message.toolCalls,
+                    toolCallId = last.toolCallId ?: message.toolCallId,
+                    replyToId = last.replyToId ?: message.replyToId,
+                    stats = message.stats ?: last.stats,
+                    elapsedMs = last.elapsedMs + message.elapsedMs,
+                    stepDiffs = last.stepDiffs + message.stepDiffs,
+                    serverBlocks = last.serverBlocks ?: message.serverBlocks,
+                    citations = last.citations + message.citations,
+                    wire = last.wire.ifBlank { message.wire },
+                    recalled = last.recalled || message.recalled,
+                    edited = last.edited || message.edited,
+                    proactive = last.proactive || message.proactive,
+                )
+            } else {
+                out += message
+            }
+        }
+        return out
     }
 
     suspend fun updateStats(id: Long, stats: MessageStats) = withContext(Dispatchers.IO) {
@@ -769,6 +826,12 @@ class ChatStore(
             serverBlocks = if (isNull(16)) null else getString(16),
             citations = citations,
             wire = getString(18).orEmpty(),
+            turnId = getString(19).orEmpty(),
+            kind = getString(20).orEmpty().ifBlank { "text" },
+            meta = getString(21).orEmpty(),
+            recalled = getInt(22) != 0,
+            edited = getInt(23) != 0,
+            proactive = getInt(24) != 0,
         )
     }
 
@@ -788,6 +851,6 @@ class ChatStore(
         private const val MESSAGE_COLUMNS =
             "id, conversation_id, role, content, reasoning, tool_calls, tool_call_id, name, " +
                 "created_at, attachments, label, reply_to_id, stats_json, reaction, elapsed_ms, diff_json, " +
-                "server_blocks, citations, wire"
+                "server_blocks, citations, wire, turn_id, kind, meta_json, recalled, edited, proactive"
     }
 }

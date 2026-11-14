@@ -40,6 +40,12 @@ data class ChatMessage(
     val serverBlocks: String? = null,
     val citations: List<ChatCitation> = emptyList(),
     val wire: String = "",
+    val turnId: String = "",
+    val kind: String = "text",
+    val meta: String = "",
+    val recalled: Boolean = false,
+    val edited: Boolean = false,
+    val proactive: Boolean = false,
 )
 
 enum class AgentMode {

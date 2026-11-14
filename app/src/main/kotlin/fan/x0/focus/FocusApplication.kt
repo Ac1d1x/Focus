@@ -19,6 +19,7 @@ import fan.x0.focus.data.assistant.ApprovalStatus
 import fan.x0.focus.data.assistant.ApprovalStore
 import fan.x0.focus.data.assistant.AssistantEventSink
 import fan.x0.focus.data.assistant.AssistantModule
+import fan.x0.focus.data.roleplay.RoleplayModule
 import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.CrashLogStore
 import fan.x0.focus.data.assistant.CrewRunner
@@ -67,6 +68,7 @@ import org.koin.plugin.module.dsl.startKoin
         NotifyModule::class,
         SourcesModule::class,
         AssistantModule::class,
+        RoleplayModule::class,
         VoiceModule::class,
         DeviceModule::class,
         ImModule::class,

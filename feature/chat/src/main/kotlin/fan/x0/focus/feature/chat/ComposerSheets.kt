@@ -164,6 +164,7 @@ internal fun ReasoningPickerSheet(
 @Composable
 internal fun AttachmentSheet(
     mode: AgentMode,
+    showMode: Boolean = true,
     onModeSelect: (AgentMode) -> Unit,
     onTakePhoto: () -> Unit,
     onPickPhotos: () -> Unit,
@@ -180,35 +181,37 @@ internal fun AttachmentSheet(
         onPickFiles = onPickFiles,
         onDismiss = onDismiss,
     ) {
-        HorizontalDivider(
-            modifier = Modifier.padding(top = 4.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
-        Text(
-            text = stringResource(R.string.chat_mode_section),
-            style = MaterialTheme.typography.titleSmallEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            AgentMode.entries.forEachIndexed { index, option ->
-                SegmentedButton(
-                    selected = option == mode,
-                    onClick = hapticSelect { onModeSelect(option) },
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index = index,
-                        count = AgentMode.entries.size,
-                    ),
-                    label = {
-                        Text(stringResource(option.labelRes()))
-                    },
-                )
+        if (showMode) {
+            HorizontalDivider(
+                modifier = Modifier.padding(top = 4.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+            Text(
+                text = stringResource(R.string.chat_mode_section),
+                style = MaterialTheme.typography.titleSmallEmphasized,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                AgentMode.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = option == mode,
+                        onClick = hapticSelect { onModeSelect(option) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = AgentMode.entries.size,
+                        ),
+                        label = {
+                            Text(stringResource(option.labelRes()))
+                        },
+                    )
+                }
             }
+            Text(
+                text = stringResource(mode.descriptionRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        Text(
-            text = stringResource(mode.descriptionRes()),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

@@ -52,6 +52,7 @@ import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.hapticSelect
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.Conversation
 import fan.x0.focus.feature.assistant.AssistantAvatar
@@ -74,7 +75,7 @@ fun ShellDrawer(
     onNewSideChat: () -> Unit,
     onOpenConversation: (String) -> Unit,
     onSelectAssistant: (String) -> Unit,
-    onCreateAssistant: (String, String, String) -> Unit,
+    onCreateAssistant: (AssistantKind, String, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showAssistants by remember { mutableStateOf(false) }
@@ -215,8 +216,8 @@ fun ShellDrawer(
     if (creating) {
         NewAssistantDialog(
             onDismiss = { creating = false },
-            onSave = { name, role, emoji ->
-                onCreateAssistant(name, role, emoji)
+            onSave = { kind, name, role, emoji ->
+                onCreateAssistant(kind, name, role, emoji)
                 creating = false
             },
         )

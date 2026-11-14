@@ -7,6 +7,7 @@ import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.core.network.openai.ModelMeta
 import fan.x0.focus.data.assistant.AgentMode
 import fan.x0.focus.data.assistant.AskKind
+import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.data.assistant.AttachmentKind
@@ -238,6 +239,11 @@ sealed interface ChatEntry {
         val reactions: List<String> = emptyList(),
         val stats: MessageStats? = null,
         val citations: List<CitationUi> = emptyList(),
+        val kind: String = "text",
+        val meta: String = "",
+        val recalled: Boolean = false,
+        val edited: Boolean = false,
+        val proactive: Boolean = false,
     ) : ChatEntry
 
     data class Trace(
@@ -311,6 +317,8 @@ data class ChatUiState(
     val sidePanel: SidePanelUi = SidePanelUi(),
     val assistantName: String = "",
     val assistantId: String = AssistantProfile.DEFAULT_ID,
+    val assistantKind: AssistantKind = AssistantKind.Assistant,
+    val typing: Boolean = false,
     val assistantEmoji: String = "",
     val assistantAvatar: String = "",
     val workingText: String = "",

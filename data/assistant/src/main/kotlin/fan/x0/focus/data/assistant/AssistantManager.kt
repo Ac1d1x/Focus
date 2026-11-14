@@ -13,12 +13,34 @@ class AssistantManager(
     private val switcher: ChatSwitcher,
     private val avatars: AssistantAvatarStore,
 ) {
-    suspend fun create(name: String, role: String, emoji: String): AssistantProfile {
-        val profile = profiles.create(name, role, emoji)
+    suspend fun create(
+        name: String,
+        role: String,
+        emoji: String,
+        kind: AssistantKind = AssistantKind.Assistant,
+        roleplay: fan.x0.focus.data.roleplay.RoleplayCard? = null,
+    ): AssistantProfile {
+        val profile = profiles.create(name, role, emoji, kind, roleplay)
         workspace.seed(profile.id, profile.name, profile.role)
         val main = chats.ensureMainConversation(profile.id)
+        ensureGreeting(profile)
         switcher.reload(main.id)
         return profile
+    }
+
+    suspend fun ensureGreeting(profile: AssistantProfile) {
+        if (profile.kind != AssistantKind.Roleplay) return
+        val greeting = profile.roleplay?.greeting?.trim().orEmpty()
+        if (greeting.isBlank()) return
+        val main = chats.ensureMainConversation(profile.id)
+        if (chats.messages(main.id).isNotEmpty()) return
+        chats.append(
+            conversationId = main.id,
+            role = ChatRole.Assistant,
+            content = greeting,
+            label = "greeting",
+            kind = "text",
+        )
     }
 
     suspend fun update(profile: AssistantProfile) {
@@ -28,6 +50,7 @@ class AssistantManager(
             avatars.delete(previous.avatar)
         }
         workspace.updateAssistantName(profile.id, profile.name)
+        ensureGreeting(profile)
     }
 
     suspend fun delete(profile: AssistantProfile): Boolean {

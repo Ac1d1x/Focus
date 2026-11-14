@@ -33,6 +33,7 @@ import fan.x0.focus.feature.assistant.settings.SettingsDebugPage
 import fan.x0.focus.feature.assistant.settings.SettingsDestination
 import fan.x0.focus.feature.assistant.settings.SettingsDeepSeekRoute
 import fan.x0.focus.feature.assistant.settings.SettingsHomePage
+import fan.x0.focus.feature.assistant.settings.SettingsRoleplayRoute
 import fan.x0.focus.feature.assistant.settings.SettingsImRoute
 import fan.x0.focus.feature.assistant.settings.SettingsMcpRoute
 import fan.x0.focus.feature.assistant.settings.SettingsModelPickerSheet
@@ -54,6 +55,7 @@ fun SettingsRoute(
     onOpenPluginPage: (String, String) -> Unit,
     onOpenBridge: (() -> Unit)?,
     onOpenDevice: () -> Unit,
+    onOpenRoleplayAssistant: (String) -> Unit = {},
     viewModel: SettingsViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -82,6 +84,7 @@ fun SettingsRoute(
         onOpenPluginPage = onOpenPluginPage,
         onOpenBridge = onOpenBridge,
         onOpenDevice = onOpenDevice,
+        onOpenRoleplayAssistant = onOpenRoleplayAssistant,
     )
 }
 
@@ -94,6 +97,7 @@ internal fun SettingsScreen(
     onOpenPluginPage: (String, String) -> Unit,
     onOpenBridge: (() -> Unit)?,
     onOpenDevice: () -> Unit,
+    onOpenRoleplayAssistant: (String) -> Unit = {},
 ) {
     val backStack = rememberSaveable(
         saver = listSaver(
@@ -159,6 +163,10 @@ internal fun SettingsScreen(
                         state = latestState.value,
                         onAction = onAction,
                         onBack = { backStack.removeLastOrNull() },
+                    )
+                    SettingsDestination.Roleplay -> SettingsRoleplayRoute(
+                        onBack = { backStack.removeLastOrNull() },
+                        onOpenAssistant = onOpenRoleplayAssistant,
                     )
                     SettingsDestination.Models -> SettingsModelsRoute(
                         onBack = { backStack.removeLastOrNull() },

@@ -281,6 +281,7 @@ internal fun Composer(
     if (attachSheet) {
         AttachmentSheet(
             mode = state.mode,
+            showMode = state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay,
             onModeSelect = { onAction(ChatAction.SetMode(it)) },
             onTakePhoto = {
                 attachSheet = false

@@ -70,6 +70,10 @@
     <string name="drawer_untitled">未命名</string>
     <string name="drawer_history">全部对话</string>
     <string name="plugins_drawer_section">插件</string>
+    <string name="history_previous_30_days">近 30 天</string>
+    <string name="history_summary">%1$d 个对话 · %2$d 个已归档</string>
+    <string name="history_current">当前</string>
+    <string name="history_more">更多</string>
     <string name="history_title">对话</string>
     <string name="history_tab_active">对话</string>
     <string name="history_tab_archived">已归档</string>

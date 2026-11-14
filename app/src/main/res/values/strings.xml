@@ -71,6 +71,10 @@
     <string name="drawer_untitled">Untitled</string>
     <string name="drawer_history">All conversations</string>
     <string name="plugins_drawer_section">Plugins</string>
+    <string name="history_previous_30_days">Previous 30 days</string>
+    <string name="history_summary">%1$d chats · %2$d archived</string>
+    <string name="history_current">Current</string>
+    <string name="history_more">More</string>
     <string name="history_title">Conversations</string>
     <string name="history_tab_active">Chats</string>
     <string name="history_tab_archived">Archived</string>

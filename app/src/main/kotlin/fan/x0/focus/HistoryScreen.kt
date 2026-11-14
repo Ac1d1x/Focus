@@ -1,6 +1,8 @@
 package fan.x0.focus
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,13 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -32,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,11 +41,14 @@ import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
 import fan.x0.focus.core.designsystem.components.FocusEmptyState
 import fan.x0.focus.core.designsystem.components.FocusIcons
-import fan.x0.focus.core.designsystem.components.FocusTabContent
 import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.data.assistant.Conversation
+import fan.x0.focus.data.assistant.ConversationKind
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Composable
 fun HistoryRoute(
@@ -55,28 +60,38 @@ fun HistoryRoute(
     onDelete: (String) -> Unit,
     onPromote: (String) -> Unit,
 ) {
-    var section by rememberSaveable { mutableStateOf(0) }
+    var archivedTab by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var deleteTarget by remember { mutableStateOf<Conversation?>(null) }
-    val active = remember(conversations, query) {
+    val source = if (archivedTab) archived else conversations
+    val filtered = remember(source, query) {
         if (query.isBlank()) {
-            conversations
+            source
         } else {
-            conversations.filter { it.title.contains(query, ignoreCase = true) }
-        }
+            source.filter {
+                it.title.contains(query, ignoreCase = true) || it.model.contains(query, ignoreCase = true)
+            }
+        }.sortedByDescending { it.updatedAt }
     }
-    val archivedFiltered = remember(archived, query) {
-        if (query.isBlank()) {
-            archived
-        } else {
-            archived.filter { it.title.contains(query, ignoreCase = true) }
-        }
+    val today = LocalDate.now()
+    val groups = remember(filtered, today) {
+        filtered.groupBy { historyBucket(it.updatedAt, today) }.toSortedMap()
     }
+    val labels = listOf(
+        stringResource(R.string.drawer_today),
+        stringResource(R.string.drawer_yesterday),
+        stringResource(R.string.drawer_previous_7_days),
+        stringResource(R.string.history_previous_30_days),
+        stringResource(R.string.drawer_older),
+    )
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            FocusCompactTopBar(title = stringResource(R.string.history_title))
+            FocusCompactTopBar(
+                title = stringResource(R.string.history_title),
+                subtitle = stringResource(R.string.history_summary, conversations.size, archived.size),
+            )
         },
     ) { inner ->
         Column(
@@ -96,51 +111,76 @@ fun HistoryRoute(
                     stringResource(R.string.history_tab_active),
                     stringResource(R.string.history_tab_archived),
                 ),
-                selectedIndex = section,
-                onSelect = { section = it },
+                selectedIndex = if (archivedTab) 1 else 0,
+                onSelect = { archivedTab = it == 1 },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
-            FocusTabContent(selectedIndex = section) { tab ->
-                if (tab == 0) {
-                    ConversationList(
-                        conversations = active,
-                        archived = false,
-                        emptyIcon = if (query.isBlank()) FocusIcons.History else FocusIcons.Search,
-                        emptyTitle = if (query.isBlank()) {
-                            stringResource(R.string.history_empty)
+            if (filtered.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    FocusEmptyState(
+                        icon = if (query.isBlank()) {
+                            if (archivedTab) FocusIcons.Archive else FocusIcons.History
+                        } else {
+                            FocusIcons.Search
+                        },
+                        title = if (query.isBlank()) {
+                            if (archivedTab) {
+                                stringResource(R.string.history_archived_empty)
+                            } else {
+                                stringResource(R.string.history_empty)
+                            }
                         } else {
                             stringResource(R.string.history_no_results)
                         },
-                        emptyBody = if (query.isBlank()) {
-                            stringResource(R.string.history_empty_body)
+                        body = if (query.isBlank()) {
+                            if (archivedTab) {
+                                stringResource(R.string.history_archived_empty_body)
+                            } else {
+                                stringResource(R.string.history_empty_body)
+                            }
                         } else {
                             stringResource(R.string.history_no_results_body)
                         },
-                        onOpen = { onOpen(it.id) },
-                        onArchive = { onArchive(it.id) },
-                        onDelete = { deleteTarget = it },
-                        onPromote = { onPromote(it.id) },
                     )
-                } else {
-                    ConversationList(
-                        conversations = archivedFiltered,
-                        archived = true,
-                        emptyIcon = if (query.isBlank()) FocusIcons.Archive else FocusIcons.Search,
-                        emptyTitle = if (query.isBlank()) {
-                            stringResource(R.string.history_archived_empty)
-                        } else {
-                            stringResource(R.string.history_no_results)
-                        },
-                        emptyBody = if (query.isBlank()) {
-                            stringResource(R.string.history_archived_empty_body)
-                        } else {
-                            stringResource(R.string.history_no_results_body)
-                        },
-                        onOpen = { onOpenArchived(it.id) },
-                        onArchive = {},
-                        onDelete = { deleteTarget = it },
-                        onPromote = {},
-                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    groups.forEach { (bucket, rows) ->
+                        item(key = "history_$bucket") {
+                            Text(
+                                text = labels[bucket],
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(rows, key = { it.id }) { conversation ->
+                            HistoryRow(
+                                conversation = conversation,
+                                archived = archivedTab,
+                                onClick = {
+                                    if (archivedTab) {
+                                        onOpenArchived(conversation.id)
+                                    } else {
+                                        onOpen(conversation.id)
+                                    }
+                                },
+                                onArchive = { onArchive(conversation.id) },
+                                onDelete = { deleteTarget = conversation },
+                                onPromote = { onPromote(conversation.id) },
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -174,6 +214,131 @@ fun HistoryRoute(
     }
 }
 
+private fun historyBucket(timestamp: Long, today: LocalDate): Int {
+    val date = Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+    return when {
+        date == today -> 0
+        date == today.minusDays(1) -> 1
+        date.isAfter(today.minusDays(8)) -> 2
+        date.isAfter(today.minusDays(31)) -> 3
+        else -> 4
+    }
+}
+
+@Composable
+private fun HistoryRow(
+    conversation: Conversation,
+    archived: Boolean,
+    onClick: () -> Unit,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit,
+    onPromote: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val main = conversation.kind == ConversationKind.Main
+    var menu by remember { mutableStateOf(false) }
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(FocusShapeTokens.pill)
+            .clickable(onClick = hapticTap(onClick))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (main) FocusIcons.Check else FocusIcons.Chat,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = conversation.title.ifBlank { stringResource(R.string.drawer_untitled) },
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = listOf(
+                    DateUtils.getRelativeTimeSpanString(
+                        conversation.updatedAt,
+                        System.currentTimeMillis(),
+                        DateUtils.MINUTE_IN_MILLIS,
+                        DateUtils.FORMAT_ABBREV_RELATIVE,
+                    ).toString(),
+                    conversation.model,
+                ).filter { it.isNotBlank() }.joinToString(" · "),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (main) {
+            Text(
+                text = stringResource(R.string.history_current),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 8.dp, vertical = 3.dp),
+            )
+        }
+        if (!main) {
+            Box {
+                IconButton(onClick = hapticTap { menu = true }) {
+                    Icon(
+                        imageVector = FocusIcons.MoreHoriz,
+                        contentDescription = stringResource(R.string.history_more),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (!archived) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.history_promote)) },
+                            onClick = {
+                                menu = false
+                                onPromote()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.history_archive)) },
+                            onClick = {
+                                menu = false
+                                onArchive()
+                            },
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.history_delete),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        },
+                        onClick = {
+                            menu = false
+                            onDelete()
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SearchField(
     query: String,
@@ -204,124 +369,4 @@ private fun SearchField(
         shape = FocusShapeTokens.input,
         modifier = modifier.fillMaxWidth(),
     )
-}
-
-@Composable
-private fun ConversationList(
-    conversations: List<Conversation>,
-    archived: Boolean,
-    emptyIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    emptyTitle: String,
-    emptyBody: String,
-    onOpen: (Conversation) -> Unit,
-    onArchive: (Conversation) -> Unit,
-    onDelete: (Conversation) -> Unit,
-    onPromote: (Conversation) -> Unit,
-) {
-    if (conversations.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            FocusEmptyState(
-                icon = emptyIcon,
-                title = emptyTitle,
-                body = emptyBody,
-            )
-        }
-        return
-    }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(conversations, key = { it.id }) { conversation ->
-            ConversationCard(
-                conversation = conversation,
-                archived = archived,
-                onOpen = { onOpen(conversation) },
-                onArchive = { onArchive(conversation) },
-                onDelete = { onDelete(conversation) },
-                onPromote = { onPromote(conversation) },
-                modifier = Modifier.animateItem(),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ConversationCard(
-    conversation: Conversation,
-    archived: Boolean,
-    onOpen: () -> Unit,
-    onArchive: () -> Unit,
-    onDelete: () -> Unit,
-    onPromote: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        onClick = hapticTap(onOpen),
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.largeIncreased,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = conversation.title.ifBlank { stringResource(R.string.drawer_untitled) },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            },
-            supportingContent = {
-                Text(
-                    text = DateUtils.getRelativeTimeSpanString(
-                        conversation.updatedAt,
-                        System.currentTimeMillis(),
-                        DateUtils.MINUTE_IN_MILLIS,
-                        DateUtils.FORMAT_ABBREV_RELATIVE,
-                    ).toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            },
-            trailingContent = {
-                if (archived) {
-                    IconButton(onClick = hapticTap(onDelete)) {
-                        Icon(
-                            imageVector = FocusIcons.Delete,
-                            contentDescription = stringResource(R.string.history_delete),
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                } else {
-                    Row {
-                        IconButton(onClick = hapticTap(onPromote)) {
-                            Icon(
-                                imageVector = FocusIcons.Assistant,
-                                contentDescription = stringResource(R.string.history_promote),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        IconButton(onClick = hapticTap(onArchive)) {
-                            Icon(
-                                imageVector = FocusIcons.Archive,
-                                contentDescription = stringResource(R.string.history_archive),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                }
-            },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-        )
-    }
 }

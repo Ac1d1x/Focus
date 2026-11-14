@@ -23,6 +23,7 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
@@ -48,14 +49,30 @@ internal fun MarkdownInlineText(
     content.formulas.forEachIndexed { index, latex ->
         val fontSize = if (style.fontSize.isSpecified) style.fontSize else 16.sp
         val box = rememberMathBox(latex, false, color, fontSize)
-        if (box != null && box.w > 0f) {
-            val placeholder = Placeholder(
-                width = with(density) { box.w.toSp() },
-                height = with(density) { box.h.toSp() },
-                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
-            )
-            inline["math$index"] = InlineTextContent(placeholder) {
+        val widthPx = if (box != null && box.w > 0f) {
+            box.w
+        } else {
+            with(density) { fontSize.toPx() } * latex.length.coerceIn(1, 16) * 0.58f
+        }
+        val heightPx = if (box != null && box.h > 0f) {
+            box.h
+        } else {
+            with(density) { fontSize.toPx() } * 1.2f
+        }
+        val placeholder = Placeholder(
+            width = with(density) { widthPx.toSp() },
+            height = with(density) { heightPx.toSp() },
+            placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+        )
+        inline["math$index"] = InlineTextContent(placeholder) {
+            if (box != null && box.w > 0f) {
                 Canvas(Modifier.fillMaxSize()) { box.paint(this, 0f, box.asc) }
+            } else {
+                Text(
+                    text = latex,
+                    style = TextStyle(fontFamily = FontFamily.Monospace, fontSize = fontSize),
+                    maxLines = 1,
+                )
             }
         }
     }

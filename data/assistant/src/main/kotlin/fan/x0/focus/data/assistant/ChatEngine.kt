@@ -298,6 +298,7 @@ class ChatEngine(
                     tools = toolDtos.takeIf { it.isNotEmpty() },
                     toolChoice = "auto",
                     temperature = if (deepSeekEnabled) null else 0.4,
+                    maxTokens = if (deepSeekEnabled) 8192 else null,
                     reasoningEffort = if (deepSeekEnabled) null else options.reasoning.wire,
                     thinking = if (deepSeekEnabled && options.reasoning.isEnabled) ThinkingDto() else null,
                     title = if (

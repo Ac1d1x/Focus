@@ -221,6 +221,7 @@ fun ChatScreen(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val readAloud = rememberReadAloud()
+    LaunchedEffect(state.conversationId) { readAloud.stop() }
     val copied = stringResource(R.string.chat_copied)
     val copyText: (String) -> Unit = { text ->
         onAction(ChatAction.CloseMessageMenu)

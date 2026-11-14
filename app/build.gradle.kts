@@ -24,6 +24,10 @@ android {
     compileSdk = 37
     ndkVersion = "28.2.13676358"
 
+    androidResources {
+        noCompress += listOf("ttf")
+    }
+
     defaultConfig {
         applicationId = "fan.x0.focus"
         minSdk = 26

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -31,8 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +43,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.theme.FocusTheme
 import fan.x0.focus.data.assistant.CrashLogEntry
 import fan.x0.focus.data.assistant.CrashLogStore
 import kotlinx.coroutines.launch
@@ -60,9 +59,7 @@ class CrashLogActivity : ComponentActivity() {
         store.markReviewed()
         CrashNotifier.cancel(this)
         setContent {
-            MaterialTheme(
-                colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme(),
-            ) {
+            FocusTheme {
                 CrashLogScreen(
                     store = store,
                     onClose = { finish() },
@@ -142,12 +139,14 @@ private fun CrashLogScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = stringResource(R.string.crash_page_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            FocusReveal(index = 0) {
+                Text(
+                    text = stringResource(R.string.crash_page_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
             if (!loading && logs.isEmpty()) {
                 Text(
                     text = stringResource(R.string.crash_page_empty),
@@ -161,62 +160,66 @@ private fun CrashLogScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp),
             ) {
-                items(logs, key = { it.name }) { log ->
-                    Card(
-                        onClick = { openName = log.name },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemsIndexed(logs, key = { _, log -> log.name }) { index, log ->
+                    FocusReveal(index = index + 1) {
+                        Card(
+                            onClick = { openName = log.name },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
-                            Text(
-                                text = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                    .format(Date(log.time)),
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Text(
-                                text = log.preview.ifBlank { stringResource(R.string.crash_page_unknown) },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                TextButton(onClick = { openName = log.name }) {
-                                    Text(stringResource(R.string.crash_page_view))
-                                }
-                                TextButton(
-                                    onClick = {
-                                        scope.launch {
-                                            val content = store.read(log.name).orEmpty()
-                                            val intent = Intent(Intent.ACTION_SEND)
-                                                .setType("text/plain")
-                                                .putExtra(Intent.EXTRA_TEXT, content.ifBlank { log.preview })
-                                            context.startActivity(
-                                                Intent.createChooser(
-                                                    intent,
-                                                    context.getString(R.string.crash_page_share_title),
-                                                ),
-                                            )
-                                        }
-                                    },
-                                ) {
-                                    Text(stringResource(R.string.crash_page_share))
-                                }
-                                TextButton(
-                                    onClick = {
-                                        scope.launch {
-                                            store.delete(log.name)
-                                            logs = store.list()
-                                        }
-                                    },
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.crash_page_delete),
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        .format(Date(log.time)),
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    text = log.preview.ifBlank { stringResource(R.string.crash_page_unknown) },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextButton(onClick = { openName = log.name }) {
+                                        Text(stringResource(R.string.crash_page_view))
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                val content = store.read(log.name).orEmpty()
+                                                val intent = Intent(Intent.ACTION_SEND)
+                                                    .setType("text/plain")
+                                                    .putExtra(Intent.EXTRA_TEXT, content.ifBlank { log.preview })
+                                                context.startActivity(
+                                                    Intent.createChooser(
+                                                        intent,
+                                                        context.getString(R.string.crash_page_share_title),
+                                                    ),
+                                                )
+                                            }
+                                        },
+                                    ) {
+                                        Text(stringResource(R.string.crash_page_share))
+                                    }
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                store.delete(log.name)
+                                                logs = store.list()
+                                            }
+                                        },
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.crash_page_delete),
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
                                 }
                             }
                         }

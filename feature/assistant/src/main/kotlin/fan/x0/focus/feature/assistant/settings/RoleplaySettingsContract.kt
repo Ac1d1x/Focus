@@ -5,6 +5,7 @@ import fan.x0.focus.core.mvi.UiEffect
 import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.roleplay.RoleplayConfig
+import fan.x0.focus.data.roleplay.RoleplaySticker
 import fan.x0.focus.data.roleplay.RoleplayUserPersona
 
 data class RoleplaySettingsUiState(
@@ -12,12 +13,15 @@ data class RoleplaySettingsUiState(
     val assistants: List<AssistantProfile> = emptyList(),
     val config: RoleplayConfig = RoleplayConfig(),
     val userPersona: RoleplayUserPersona = RoleplayUserPersona(),
+    val stickers: List<RoleplaySticker> = emptyList(),
 ) : UiState
 
 sealed interface RoleplaySettingsAction : UiAction {
     data class UpdateConfig(val config: RoleplayConfig) : RoleplaySettingsAction
     data class SaveUserPersona(val persona: RoleplayUserPersona) : RoleplaySettingsAction
     data class OpenAssistant(val id: String) : RoleplaySettingsAction
+    data class AddSticker(val value: String, val name: String, val emotion: String) : RoleplaySettingsAction
+    data class DeleteSticker(val id: String) : RoleplaySettingsAction
 }
 
 sealed interface RoleplaySettingsEffect : UiEffect {

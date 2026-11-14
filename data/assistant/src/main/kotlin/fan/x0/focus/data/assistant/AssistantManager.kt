@@ -28,14 +28,18 @@ class AssistantManager(
         return profile
     }
 
-    suspend fun ensureGreeting(profile: AssistantProfile) {
+    suspend fun ensureGreeting(profile: AssistantProfile, conversationId: String? = null) {
         if (profile.kind != AssistantKind.Roleplay) return
         val greeting = profile.roleplay?.greeting?.trim().orEmpty()
         if (greeting.isBlank()) return
-        val main = chats.ensureMainConversation(profile.id)
-        if (chats.messages(main.id).isNotEmpty()) return
+        val target = if (conversationId != null) {
+            chats.conversation(conversationId) ?: return
+        } else {
+            chats.ensureMainConversation(profile.id)
+        }
+        if (chats.messages(target.id).isNotEmpty()) return
         chats.append(
-            conversationId = main.id,
+            conversationId = target.id,
             role = ChatRole.Assistant,
             content = greeting,
             label = "greeting",

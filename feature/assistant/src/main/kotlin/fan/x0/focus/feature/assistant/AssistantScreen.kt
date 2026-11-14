@@ -1,5 +1,6 @@
 package fan.x0.focus.feature.assistant
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,16 +46,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusCardGroupScope
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLargeTopBar
+import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
@@ -74,7 +78,10 @@ import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -82,6 +89,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val promptSaved = stringResource(R.string.assistant_prompts_saved)
     val profileSaved = stringResource(R.string.assistant_profile_saved)
     val profileDeleted = stringResource(R.string.assistant_profile_deleted)
@@ -91,6 +100,19 @@ fun AssistantRoute(viewModel: AssistantViewModel = koinViewModel()) {
             AssistantEffect.PromptSaved -> snackbar.showSnackbar(promptSaved)
             AssistantEffect.ProfileSaved -> snackbar.showSnackbar(profileSaved)
             AssistantEffect.ProfileDeleted -> snackbar.showSnackbar(profileDeleted)
+            is AssistantEffect.RoleplayExported -> scope.launch {
+                val file = withContext(Dispatchers.IO) {
+                    val safe = effect.name.replace(Regex("[^\\p{L}\\p{N}_-]"), "_").ifBlank { "roleplay" }
+                    File(context.cacheDir, "$safe.json").apply { writeText(effect.json) }
+                }
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, context.getString(R.string.assistant_roleplay_export)))
+            }
         }
     }
     AssistantScreen(state = state, onAction = viewModel::onAction, snackbar = snackbar)
@@ -154,6 +176,13 @@ fun AssistantScreen(
                     )
                 }
             }
+            if (state.assistantKind == AssistantKind.Roleplay) {
+                item(key = "relationship") {
+                    FocusReveal(index = 2) {
+                        RoleplayStateGroup(state)
+                    }
+                }
+            }
             item(key = "workspace") {
                 FocusReveal(index = 2) {
                     WorkspaceGroup(state = state, onAction = onAction)
@@ -163,6 +192,16 @@ fun AssistantScreen(
                 item(key = "roleplay") {
                     FocusReveal(index = 3) {
                         RoleplayCardGroup(state = state, onAction = onAction)
+                    }
+                }
+                item(key = "worldbooks") {
+                    FocusReveal(index = 4) {
+                        RoleplayBooksGroup(state = state, onAction = onAction)
+                    }
+                }
+                item(key = "memories") {
+                    FocusReveal(index = 5) {
+                        RoleplayMemoryGroup(state = state, onAction = onAction)
                     }
                 }
             } else {
@@ -424,7 +463,55 @@ private fun ProfileGroup(
 }
 
 @Composable
+private fun RoleplayStateGroup(state: AssistantUiState) {
+    val relationship = state.roleplayState ?: return
+    FocusCardGroup(title = stringResource(R.string.assistant_roleplay_relationship)) {
+        item(
+            headlineContent = {
+                Text(
+                    stringResource(
+                        when (relationship.stage) {
+                            fan.x0.focus.data.roleplay.RoleplayStage.Stranger -> R.string.assistant_roleplay_stage_stranger
+                            fan.x0.focus.data.roleplay.RoleplayStage.Acquaintance -> R.string.assistant_roleplay_stage_acquaintance
+                            fan.x0.focus.data.roleplay.RoleplayStage.Close -> R.string.assistant_roleplay_stage_close
+                        },
+                    ),
+                )
+            },
+            supportingContent = {
+                Text(
+                    stringResource(
+                        R.string.assistant_roleplay_feeling,
+                        relationship.mood,
+                        relationship.affection,
+                        relationship.energy,
+                    ),
+                )
+            },
+            leadingContent = {
+                FocusCardGroupIcon(
+                    icon = FocusIcons.Person,
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            },
+        )
+    }
+}
+
+@Composable
 private fun RoleplayCardGroup(state: AssistantUiState, onAction: (AssistantAction) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val importCard = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }
+            if (!text.isNullOrBlank()) onAction(AssistantAction.ImportRoleplayCard(text))
+        }
+    }
     var greeting by remember(state.assistantId) { mutableStateOf(state.roleplayGreeting) }
     var prompt by remember(state.assistantId) { mutableStateOf(state.roleplayPrompt) }
     var examples by remember(state.assistantId) { mutableStateOf(state.roleplayExamples) }
@@ -476,6 +563,23 @@ private fun RoleplayCardGroup(state: AssistantUiState, onAction: (AssistantActio
                     modifier = Modifier.fillMaxWidth(),
                     shape = FocusShapeTokens.input,
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FocusOutlinedButton(
+                        text = stringResource(R.string.assistant_roleplay_import),
+                        onClick = {
+                            importCard.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                    FocusOutlinedButton(
+                        text = stringResource(R.string.assistant_roleplay_export),
+                        onClick = { onAction(AssistantAction.ExportRoleplayCard) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.weight(1f))
                     FocusPrimaryButton(
@@ -494,6 +598,140 @@ private fun RoleplayCardGroup(state: AssistantUiState, onAction: (AssistantActio
                             examples.trim() != state.roleplayExamples,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoleplayBooksGroup(state: AssistantUiState, onAction: (AssistantAction) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val importBook = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            }
+            if (!text.isNullOrBlank()) onAction(AssistantAction.ImportWorldBook(text))
+        }
+    }
+    FocusCardGroup(title = stringResource(R.string.assistant_roleplay_world_title)) {
+        if (state.roleplayBooks.isEmpty()) {
+            item(
+                headlineContent = { Text(stringResource(R.string.assistant_roleplay_world_empty)) },
+                supportingContent = { Text(stringResource(R.string.assistant_roleplay_world_empty_body)) },
+                leadingContent = {
+                    FocusCardGroupIcon(
+                        icon = FocusIcons.Library,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                },
+            )
+        } else {
+            state.roleplayBooks.forEach { book ->
+                item(
+                    headlineContent = { Text(book.name) },
+                    supportingContent = {
+                        Text(stringResource(R.string.assistant_roleplay_world_entries, book.entryCount))
+                    },
+                    trailingContent = {
+                        TextButton(
+                            onClick = hapticTap {
+                                onAction(AssistantAction.RemoveWorldBook(book.id))
+                            },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.assistant_roleplay_world_remove),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    },
+                )
+            }
+        }
+        formItem {
+            FocusOutlinedButton(
+                text = stringResource(R.string.assistant_roleplay_world_import),
+                onClick = {
+                    importBook.launch(arrayOf("application/json", "text/*", "application/octet-stream"))
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RoleplayMemoryGroup(state: AssistantUiState, onAction: (AssistantAction) -> Unit) {
+    FocusCardGroup(title = stringResource(R.string.assistant_roleplay_memory_title)) {
+        if (state.roleplayMemories.isEmpty()) {
+            item(
+                headlineContent = { Text(stringResource(R.string.assistant_roleplay_memory_empty)) },
+                supportingContent = { Text(stringResource(R.string.assistant_roleplay_memory_empty_body)) },
+                leadingContent = {
+                    FocusCardGroupIcon(
+                        icon = FocusIcons.Idea,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    )
+                },
+            )
+        } else {
+            state.roleplayMemories.forEach { memory ->
+                item(
+                    headlineContent = {
+                        Text(
+                            text = memory.content,
+                            maxLines = 3,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                    },
+                    supportingContent = {
+                        val detail = buildList {
+                            add(memory.type)
+                            if (memory.done) add(stringResource(R.string.assistant_roleplay_memory_done))
+                            if (memory.dueAt > 0) add(fan.x0.focus.data.assistant.ToolTime.full(memory.dueAt))
+                        }.joinToString(" · ")
+                        Text(detail)
+                    },
+                    leadingContent = {
+                        FocusCardGroupIcon(
+                            icon = FocusIcons.Idea,
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    },
+                    trailingContent = {
+                        Row {
+                            if (!memory.done) {
+                                IconButton(
+                                    onClick = hapticTap {
+                                        onAction(AssistantAction.CompleteRoleplayMemory(memory.id))
+                                    },
+                                ) {
+                                    Icon(
+                                        FocusIcons.Check,
+                                        contentDescription = stringResource(R.string.assistant_roleplay_memory_complete),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                            IconButton(
+                                onClick = hapticTap {
+                                    onAction(AssistantAction.DeleteRoleplayMemory(memory.id))
+                                },
+                            ) {
+                                Icon(
+                                    FocusIcons.Delete,
+                                    contentDescription = stringResource(R.string.assistant_roleplay_memory_delete),
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    },
+                )
             }
         }
     }

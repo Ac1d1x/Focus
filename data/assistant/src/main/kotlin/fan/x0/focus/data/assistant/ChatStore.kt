@@ -269,6 +269,22 @@ class ChatStore(
         )
     }
 
+    suspend fun createRoleplayScene(
+        assistantId: String,
+        title: String,
+        parentId: String = mainConversationId(assistantId),
+    ): Conversation = withContext(Dispatchers.IO) {
+        insertConversation(
+            id = UUID.randomUUID().toString(),
+            title = title,
+            kind = ConversationKind.Side,
+            origin = ConversationOrigin.User,
+            parentId = parentId,
+            taskStatus = TaskStatus.None,
+            assistantId = assistantId,
+        )
+    }
+
     private fun insertConversation(
         id: String,
         title: String,

@@ -6,9 +6,13 @@ import fan.x0.focus.core.mvi.BaseViewModel
 import fan.x0.focus.data.assistant.AssistantManager
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
+import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.PromptSettings
 import fan.x0.focus.data.assistant.WorkspaceStore
 import fan.x0.focus.data.roleplay.RoleplayCard
+import fan.x0.focus.data.roleplay.RoleplayStore
+import fan.x0.focus.data.roleplay.RoleplayWorldStore
+import fan.x0.focus.data.roleplay.SillyTavernCodec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -21,6 +25,9 @@ class AssistantViewModel(
     private val prompts: PromptSettings,
     private val profiles: AssistantProfileStore,
     private val manager: AssistantManager,
+    private val roleplayWorld: RoleplayWorldStore,
+    private val roleplayStore: RoleplayStore,
+    private val chats: ChatStore,
 ) : BaseViewModel<AssistantAction, AssistantUiState, AssistantEffect>(AssistantUiState()) {
 
     private var assistantId = AssistantProfile.DEFAULT_ID
@@ -50,6 +57,38 @@ class AssistantViewModel(
             val assistantName = workspace.assistantName(assistantId)
             val all = profiles.profiles.first()
             val profile = all.firstOrNull { it.id == assistantId }
+            val books = if (profile?.kind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                roleplayWorld.books(profile.roleplay?.worldBookIds.orEmpty()).map { book ->
+                    RoleplayBookUi(
+                        id = book.id,
+                        name = book.name,
+                        kind = book.kind.name,
+                        enabled = book.enabled,
+                        entryCount = roleplayWorld.countEntries(book.id),
+                    )
+                }
+            } else {
+                emptyList()
+            }
+            val roleplayState = if (profile?.kind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                val main = chats.ensureMainConversation(profile.id)
+                roleplayStore.state(main.id).view()
+            } else {
+                null
+            }
+            val memories = if (profile?.kind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                roleplayStore.memories(profile.id).take(20).map { memory ->
+                    RoleplayMemoryUi(
+                        id = memory.id,
+                        type = memory.type.name.lowercase(),
+                        content = memory.content,
+                        dueAt = memory.dueAt,
+                        done = memory.done,
+                    )
+                }
+            } else {
+                emptyList()
+            }
             updateState {
                 copy(
                     loading = false,
@@ -63,6 +102,9 @@ class AssistantViewModel(
                     roleplayGreeting = profile?.roleplay?.greeting.orEmpty(),
                     roleplayPrompt = profile?.roleplay?.prompt.orEmpty(),
                     roleplayExamples = profile?.roleplay?.examples.orEmpty(),
+                    roleplayBooks = books,
+                    roleplayMemories = memories,
+                    roleplayState = roleplayState,
                     canDelete = all.size > 1,
                     documents = documents.map { WorkspaceDocumentUi(it.file, it.content) },
                     openDocument = openDocument?.let { open ->
@@ -107,6 +149,12 @@ class AssistantViewModel(
             AssistantAction.SavePrompt -> savePrompt()
             is AssistantAction.SaveProfile -> saveProfile(action)
             is AssistantAction.SaveRoleplayCard -> saveRoleplayCard(action)
+            is AssistantAction.ImportRoleplayCard -> importRoleplayCard(action.json)
+            is AssistantAction.ImportWorldBook -> importWorldBook(action.json)
+            is AssistantAction.RemoveWorldBook -> removeWorldBook(action.id)
+            AssistantAction.ExportRoleplayCard -> exportRoleplayCard()
+            is AssistantAction.DeleteRoleplayMemory -> deleteMemory(action.id)
+            is AssistantAction.CompleteRoleplayMemory -> completeMemory(action.id)
             AssistantAction.DeleteProfile -> deleteProfile()
         }
     }
@@ -138,6 +186,89 @@ class AssistantViewModel(
             manager.update(profile.copy(roleplay = card))
             load()
             sendEffect(AssistantEffect.ProfileSaved)
+        }
+    }
+
+    private fun importRoleplayCard(raw: String) {
+        viewModelScope.launch {
+            val imported = SillyTavernCodec.importCharacter(raw)
+            if (imported == null) {
+                emitError(fan.x0.focus.core.error.AppError(fan.x0.focus.core.error.AppErrorType.Generic, serverMessage = "Could not read the character card."))
+                return@launch
+            }
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            val book = imported.book
+            if (book != null) {
+                roleplayWorld.saveBook(book)
+                imported.entries.forEach { roleplayWorld.saveEntry(it) }
+            }
+            val card = imported.card.copy(
+                worldBookIds = listOfNotNull(book?.id).ifEmpty { imported.card.worldBookIds },
+            )
+            manager.update(
+                profile.copy(
+                    name = imported.name.take(40),
+                    role = imported.role.take(120),
+                    roleplay = card,
+                ),
+            )
+            load()
+            sendEffect(AssistantEffect.ProfileSaved)
+        }
+    }
+
+    private fun importWorldBook(raw: String) {
+        viewModelScope.launch {
+            val imported = SillyTavernCodec.importWorldBook(raw)
+            if (imported == null) {
+                emitError(fan.x0.focus.core.error.AppError(fan.x0.focus.core.error.AppErrorType.Generic, serverMessage = "Could not read the world book."))
+                return@launch
+            }
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            roleplayWorld.saveBook(imported.book)
+            imported.entries.forEach { roleplayWorld.saveEntry(it) }
+            val card = (profile.roleplay ?: RoleplayCard()).copy(
+                worldBookIds = (profile.roleplay?.worldBookIds.orEmpty() + imported.book.id).distinct(),
+            )
+            manager.update(profile.copy(roleplay = card))
+            load()
+            sendEffect(AssistantEffect.ProfileSaved)
+        }
+    }
+
+    private fun removeWorldBook(id: String) {
+        viewModelScope.launch {
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            val card = (profile.roleplay ?: RoleplayCard()).copy(
+                worldBookIds = profile.roleplay?.worldBookIds.orEmpty().filterNot { it == id },
+            )
+            manager.update(profile.copy(roleplay = card))
+            load()
+        }
+    }
+
+    private fun deleteMemory(id: String) {
+        viewModelScope.launch {
+            roleplayStore.deleteMemory(id)
+            load()
+        }
+    }
+
+    private fun completeMemory(id: String) {
+        viewModelScope.launch {
+            roleplayStore.completeMemory(id)
+            load()
+        }
+    }
+
+    private fun exportRoleplayCard() {
+        viewModelScope.launch {
+            val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+            val card = profile.roleplay ?: RoleplayCard()
+            val book = card.worldBookIds.firstOrNull()?.let { roleplayWorld.book(it) }
+            val entries = book?.let { roleplayWorld.entries(it.id) }.orEmpty()
+            val json = SillyTavernCodec.exportCharacter(profile.name, profile.role, card, book, entries)
+            sendEffect(AssistantEffect.RoleplayExported(json, profile.name))
         }
     }
 

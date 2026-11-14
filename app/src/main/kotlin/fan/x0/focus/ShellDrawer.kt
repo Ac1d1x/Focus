@@ -159,7 +159,13 @@ fun ShellDrawer(
             )
             IconOnlyAction(
                 icon = FocusIcons.Add,
-                label = stringResource(R.string.drawer_new_chat),
+                label = stringResource(
+                    if (assistant.kind == AssistantKind.Roleplay) {
+                        R.string.drawer_new_scene
+                    } else {
+                        R.string.drawer_new_chat
+                    },
+                ),
                 selected = false,
                 onClick = onNewSideChat,
             )

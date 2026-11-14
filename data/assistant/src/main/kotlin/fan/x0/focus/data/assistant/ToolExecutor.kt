@@ -20,6 +20,10 @@ import fan.x0.focus.data.sources.FeedRepository
 import fan.x0.focus.data.sources.FileRepository
 import fan.x0.focus.data.sources.SourceException
 import fan.x0.focus.data.sources.WebArticleExtractor
+import fan.x0.focus.data.roleplay.RoleplayMemoryType
+import fan.x0.focus.data.roleplay.RoleplayStatus
+import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -34,6 +38,12 @@ import kotlinx.serialization.json.putJsonObject
 import org.koin.core.annotation.Single
 import org.koin.mp.KoinPlatform
 import java.util.UUID
+
+data class OutgoingMessage(
+    val text: String,
+    val kind: String = "text",
+    val meta: String = "",
+)
 
 data class ToolResult(
     val ok: Boolean,
@@ -51,6 +61,8 @@ data class ToolResult(
     val media: List<ChatAttachment> = emptyList(),
     val previews: List<ChatAttachment> = emptyList(),
     val trust: WorkspaceTrustRequest? = null,
+    val outgoing: List<OutgoingMessage> = emptyList(),
+    val recalledMessageId: Long? = null,
 )
 
 data class StepOutcome(
@@ -113,10 +125,14 @@ class ToolExecutor(
     private val triggerScheduler: AgentTriggerScheduler,
     private val webhook: AgentWebhookServer,
     private val shortcuts: AgentShortcutManager,
+    private val roleplay: RoleplayStore,
+    private val roleplaySettings: RoleplaySettings,
 ) {
     private val sideChats: SideChatManager by lazy { KoinPlatform.getKoin().get<SideChatManager>() }
 
     fun allSpecs(main: Boolean = false): List<ToolSpec> = ToolCatalog.chat(main) + providers.specs()
+
+    fun roleplaySpecs(): List<ToolSpec> = RoleplayToolCatalog.chatSpecs()
 
     fun specsFor(mode: AgentMode, main: Boolean = false): List<ToolSpec> {
         val specs = allSpecs(main)
@@ -127,7 +143,8 @@ class ToolExecutor(
         }
     }
 
-    fun find(name: String): ToolSpec? = ToolCatalog.find(name) ?: providers.find(name)
+    fun find(name: String): ToolSpec? =
+        ToolCatalog.find(name) ?: RoleplayToolCatalog.find(name) ?: providers.find(name)
 
     fun redactArguments(name: String, arguments: String): String =
         providers.redactArguments(name, arguments) ?: ToolCatalog.redactArguments(name, arguments)
@@ -197,6 +214,7 @@ class ToolExecutor(
                 trust = trust.request,
             )
         }
+        RoleplayToolCatalog.find(name)?.let { return roleplayTool(name, args, conversationId) }
         crew.handle(name, args)?.let { return it }
         when (spec.kind) {
             ToolKind.Read, ToolKind.Write -> return runToolGated(spec, args, conversationId, trust)
@@ -2152,6 +2170,218 @@ class ToolExecutor(
 
     private fun ok(summary: String, content: String, diffs: List<FileDiff> = emptyList()): ToolResult =
         ToolResult(ok = true, content = content, summary = summary, diffs = diffs)
+
+    private suspend fun roleplayTool(
+        name: String,
+        args: JsonObject,
+        conversationId: String,
+    ): ToolResult {
+        val assistantId = chats.assistantIdFor(conversationId)
+        return when (name) {
+            RoleplayToolCatalog.ADJUST_FEELING -> {
+                val mood = (args.number("mood") ?: 0).toDouble()
+                val affection = (args.number("affection") ?: 0).toDouble()
+                val energy = (args.number("energy") ?: 0).toDouble()
+                val reason = args.text("reason").orEmpty().take(160)
+                val state = roleplay.adjust(conversationId, mood, affection, energy, reason)
+                ToolResult(
+                    ok = true,
+                    content = "Mood ${state.mood.toInt()}, affection ${state.affection.toInt()}, energy ${state.energy.toInt()}.",
+                    summary = "Feeling adjusted",
+                )
+            }
+            RoleplayToolCatalog.SET_STATUS -> {
+                val status = RoleplayStatus.fromWire(args.text("status"))
+                roleplay.setStatus(conversationId, status)
+                ToolResult(
+                    ok = true,
+                    content = "Status set to ${status.wire}.",
+                    summary = status.wire,
+                    silent = status == RoleplayStatus.ReadNoReply,
+                )
+            }
+            RoleplayToolCatalog.WRITE_MEMORY -> {
+                val type = RoleplayMemoryType.fromWire(args.text("type"))
+                val content = args.text("content").orEmpty().trim()
+                if (content.isEmpty()) return fail("Memory content is required.")
+                val dueAt = ToolTime.parse(args.text("due_at")) ?: 0L
+                val memory = roleplay.writeMemory(assistantId, type, content, dueAt)
+                ToolResult(
+                    ok = true,
+                    content = "Saved ${memory.type.name.lowercase()} memory ${memory.id.takeLast(6)}.",
+                    summary = "Memory saved",
+                )
+            }
+            RoleplayToolCatalog.READ_MEMORY -> {
+                val type = args.text("type")?.takeIf { it.isNotBlank() }?.let { RoleplayMemoryType.fromWire(it) }
+                val limit = (args.number("limit") ?: 10).coerceIn(1, 30)
+                val list = roleplay.readMemories(
+                    assistantId = assistantId,
+                    query = args.text("query").orEmpty(),
+                    type = type,
+                    limit = limit,
+                )
+                val content = if (list.isEmpty()) {
+                    "No matching memory."
+                } else {
+                    list.joinToString("\n") { memory ->
+                        val due = if (memory.dueAt > 0) " due ${ToolTime.full(memory.dueAt)}" else ""
+                        "- ${memory.id.takeLast(6)} [${memory.type.name.lowercase()}] ${memory.content}$due"
+                    }
+                }
+                ToolResult(ok = true, content = content, summary = "${list.size} memories")
+            }
+            RoleplayToolCatalog.COMPLETE_TODO -> {
+                val id = args.text("id").orEmpty().trim()
+                if (id.isEmpty()) return fail("Memory id is required.")
+                val exact = roleplay.completeMemory(id)
+                val fuzzy = if (exact) {
+                    true
+                } else {
+                    roleplay.memories(assistantId).firstOrNull { it.id.takeLast(6) == id.takeLast(6) }
+                        ?.let { roleplay.completeMemory(it.id) }
+                        ?: false
+                }
+                ToolResult(
+                    ok = fuzzy,
+                    content = if (fuzzy) "Marked finished." else "No memory with that id.",
+                    summary = if (fuzzy) "Memory completed" else "Memory not found",
+                )
+            }
+            RoleplayToolCatalog.SCHEDULE_MESSAGE -> {
+                val prompt = args.text("prompt").orEmpty().trim()
+                if (prompt.isEmpty()) return fail("Prompt is required.")
+                val now = System.currentTimeMillis()
+                val delay = args.number("delay_ms")?.toLong()
+                val at = ToolTime.parse(args.text("at"))
+                val fireAt = at ?: delay?.let { now + it.coerceAtLeast(0) } ?: now
+                val task = roleplay.scheduleTask(
+                    conversationId = conversationId,
+                    assistantId = assistantId,
+                    fireAt = fireAt,
+                    prompt = prompt,
+                    type = args.text("type").orEmpty().ifBlank { "custom" },
+                    condition = args.text("condition").orEmpty().ifBlank { "always" },
+                    urgent = args.flag("urgent") == true,
+                )
+                ToolResult(
+                    ok = true,
+                    content = "Scheduled ${task.id.takeLast(6)} for ${ToolTime.full(task.fireAt)}.",
+                    summary = "Scheduled",
+                )
+            }
+            RoleplayToolCatalog.LIST_SCHEDULED -> {
+                val tasks = roleplay.openTasks(conversationId)
+                val content = if (tasks.isEmpty()) {
+                    "No scheduled messages."
+                } else {
+                    tasks.joinToString("\n") { task ->
+                        "- ${task.id.takeLast(6)} ${ToolTime.full(task.fireAt)} [${task.type}] ${task.prompt.take(120)}"
+                    }
+                }
+                ToolResult(ok = true, content = content, summary = "${tasks.size} scheduled")
+            }
+            RoleplayToolCatalog.CANCEL_SCHEDULED -> {
+                val id = args.text("id").orEmpty().trim()
+                val task = roleplay.openTasks(conversationId).firstOrNull {
+                    it.id == id || it.id.takeLast(6) == id.takeLast(6)
+                }
+                val ok = task?.let { roleplay.cancelTask(it.id) } ?: false
+                ToolResult(
+                    ok = ok,
+                    content = if (ok) "Cancelled." else "No scheduled message with that id.",
+                    summary = if (ok) "Scheduled message cancelled" else "Task not found",
+                )
+            }
+            RoleplayToolCatalog.SEND_STICKER -> {
+                val sticker = roleplay.pickSticker(
+                    id = args.text("id").orEmpty(),
+                    emotion = args.text("emotion").orEmpty(),
+                ) ?: return fail("The sticker library is empty or nothing matches.")
+                roleplay.markStickerUsed(sticker.id)
+                val meta = buildJsonObject {
+                    put("kind", sticker.kind)
+                    put("value", sticker.value)
+                    put("name", sticker.name)
+                }.toString()
+                val label = sticker.name.ifBlank { sticker.emotion }.ifBlank { sticker.value }
+                ToolResult(
+                    ok = true,
+                    content = "Sent sticker $label.",
+                    summary = "Sticker",
+                    outgoing = listOf(
+                        OutgoingMessage(
+                            text = "[sticker] $label",
+                            kind = "sticker",
+                            meta = meta,
+                        ),
+                    ),
+                )
+            }
+            RoleplayToolCatalog.SEND_TYPO -> {
+                val text = args.text("text").orEmpty().trim()
+                if (text.isEmpty()) return fail("Text is required.")
+                ToolResult(
+                    ok = true,
+                    content = "Sent the typo message.",
+                    summary = "Typo sent",
+                    outgoing = listOf(OutgoingMessage(text)),
+                )
+            }
+            RoleplayToolCatalog.RECALL_MESSAGE -> {
+                val config = roleplaySettings.effectiveOnce(assistantId)
+                if (!config.recallEnabled) return fail("Message recall is off.")
+                val state = roleplay.state(conversationId)
+                if (roleplay.recallsInLastHour(state) >= config.recallPerHour) {
+                    return fail("Recall limit reached for this hour.")
+                }
+                val delay = (args.number("delay_ms") ?: 0).coerceIn(0, 10_000)
+                if (delay > 0) kotlinx.coroutines.delay(delay.toLong())
+                val keyword = args.text("keyword").orEmpty().trim()
+                val now = System.currentTimeMillis()
+                val window = config.recallWindowSec * 1_000L
+                val target = chats.messages(conversationId, 30)
+                    .asReversed()
+                    .firstOrNull { message ->
+                        message.role == ChatRole.Assistant &&
+                            !message.recalled &&
+                            now - message.createdAt <= window &&
+                            message.content.isNotBlank() &&
+                            (keyword.isEmpty() || message.content.contains(keyword, ignoreCase = true))
+                    } ?: return fail("No recent message matches that keyword.")
+                chats.markRecalled(target.id)
+                roleplay.addRecall(conversationId)
+                ToolResult(
+                    ok = true,
+                    content = "Recalled message ${target.id}.",
+                    summary = "Recalled",
+                    recalledMessageId = target.id,
+                )
+            }
+            RoleplayToolCatalog.MODIFY_SCHEDULED -> {
+                val id = args.text("id").orEmpty().trim()
+                val task = roleplay.openTasks(conversationId).firstOrNull {
+                    it.id == id || it.id.takeLast(6) == id.takeLast(6)
+                } ?: return fail("No scheduled message with that id.")
+                val now = System.currentTimeMillis()
+                val delay = args.number("delay_ms")?.toLong()
+                val at = ToolTime.parse(args.text("at"))
+                val fireAt = at ?: delay?.let { now + it.coerceAtLeast(0) }
+                val ok = roleplay.updateTask(
+                    id = task.id,
+                    fireAt = fireAt,
+                    prompt = args.text("prompt"),
+                    condition = args.text("condition"),
+                )
+                ToolResult(
+                    ok = ok,
+                    content = if (ok) "Updated." else "Could not update the task.",
+                    summary = if (ok) "Scheduled message updated" else "Task not found",
+                )
+            }
+            else -> fail("Unknown roleplay tool: $name")
+        }
+    }
 
     private fun fail(message: String, summary: String = message): ToolResult =
         ToolResult(ok = false, content = "Error: $message", summary = summary)

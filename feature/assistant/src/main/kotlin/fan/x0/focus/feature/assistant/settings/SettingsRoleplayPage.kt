@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -158,6 +159,18 @@ internal fun SettingsRoleplayPage(
                         headlineContent = { Text(stringResource(R.string.settings_roleplay_trace)) },
                         supportingContent = { Text(stringResource(R.string.settings_roleplay_trace_body)) },
                     )
+                    switchItem(
+                        checked = state.config.typoChance > 0f,
+                        onCheckedChange = {
+                            onAction(
+                                RoleplaySettingsAction.UpdateConfig(
+                                    state.config.copy(typoChance = if (it) 0.05f else 0f),
+                                ),
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.settings_roleplay_typo)) },
+                        supportingContent = { Text(stringResource(R.string.settings_roleplay_typo_body)) },
+                    )
                     sliderItem(
                         title = R.string.settings_roleplay_read_delay,
                         value = state.config.readDelayMs.toFloat(),
@@ -245,6 +258,94 @@ internal fun SettingsRoleplayPage(
             FocusReveal(index = 4) {
                 UserPersonaCard(state = state, onAction = onAction)
             }
+        }
+        item(key = "stickers") {
+            FocusReveal(index = 5) {
+                StickerCard(state = state, onAction = onAction)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StickerCard(
+    state: RoleplaySettingsUiState,
+    onAction: (RoleplaySettingsAction) -> Unit,
+) {
+    var value by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var emotion by remember { mutableStateOf("") }
+    FocusCardGroup(title = stringResource(R.string.settings_roleplay_stickers)) {
+        formItem(
+            headlineContent = { Text(stringResource(R.string.settings_roleplay_sticker_add)) },
+            supportingContent = { Text(stringResource(R.string.settings_roleplay_sticker_hint)) },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = value,
+                        onValueChange = { value = it.take(8) },
+                        label = { Text(stringResource(R.string.settings_roleplay_sticker_emoji)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = FocusShapeTokens.input,
+                    )
+                    OutlinedTextField(
+                        value = emotion,
+                        onValueChange = { emotion = it.take(20) },
+                        label = { Text(stringResource(R.string.settings_roleplay_sticker_emotion)) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = FocusShapeTokens.input,
+                    )
+                }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(30) },
+                    label = { Text(stringResource(R.string.settings_roleplay_sticker_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = FocusShapeTokens.input,
+                )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    FocusPrimaryButton(
+                        text = stringResource(R.string.settings_roleplay_sticker_save),
+                        onClick = {
+                            if (value.isNotBlank()) {
+                                onAction(RoleplaySettingsAction.AddSticker(value.trim(), name.trim(), emotion.trim()))
+                                value = ""
+                                name = ""
+                                emotion = ""
+                            }
+                        },
+                        enabled = value.isNotBlank(),
+                    )
+                }
+            }
+        }
+        state.stickers.forEach { sticker ->
+            item(
+                headlineContent = {
+                    Text(
+                        text = listOf(sticker.value, sticker.name.ifBlank { sticker.emotion })
+                            .filter { it.isNotBlank() }
+                            .joinToString("  "),
+                    )
+                },
+                supportingContent = {
+                    Text(sticker.emotion.ifBlank { sticker.category })
+                },
+                trailingContent = {
+                    TextButton(
+                        onClick = { onAction(RoleplaySettingsAction.DeleteSticker(sticker.id)) },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.settings_roleplay_sticker_delete),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+            )
         }
     }
 }

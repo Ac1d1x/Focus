@@ -15,6 +15,7 @@ import fan.x0.focus.data.assistant.ChatDetailConfig
 import fan.x0.focus.data.assistant.CommandPolicy
 import fan.x0.focus.data.assistant.ConversationKind
 import fan.x0.focus.data.assistant.ConversationTodo
+import fan.x0.focus.data.roleplay.RoleplayStateView
 import fan.x0.focus.data.assistant.FileDiff
 import fan.x0.focus.data.assistant.MessageStats
 import fan.x0.focus.data.assistant.MentionUi
@@ -319,6 +320,7 @@ data class ChatUiState(
     val assistantId: String = AssistantProfile.DEFAULT_ID,
     val assistantKind: AssistantKind = AssistantKind.Assistant,
     val typing: Boolean = false,
+    val roleplay: RoleplayStateView? = null,
     val assistantEmoji: String = "",
     val assistantAvatar: String = "",
     val workingText: String = "",

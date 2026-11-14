@@ -5,6 +5,7 @@ import fan.x0.focus.core.mvi.BaseViewModel
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStore
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -13,6 +14,7 @@ import org.koin.core.annotation.KoinViewModel
 class RoleplaySettingsViewModel(
     private val profiles: AssistantProfileStore,
     private val settings: RoleplaySettings,
+    private val roleplayStore: RoleplayStore,
 ) : BaseViewModel<RoleplaySettingsAction, RoleplaySettingsUiState, RoleplaySettingsEffect>(
     RoleplaySettingsUiState(),
 ) {
@@ -35,6 +37,7 @@ class RoleplaySettingsViewModel(
                 }
             }
         }
+        viewModelScope.launch { refreshStickers() }
     }
 
     override fun onAction(action: RoleplaySettingsAction) {
@@ -50,6 +53,24 @@ class RoleplaySettingsViewModel(
             is RoleplaySettingsAction.OpenAssistant -> sendEffect(
                 RoleplaySettingsEffect.OpenAssistant(action.id),
             )
+            is RoleplaySettingsAction.AddSticker -> viewModelScope.launch {
+                roleplayStore.addSticker(
+                    kind = "emoji",
+                    value = action.value,
+                    name = action.name,
+                    emotion = action.emotion,
+                )
+                refreshStickers()
+            }
+            is RoleplaySettingsAction.DeleteSticker -> viewModelScope.launch {
+                roleplayStore.deleteSticker(action.id)
+                refreshStickers()
+            }
         }
+    }
+
+    private suspend fun refreshStickers() {
+        val list = roleplayStore.stickers()
+        updateState { copy(stickers = list) }
     }
 }

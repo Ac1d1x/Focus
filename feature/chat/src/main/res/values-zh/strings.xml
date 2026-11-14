@@ -221,4 +221,9 @@
     <string name="chat_im_source">%1$s / %2$s</string>
     <string name="chat_typing">正在输入…</string>
     <string name="chat_recalled_other">你撤回了一条消息</string>
+    <string name="chat_status_online">在线</string>
+    <string name="chat_status_away">离开</string>
+    <string name="chat_status_dnd">请勿打扰</string>
+    <string name="chat_status_read_no_reply">已读</string>
+    <string name="chat_scene_title">场景 · %1$s</string>
 </resources>

@@ -3,9 +3,11 @@ package fan.x0.focus.data.assistant
 import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.error.AppErrorType
 import fan.x0.focus.core.error.toAppError
+import fan.x0.focus.core.notify.AppPresence
 import fan.x0.focus.core.notify.MessageNotifier
 import fan.x0.focus.core.notify.NotifyActionKind
 import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStore
 import fan.x0.focus.data.roleplay.jitterMillis
 import fan.x0.focus.data.roleplay.typingMillis
 import kotlinx.coroutines.CancellationException
@@ -62,6 +64,9 @@ class ChatTurnRunner(
     private val journal: TurnJournalStore,
     private val profiles: AssistantProfileStore,
     private val roleplaySettings: RoleplaySettings,
+    private val roleplayStore: RoleplayStore,
+    private val roleplayProactive: RoleplayProactivePlanner,
+    private val presence: AppPresence,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -174,6 +179,7 @@ class ChatTurnRunner(
             }
             var firstBubble = true
             val bubbleRandom = kotlin.random.Random(System.currentTimeMillis())
+            if (roleplayConfig != null) roleplayStore.tick(conversationId)
             try {
                 flow(options.copy(turnId = turnId.toString())).collect { event ->
                     when (event) {
@@ -181,7 +187,9 @@ class ChatTurnRunner(
                             entries.appendAnswer(event.text, reasoning = false, now = System.currentTimeMillis())
                         }
                         is ChatEvent.RoleplayBubbleShown -> {
-                            if (roleplayConfig != null) {
+                            val paced = presence.foreground.value
+                            val sticker = event.kind == "sticker"
+                            if (roleplayConfig != null && paced && !sticker) {
                                 if (firstBubble) {
                                     firstBubble = false
                                     delay(jitterMillis(roleplayConfig.readDelayMs, bubbleRandom, roleplayConfig.jitter).toLong())
@@ -204,9 +212,24 @@ class ChatTurnRunner(
                                     meta = event.meta,
                                 )
                             }
+                            if (roleplayConfig != null) {
+                                roleplayStore.noteAi(
+                                    conversationId = conversationId,
+                                    proactive = options.proactive.isNotBlank(),
+                                )
+                            }
                             val gap = (event.delayMs.takeIf { it > 0 } ?: roleplayConfig?.bubbleGapMs ?: 0)
-                            if (gap > 0) {
+                            if (paced && !sticker && gap > 0) {
                                 delay((gap * (roleplayConfig?.paceScale ?: 1f)).toLong())
+                            }
+                        }
+                        is ChatEvent.RoleplayRecalled -> updateEntries(conversationId, turnId) { entries ->
+                            entries.map { entry ->
+                                if (entry is ChatTurnEntry.Answer && entry.messageId == event.messageId) {
+                                    entry.copy(recalled = true)
+                                } else {
+                                    entry
+                                }
                             }
                         }
                         is ChatEvent.ReasoningDelta -> {
@@ -224,7 +247,13 @@ class ChatTurnRunner(
                             }
                             emitProgress(conversationId, ChatTurnProgress.ReasoningEnded)
                         }
-                        is ChatEvent.UserMessageAppended -> scheduleTitle(conversationId, event.turns, options)
+                        is ChatEvent.UserMessageAppended -> {
+                            if (roleplayConfig != null && userText.isNotBlank()) {
+                                roleplayProactive.onUserMessage(conversationId)
+                                roleplayStore.noteUser(conversationId, userText)
+                            }
+                            scheduleTitle(conversationId, event.turns, options)
+                        }
                         is ChatEvent.WorkingTextChanged -> updateState(conversationId, turnId) { state ->
                             state.copy(workingText = event.text)
                         }
@@ -411,6 +440,14 @@ class ChatTurnRunner(
                             finish(conversationId, turnId, null, compactionFailed, status = "done")
                             if (finished != null && !manualCompact) {
                                 pushReply(finished, null, failed = false, silent = options.silentReply)
+                            }
+                            if (roleplayConfig != null && !manualCompact) {
+                                roleplayProactive.afterReply(
+                                    conversationId = conversationId,
+                                    assistantId = chats.assistantIdFor(conversationId),
+                                    proactive = options.proactive.isNotBlank(),
+                                    config = roleplayConfig,
+                                )
                             }
                         }
                         is ChatEvent.Failed -> {

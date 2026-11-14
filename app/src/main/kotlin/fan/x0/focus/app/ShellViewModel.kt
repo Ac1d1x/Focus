@@ -110,6 +110,15 @@ class ShellViewModel(
 
     fun newSideChat() {
         viewModelScope.launch {
+            val profile = profiles.activeProfileOnce()
+            if (profile.kind == AssistantKind.Roleplay) {
+                val count = chats.conversationIds(profile.id).size
+                val scene = chats.createRoleplayScene(profile.id, "场景 $count")
+                manager.ensureGreeting(profile, scene.id)
+                switcher.open(scene.id)
+                load()
+                return@launch
+            }
             val conversation = sideChats.createEmpty()
             switcher.open(conversation.id)
             load()

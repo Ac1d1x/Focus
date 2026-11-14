@@ -1,6 +1,7 @@
 package fan.x0.focus.feature.chat
 
 import android.content.ClipData
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +59,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -72,9 +75,11 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -86,6 +91,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.hazeSource
@@ -127,9 +133,15 @@ import fan.x0.focus.core.notify.MessageNotifier
 import java.io.File
 import java.time.LocalTime
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -299,7 +311,11 @@ fun ChatScreen(
                     title = when {
                         state.isMain -> state.title.ifBlank { stringResource(R.string.chat_main_title) }
                         state.isSide && state.title.isNotBlank() -> stringResource(
-                            R.string.chat_side_title,
+                            if (state.assistantKind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                                R.string.chat_scene_title
+                            } else {
+                                R.string.chat_side_title
+                            },
                             state.title,
                         )
                         else -> state.title.ifBlank {
@@ -310,6 +326,7 @@ fun ChatScreen(
                         retry != null -> stringResource(R.string.chat_retrying, retry.attempt, retry.max)
                         state.compacting -> stringResource(R.string.chat_compacting)
                         state.typing -> stringResource(R.string.chat_typing)
+                        state.roleplay != null && !state.sending -> roleplayStatusText(state.roleplay)
                         state.sending -> state.workingText.ifBlank {
                             stringResource(R.string.chat_working)
                         }
@@ -652,6 +669,46 @@ private fun SuggestionButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
+private fun StickerBubble(meta: String) {
+    val sticker = remember(meta) {
+        runCatching {
+            val obj = Json.parseToJsonElement(meta).jsonObject
+            obj["kind"]?.jsonPrimitive?.contentOrNull.orEmpty() to
+                obj["value"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        }.getOrNull()
+    }
+    val kind = sticker?.first.orEmpty()
+    val raw = sticker?.second.orEmpty()
+    if (raw.isBlank()) return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        if (kind == "image") {
+            val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, raw) {
+                value = withContext(Dispatchers.IO) {
+                    runCatching { BitmapFactory.decodeFile(raw) }.getOrNull()
+                }
+            }
+            bitmap?.let { image ->
+                Image(
+                    bitmap = image.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(132.dp),
+                )
+            }
+        } else {
+            Text(
+                text = raw,
+                fontSize = 56.sp,
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun RecalledLine(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -663,6 +720,19 @@ private fun RecalledLine(text: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+@Composable
+private fun roleplayStatusText(state: fan.x0.focus.data.roleplay.RoleplayStateView): String {
+    if (state.lifeTitle.isNotBlank()) return state.lifeTitle
+    return stringResource(
+        when (state.status) {
+            fan.x0.focus.data.roleplay.RoleplayStatus.Online -> R.string.chat_status_online
+            fan.x0.focus.data.roleplay.RoleplayStatus.Away -> R.string.chat_status_away
+            fan.x0.focus.data.roleplay.RoleplayStatus.Dnd -> R.string.chat_status_dnd
+            fan.x0.focus.data.roleplay.RoleplayStatus.ReadNoReply -> R.string.chat_status_read_no_reply
+        },
+    )
 }
 
 private data class Suggestion(val text: String)
@@ -821,6 +891,7 @@ private fun ChatThread(
                             entry.recalled -> RecalledLine(
                                 text = stringResource(R.string.chat_recalled_other),
                             )
+                            entry.kind == "sticker" -> StickerBubble(meta = entry.meta)
                             entry.text.isNotBlank() -> ChatMessageBubble(
                                 entry = entry,
                                 fromUser = false,

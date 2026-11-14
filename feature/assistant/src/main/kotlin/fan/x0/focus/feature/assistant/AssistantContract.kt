@@ -6,6 +6,7 @@ import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.WorkspaceFile
+import fan.x0.focus.data.roleplay.RoleplayStateView
 
 data class WorkspaceDocumentUi(
     val file: WorkspaceFile,
@@ -24,6 +25,22 @@ data class PromptEditorUi(
     val value: String,
 )
 
+data class RoleplayBookUi(
+    val id: String,
+    val name: String,
+    val kind: String,
+    val enabled: Boolean,
+    val entryCount: Int,
+)
+
+data class RoleplayMemoryUi(
+    val id: String,
+    val type: String,
+    val content: String,
+    val dueAt: Long,
+    val done: Boolean,
+)
+
 data class AssistantUiState(
     val loading: Boolean = true,
     val profile: AssistantProfile? = null,
@@ -36,6 +53,9 @@ data class AssistantUiState(
     val roleplayGreeting: String = "",
     val roleplayPrompt: String = "",
     val roleplayExamples: String = "",
+    val roleplayBooks: List<RoleplayBookUi> = emptyList(),
+    val roleplayMemories: List<RoleplayMemoryUi> = emptyList(),
+    val roleplayState: RoleplayStateView? = null,
     val canDelete: Boolean = false,
     val documents: List<WorkspaceDocumentUi> = emptyList(),
     val openDocument: WorkspaceDocumentUi? = null,
@@ -54,6 +74,12 @@ sealed interface AssistantAction : UiAction {
     data object SavePrompt : AssistantAction
     data class SaveProfile(val name: String, val role: String, val emoji: String, val avatar: String) : AssistantAction
     data class SaveRoleplayCard(val greeting: String, val prompt: String, val examples: String) : AssistantAction
+    data class ImportRoleplayCard(val json: String) : AssistantAction
+    data class ImportWorldBook(val json: String) : AssistantAction
+    data class RemoveWorldBook(val id: String) : AssistantAction
+    data object ExportRoleplayCard : AssistantAction
+    data class DeleteRoleplayMemory(val id: String) : AssistantAction
+    data class CompleteRoleplayMemory(val id: String) : AssistantAction
     data object DeleteProfile : AssistantAction
 }
 
@@ -61,4 +87,5 @@ sealed interface AssistantEffect : UiEffect {
     data object PromptSaved : AssistantEffect
     data object ProfileSaved : AssistantEffect
     data object ProfileDeleted : AssistantEffect
+    data class RoleplayExported(val json: String, val name: String) : AssistantEffect
 }

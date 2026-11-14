@@ -90,4 +90,5 @@
     <string name="history_delete_body">“%1$s” and all its messages will be permanently deleted.</string>
     <string name="history_delete_confirm">Delete</string>
     <string name="history_cancel">Cancel</string>
+    <string name="drawer_new_scene">New scene</string>
 </resources>

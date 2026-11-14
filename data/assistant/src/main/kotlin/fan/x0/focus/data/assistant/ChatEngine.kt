@@ -30,6 +30,8 @@ import fan.x0.focus.data.roleplay.RoleplayConfig
 import fan.x0.focus.data.roleplay.RoleplayPromptBuilder
 import fan.x0.focus.data.roleplay.RoleplayPromptInput
 import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStore
+import fan.x0.focus.data.roleplay.RoleplayWorldStore
 import fan.x0.focus.data.roleplay.RoleplayStateView
 import fan.x0.focus.data.roleplay.applyPunctuation
 import fan.x0.focus.data.roleplay.cleanBubble
@@ -127,6 +129,7 @@ sealed interface ChatEvent {
         val kind: String = "text",
         val meta: String = "",
     ) : ChatEvent
+    data class RoleplayRecalled(val messageId: Long) : ChatEvent
     data object RetryReset : ChatEvent
     data object Completed : ChatEvent
     data class Failed(val error: AppError) : ChatEvent
@@ -149,6 +152,8 @@ class ChatEngine(
     private val profiles: AssistantProfileStore,
     private val roleplaySettings: RoleplaySettings,
     private val roleplayPrompt: RoleplayPromptBuilder,
+    private val roleplayStore: RoleplayStore,
+    private val roleplayWorld: RoleplayWorldStore,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val waivers = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
@@ -699,6 +704,25 @@ class ChatEngine(
                 )
             }
             val context = chats.context(conversationId)
+            val state = roleplayStore.tick(conversationId)
+            val memories = if (roleplayConfig.memoryEnabled) {
+                roleplayStore.forContext(profile.id, text, roleplayConfig.memoryLimit)
+            } else {
+                emptyList()
+            }
+            val world = if (roleplayConfig.worldBookEnabled) {
+                val books = roleplayWorld.books(profile.roleplay?.worldBookIds.orEmpty())
+                val recent = chats.messages(conversationId, 40).mapNotNull { message ->
+                    message.content.takeIf { it.isNotBlank() }
+                }
+                roleplayWorld.context(
+                    books = books,
+                    recentMessages = recent,
+                    budgetChars = roleplayConfig.worldBookBudgetChars,
+                )
+            } else {
+                fan.x0.focus.data.roleplay.RoleplayWorldContext()
+            }
             val system = roleplayPrompt.build(
                 RoleplayPromptInput(
                     assistantName = profile.name,
@@ -707,89 +731,197 @@ class ChatEngine(
                     role = profile.role,
                     card = profile.roleplay ?: RoleplayCard(),
                     config = roleplayConfig,
-                    state = RoleplayStateView(conversationId = conversationId),
+                    state = state.view(),
                     currentTime = ToolTime.full(ToolTime.now()),
                     language = locale.current() ?: "zh",
+                    memory = memories.map { memory ->
+                        val due = if (memory.dueAt > 0) " due ${ToolTime.full(memory.dueAt)}" else ""
+                        "${memory.id.takeLast(6)} [${memory.type.name.lowercase()}] ${memory.content}$due"
+                    },
+                    reminders = roleplayStore.openTasks(conversationId).map { task ->
+                        "${task.id.takeLast(6)} at ${ToolTime.full(task.fireAt)} [${task.type}] ${task.prompt.take(100)}"
+                    },
+                    worldBefore = world.beforeChar,
+                    worldAfter = world.afterChar,
+                    worldBottom = world.bottomNote,
                     proactive = options.proactive,
+                    toolsEnabled = true,
                 ),
             ).withSummary(context.summary)
-            val request = buildRequest(
-                endpoint = endpoint,
-                system = system,
-                context = context,
-                pendingMedia = emptyList(),
-                providerId = providerId,
-                wire = "",
-                deepSeekEnabled = false,
-                deepSeekConfig = DeepSeekConfig(),
-                options = options,
-                specs = emptyList(),
-                userTurns = chats.userTurnCount(conversationId),
-                round = 1,
-                roleplay = true,
-            )
-            val bubbles = mutableListOf<RoleplayBubble>()
-            val parser = RoleplayBubbleParser(
-                enabled = roleplayConfig.splitBubbles,
-                defaultDelayMs = 600,
-                autoSplitChars = if (roleplayConfig.splitBubbles) 72 else 0,
-            )
+            val agentConfig = agent.configOnce()
+            val specs = tools.roleplaySpecs()
             var totalStats = MessageStats(
                 providerId = providerId,
                 providerName = provider?.name ?: providerId,
                 model = model,
             )
-            val roundResult = streamRound(
-                endpoint = endpoint,
-                protocol = protocol,
-                config = requestConfig,
-                request = request,
-                retry = retry,
-                round = 1,
-                step = 0,
-                totalStats = totalStats,
-                startedAt = startedAt,
-                emitDelta = { delta -> bubbles += parser.push(delta) },
-                emitReasoningDelta = { delta ->
-                    if (roleplayConfig.showToolTrace) emit(ChatEvent.ReasoningDelta(delta))
-                },
-                emitStats = { stats -> emit(ChatEvent.StatsUpdated(stats)) },
-                emitRetry = { attempt, max, reason -> emit(ChatEvent.RetryScheduled(attempt, max, reason)) },
-                emitReset = { emit(ChatEvent.RetryReset) },
-                emitEvent = { emit(it) },
-            )
-            if (roundResult.reasoningMs > 0 && roleplayConfig.showToolTrace) {
-                emit(ChatEvent.ReasoningTimed(roundResult.reasoningMs))
-            }
-            if (roundResult.refusal) {
-                emit(ChatEvent.Refused(roundResult.refusalMessage))
-                return@flow
-            }
-            bubbles += parser.finish()
-            val message = roundResult.message
-            val citations = parseCitations(message.text, message.annotations)
-            totalStats = roundResult.stats.copy(
-                round = 1,
-                step = 0,
-                durationMs = System.currentTimeMillis() - startedAt,
-            )
-            emit(ChatEvent.StatsUpdated(totalStats))
-            persistRoleplayRound(
-                conversationId = conversationId,
-                bubbles = bubbles,
-                calls = message.toolCalls.map {
-                    ToolCallRecord(it.id, it.name, tools.redactArguments(it.name, it.arguments))
-                },
-                message = message,
-                totalStats = totalStats,
-                reasoningMs = roundResult.reasoningMs,
-                citations = citations,
-                wire = "",
-                turnId = turnId,
-                proactive = options.proactive.isNotBlank(),
-                config = roleplayConfig,
-            ).forEach { (id, bubble) ->
-                emit(ChatEvent.RoleplayBubbleShown(id, bubble.text, bubble.delayMs))
+            var round = 0
+            while (round < agentConfig.roundLimit) {
+                round++
+                val roundContext = chats.context(conversationId)
+                val request = buildRequest(
+                    endpoint = endpoint,
+                    system = system,
+                    context = roundContext,
+                    pendingMedia = emptyList(),
+                    providerId = providerId,
+                    wire = "",
+                    deepSeekEnabled = false,
+                    deepSeekConfig = DeepSeekConfig(),
+                    options = options,
+                    specs = specs,
+                    userTurns = chats.userTurnCount(conversationId),
+                    round = round,
+                    roleplay = true,
+                )
+                val bubbles = mutableListOf<RoleplayBubble>()
+                val parser = RoleplayBubbleParser(
+                    enabled = roleplayConfig.splitBubbles,
+                    defaultDelayMs = 600,
+                    autoSplitChars = if (roleplayConfig.splitBubbles) 72 else 0,
+                )
+                val roundResult = streamRound(
+                    endpoint = endpoint,
+                    protocol = protocol,
+                    config = requestConfig,
+                    request = request,
+                    retry = retry,
+                    round = round,
+                    step = round - 1,
+                    totalStats = totalStats,
+                    startedAt = startedAt,
+                    emitDelta = { delta -> bubbles += parser.push(delta) },
+                    emitReasoningDelta = { delta ->
+                        if (roleplayConfig.showToolTrace) emit(ChatEvent.ReasoningDelta(delta))
+                    },
+                    emitStats = { stats -> emit(ChatEvent.StatsUpdated(stats)) },
+                    emitRetry = { attempt, max, reason -> emit(ChatEvent.RetryScheduled(attempt, max, reason)) },
+                    emitReset = { emit(ChatEvent.RetryReset) },
+                    emitEvent = { emit(it) },
+                )
+                if (roundResult.reasoningMs > 0 && roleplayConfig.showToolTrace) {
+                    emit(ChatEvent.ReasoningTimed(roundResult.reasoningMs))
+                }
+                if (roundResult.refusal) {
+                    emit(ChatEvent.Refused(roundResult.refusalMessage))
+                    return@flow
+                }
+                bubbles += parser.finish()
+                val message = roundResult.message
+                val citations = parseCitations(message.text, message.annotations)
+                totalStats = roundResult.stats.copy(
+                    round = round,
+                    step = round - 1,
+                    durationMs = System.currentTimeMillis() - startedAt,
+                )
+                emit(ChatEvent.StatsUpdated(totalStats))
+                persistRoleplayRound(
+                    conversationId = conversationId,
+                    bubbles = bubbles,
+                    calls = message.toolCalls.map {
+                        ToolCallRecord(it.id, it.name, tools.redactArguments(it.name, it.arguments))
+                    },
+                    message = message,
+                    totalStats = totalStats,
+                    reasoningMs = roundResult.reasoningMs,
+                    citations = citations,
+                    wire = "",
+                    turnId = turnId,
+                    proactive = options.proactive.isNotBlank(),
+                    config = roleplayConfig,
+                ).forEach { (id, bubble) ->
+                    emit(ChatEvent.RoleplayBubbleShown(id, bubble.text, bubble.delayMs))
+                }
+                if (message.toolCalls.isEmpty()) {
+                    emit(ChatEvent.Completed)
+                    return@flow
+                }
+                for (call in message.toolCalls) {
+                    if (call.name == ToolCatalog.STAY_SILENT) {
+                        emit(ChatEvent.Completed)
+                        return@flow
+                    }
+                    val label = tools.label(call.name)
+                    if (roleplayConfig.showToolTrace) {
+                        emit(
+                            ChatEvent.ToolStarted(
+                                label = label,
+                                id = call.id,
+                                tool = call.name,
+                                arguments = tools.redactArguments(call.name, call.arguments).take(500),
+                            ),
+                        )
+                    }
+                    val result = tools.execute(call, conversationId, AgentMode.Build)
+                    result.workingText?.let { emit(ChatEvent.WorkingTextChanged(it)) }
+                    val ask = result.ask
+                    if (ask != null) {
+                        emit(ChatEvent.AskRequested(ask))
+                        val reply = awaitReply(ask.id)
+                        emit(ChatEvent.AskResolved(ask, reply))
+                        chats.append(
+                            conversationId = conversationId,
+                            role = ChatRole.Tool,
+                            content = ask.answerContent(reply),
+                            toolCallId = call.id,
+                            name = call.name,
+                            label = ask.questionLabels(),
+                            elapsedMs = result.durationMs,
+                        )
+                        continue
+                    }
+                    result.outgoing.forEach { outgoing ->
+                        val id = chats.append(
+                            conversationId = conversationId,
+                            role = ChatRole.Assistant,
+                            content = outgoing.text,
+                            kind = outgoing.kind,
+                            meta = outgoing.meta,
+                            turnId = turnId,
+                            proactive = options.proactive.isNotBlank(),
+                        )
+                        emit(
+                            ChatEvent.RoleplayBubbleShown(
+                                messageId = id,
+                                text = outgoing.text,
+                                delayMs = 0,
+                                kind = outgoing.kind,
+                                meta = outgoing.meta,
+                            ),
+                        )
+                    }
+                    result.recalledMessageId?.let { emit(ChatEvent.RoleplayRecalled(it)) }
+                    if (roleplayConfig.showToolTrace) {
+                        emit(
+                            ChatEvent.ToolFinished(
+                                label = label,
+                                ok = result.ok,
+                                summary = result.summary,
+                                tool = call.name,
+                                id = call.id,
+                                output = result.content,
+                                durationMs = result.durationMs,
+                                diffs = result.diffs,
+                                media = result.previews,
+                            ),
+                        )
+                    }
+                    chats.append(
+                        conversationId = conversationId,
+                        role = ChatRole.Tool,
+                        content = result.content,
+                        toolCallId = call.id,
+                        name = call.name,
+                        attachments = result.previews,
+                        label = label,
+                        elapsedMs = result.durationMs,
+                        diffs = result.diffs.takeIf { it.isNotEmpty() }?.let { listOf(it) }.orEmpty(),
+                    )
+                    if (result.silent) {
+                        emit(ChatEvent.Completed)
+                        return@flow
+                    }
+                }
             }
             emit(ChatEvent.Completed)
         } catch (e: CancellationException) {

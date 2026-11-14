@@ -222,4 +222,9 @@
     <string name="chat_im_source">%1$s / %2$s</string>
     <string name="chat_typing">Typing…</string>
     <string name="chat_recalled_other">You recalled a message</string>
+    <string name="chat_status_online">Online</string>
+    <string name="chat_status_away">Away</string>
+    <string name="chat_status_dnd">Do not disturb</string>
+    <string name="chat_status_read_no_reply">Read</string>
+    <string name="chat_scene_title">Scene · %1$s</string>
 </resources>

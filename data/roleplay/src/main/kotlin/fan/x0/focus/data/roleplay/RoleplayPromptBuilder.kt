@@ -52,14 +52,19 @@ class RoleplayPromptBuilder {
             }
             if (input.toolsEnabled) {
                 builder.appendLine("Adjust these numbers with adjust_feeling when the conversation really changes how you feel. Do not mention the numbers.")
+                builder.appendLine("Call set_status when you leave, sleep, or decide not to answer. read_no_reply means you read the message and stay silent.")
             } else {
                 builder.appendLine("Do not mention the numbers.")
             }
         }
-        if (input.memory.isNotEmpty()) {
+        if (input.config.memoryEnabled) {
             builder.appendLine()
             builder.appendLine("Long term memory. The ids are for tool calls only, never repeat them in a bubble:")
-            input.memory.forEach { builder.appendLine("- $it") }
+            if (input.memory.isEmpty()) {
+                builder.appendLine("(empty)")
+            } else {
+                input.memory.forEach { builder.appendLine("- $it") }
+            }
             builder.appendLine("Use write_memory for new preferences, events, promises, todos and conflicts. Use complete_todo when a promise or todo is finished.")
         }
         if (input.reminders.isNotEmpty()) {
@@ -90,7 +95,9 @@ class RoleplayPromptBuilder {
         }
         builder.appendLine()
         builder.appendLine("Before you answer, check that you are still $name, that you did not write $user's side, and that every bubble is something a person would actually type.")
-        if (!input.toolsEnabled) {
+        if (input.toolsEnabled) {
+            builder.appendLine("You may call the provided tools. Never print raw JSON, tool names, or tool output in a bubble.")
+        } else {
             builder.appendLine("Do not claim to use tools, browse, or act outside this chat.")
         }
         return builder.toString().trim()

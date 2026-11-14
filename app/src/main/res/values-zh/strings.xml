@@ -89,4 +89,5 @@
     <string name="history_delete_body">“%1$s”及其所有消息将被永久删除。</string>
     <string name="history_delete_confirm">删除</string>
     <string name="history_cancel">取消</string>
+    <string name="drawer_new_scene">新场景</string>
 </resources>

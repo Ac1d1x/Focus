@@ -31,6 +31,8 @@ import fan.x0.focus.data.assistant.ChatTurnEntry
 import fan.x0.focus.data.assistant.ChatTurnResult
 import fan.x0.focus.data.assistant.ChatTurnRunner
 import fan.x0.focus.data.assistant.ChatTurnState
+import fan.x0.focus.data.roleplay.RoleplaySettings
+import fan.x0.focus.data.roleplay.RoleplayStore
 import fan.x0.focus.data.assistant.ChatTurnStep
 import fan.x0.focus.data.assistant.ChatTurnStepStatus
 import fan.x0.focus.data.assistant.ChatTurnTrustPhase
@@ -110,6 +112,8 @@ class ChatViewModel(
     private val sideChats: SideChatManager,
     private val mainSession: MainSessionStore,
     private val profiles: AssistantProfileStore,
+    private val roleplayStore: RoleplayStore,
+    private val roleplaySettings: RoleplaySettings,
 ) : BaseViewModel<ChatAction, ChatUiState, ChatEffect>(ChatUiState()) {
 
     private var loadJob: Job? = null
@@ -1415,6 +1419,16 @@ class ChatViewModel(
         val messages = chats.messages(id)
         val conversation = chats.conversation(id)
         val assistantProfile = conversation?.let { profiles.profileOnce(it.assistantId) }
+        val roleplayConfig = if (assistantProfile?.kind == AssistantKind.Roleplay) {
+            roleplaySettings.effectiveOnce(assistantProfile.id)
+        } else {
+            null
+        }
+        val roleplayState = if (assistantProfile?.kind == AssistantKind.Roleplay) {
+            roleplayStore.state(id).view()
+        } else {
+            null
+        }
         val compaction = chats.compaction(id)
         val config = settings.configOnce()
         val providerId = conversation?.providerId?.takeIf { candidate ->
@@ -1423,8 +1437,10 @@ class ChatViewModel(
         val provider = config.providers.firstOrNull { it.id == providerId } ?: config.activeProvider
         val model = conversation?.model?.ifBlank { null } ?: provider?.model.orEmpty()
         val todos = chats.todos(id)
-        val entries = messages.toEntries(compaction) +
-            listOfNotNull(planEntry(conversation))
+        val entries = messages.toEntries(
+            compaction = compaction,
+            showToolTrace = assistantProfile?.kind != AssistantKind.Roleplay || roleplayConfig?.showToolTrace == true,
+        ) + listOfNotNull(planEntry(conversation))
         if (currentState.conversationId != id || generation != loadGeneration) return
         if (turns.isRunning(id)) return
         resetDisplay(id)
@@ -1438,6 +1454,7 @@ class ChatViewModel(
                 compacting = false,
                 workingText = "",
                 assistantKind = assistantProfile?.kind ?: AssistantKind.Assistant,
+                roleplay = roleplayState,
                 kind = conversation?.kind ?: ConversationKind.Side,
                 taskStatus = conversation?.taskStatus ?: TaskStatus.None,
                 sideActiveCount = sideChats.countsFor(conversation?.assistantId ?: currentState.assistantId).active,
@@ -1476,6 +1493,16 @@ class ChatViewModel(
         val name = workspace.userName(assistantId)
         val assistantName = workspace.assistantName(assistantId)
         val assistantProfile = profiles.profilesOnce().firstOrNull { it.id == assistantId }
+        val roleplayConfig = if (assistantProfile?.kind == AssistantKind.Roleplay) {
+            roleplaySettings.effectiveOnce(assistantProfile.id)
+        } else {
+            null
+        }
+        val roleplayState = if (assistantProfile?.kind == AssistantKind.Roleplay) {
+            roleplayStore.state(conversationId).view()
+        } else {
+            null
+        }
         val config = settings.configOnce()
         val providerId = conversation?.providerId?.takeIf { id ->
             config.providers.any { it.id == id }
@@ -1502,8 +1529,10 @@ class ChatViewModel(
             messages
         }
         if (runningTurn.running) localTurnId = 0
-        val entries = visibleMessages.toEntries(compaction) +
-            listOfNotNull(planEntry(conversation))
+        val entries = visibleMessages.toEntries(
+            compaction = compaction,
+            showToolTrace = assistantProfile?.kind != AssistantKind.Roleplay || roleplayConfig?.showToolTrace == true,
+        ) + listOfNotNull(planEntry(conversation))
         updateState {
             copy(
                 loading = false,
@@ -1517,6 +1546,7 @@ class ChatViewModel(
                 assistantName = assistantName,
                 assistantId = assistantId,
                 assistantKind = assistantProfile?.kind ?: AssistantKind.Assistant,
+                roleplay = roleplayState,
                 assistantEmoji = assistantProfile?.emoji.orEmpty(),
                 assistantAvatar = assistantProfile?.avatar.orEmpty(),
                 history = entries,
@@ -1599,9 +1629,28 @@ class ChatViewModel(
     }
 
     private suspend fun newConversation() {
-        if (currentState.isMain) {
+        if (currentState.isMain && currentState.assistantKind != AssistantKind.Roleplay) {
             openSidePanel()
             return
+        }
+        if (currentState.assistantKind == AssistantKind.Roleplay) {
+            val profile = profiles.profileOnce(currentState.assistantId)
+            if (profile != null) {
+                val count = chats.conversationIds(profile.id).size
+                val scene = chats.createRoleplayScene(profile.id, "场景 $count")
+                val greeting = profile.roleplay?.greeting?.trim().orEmpty()
+                if (greeting.isNotBlank()) {
+                    chats.append(
+                        conversationId = scene.id,
+                        role = ChatRole.Assistant,
+                        content = greeting,
+                        label = "greeting",
+                        kind = "text",
+                    )
+                }
+                switchTo(scene.id)
+                return
+            }
         }
         val conversation = sideChats.createEmpty()
         switchTo(conversation.id)
@@ -1933,6 +1982,7 @@ class ChatViewModel(
 
     private suspend fun List<ChatMessage>.toEntries(
         compaction: ConversationCompaction?,
+        showToolTrace: Boolean = true,
     ): List<ChatEntry> {
         val quotes = chats.messagesByIds(mapNotNull { it.replyToId }.toSet())
         val argumentsByCall = flatMap { it.toolCalls }.associate { it.id to it.arguments }
@@ -1997,7 +2047,7 @@ class ChatViewModel(
                     }
                 }
                 ChatRole.Tool -> {
-                    if (message.name != ToolCatalog.SET_WORKING_TEXT && message.name != ToolCatalog.STAY_SILENT) {
+                    if (showToolTrace && message.name != ToolCatalog.SET_WORKING_TEXT && message.name != ToolCatalog.STAY_SILENT) {
                         entries += ChatEntry.Trace(
                             key = "m${message.id}",
                             steps = message.toSteps(argumentsByCall[message.toolCallId.orEmpty()].orEmpty()),

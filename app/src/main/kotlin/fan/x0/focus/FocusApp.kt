@@ -172,6 +172,7 @@ private fun MainShell() {
         if (assistRequest) {
             shell.openMain()
             backStack.open(FocusRoute.Chat)
+            switcher.requestVoice()
             switcher.consumeAssistRequest()
         }
     }

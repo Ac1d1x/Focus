@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.focuskit.android.library)
     alias(libs.plugins.focuskit.android.compose)
     alias(libs.plugins.focuskit.koin)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {

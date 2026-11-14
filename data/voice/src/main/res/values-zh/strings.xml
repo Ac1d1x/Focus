@@ -10,6 +10,7 @@
     <string name="voice_error_local_load">无法加载本地模型</string>
     <string name="voice_error_cloud_provider">没有可用的云端转写服务商</string>
     <string name="voice_error_cloud_key">云端服务商没有 API Key</string>
+    <string name="voice_error_cloud_response">云端转写返回了无法识别的结果</string>
     <string name="voice_error_tts_provider">没有可用的朗读服务商</string>
     <string name="voice_error_tts_key">朗读服务商没有 API Key</string>
     <string name="voice_error_tts_engine">无法启动系统语音引擎</string>

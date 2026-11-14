@@ -36,6 +36,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 @SuppressLint("MissingPermission")
 internal class CloudVoiceEngine(
@@ -190,9 +193,19 @@ internal class CloudVoiceEngine(
                 ).toAppError(),
             )
         }
-        return runCatching {
+        val parsed = runCatching {
             json.decodeFromString<TranscriptionResponse>(body).text
-        }.getOrNull() ?: body.trim().trim('"')
+        }.getOrNull()
+        if (!parsed.isNullOrBlank()) return parsed
+        val fallback = runCatching {
+            ((json.parseToJsonElement(body) as? JsonObject)?.get("text") as? JsonPrimitive)?.contentOrNull
+        }.getOrNull()
+        if (!fallback.isNullOrBlank()) return fallback
+        val raw = body.trim().trim('"')
+        if (raw.startsWith("{") || raw.startsWith("[")) {
+            throw VoiceFailure(error(R.string.voice_error_cloud_response))
+        }
+        return raw
     }
 
     private class VoiceFailure(val error: AppError) : Exception()

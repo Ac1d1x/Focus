@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.HazeState
 import fan.x0.focus.core.designsystem.components.FocusComposer
 import fan.x0.focus.core.designsystem.components.FocusComposerPill
@@ -62,7 +64,9 @@ import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.data.assistant.AttachmentKind
+import fan.x0.focus.data.assistant.ChatSwitcher
 import fan.x0.focus.data.voice.rememberVoiceInput
+import org.koin.compose.koinInject
 
 @Composable
 internal fun Composer(
@@ -82,6 +86,17 @@ internal fun Composer(
     )
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) voice.permissionGranted() else voice.permissionDenied()
+    }
+    val switcher: ChatSwitcher = koinInject()
+    val voiceRequest by switcher.voiceRequest.collectAsStateWithLifecycle()
+    LaunchedEffect(voiceRequest) {
+        if (!voiceRequest) return@LaunchedEffect
+        switcher.consumeVoiceRequest()
+        if (voice.canRecord()) {
+            if (!voice.listening && !voice.busy) voice.start()
+        } else {
+            microphone.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
     val modelLabel = state.models[state.providerId]
         ?.firstOrNull { it.id == state.model }

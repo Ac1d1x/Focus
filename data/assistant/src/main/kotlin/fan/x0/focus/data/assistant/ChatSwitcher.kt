@@ -27,12 +27,23 @@ class ChatSwitcher(private val main: MainSessionStore) {
     private val _assistRequest = MutableStateFlow(false)
     val assistRequest: StateFlow<Boolean> = _assistRequest.asStateFlow()
 
+    private val _voiceRequest = MutableStateFlow(false)
+    val voiceRequest: StateFlow<Boolean> = _voiceRequest.asStateFlow()
+
     fun requestAssist() {
         _assistRequest.value = true
     }
 
     fun consumeAssistRequest() {
         _assistRequest.value = false
+    }
+
+    fun requestVoice() {
+        _voiceRequest.value = true
+    }
+
+    fun consumeVoiceRequest() {
+        _voiceRequest.value = false
     }
 
     fun open(conversationId: String) {

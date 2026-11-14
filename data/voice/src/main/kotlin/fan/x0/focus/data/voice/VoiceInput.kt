@@ -89,8 +89,7 @@ fun rememberVoiceInput(
         status = status,
         error = state.error,
         autoVoice = controller.canRecord() &&
-            config.engine == VoiceEngine.Local &&
-            localReady,
+            (config.engine == VoiceEngine.Cloud || localReady),
         level = { level.floatValue },
         canRecord = { controller.canRecord() },
         start = {

@@ -192,7 +192,7 @@ class ChatTurnRunner(
                             if (roleplayConfig != null && paced && !sticker) {
                                 if (firstBubble) {
                                     firstBubble = false
-                                    delay(jitterMillis(roleplayConfig.readDelayMs, bubbleRandom, roleplayConfig.jitter).toLong())
+                                    delay(jitterMillis((roleplayConfig.readDelayMs * roleplayConfig.paceScale).toInt(), bubbleRandom, roleplayConfig.jitter).toLong())
                                 }
                                 if (roleplayConfig.typing) {
                                     updateState(conversationId, turnId) { state -> state.copy(typing = true) }
@@ -624,7 +624,13 @@ class ChatTurnRunner(
     }
 
     private suspend fun titleOf(conversationId: String): String = try {
-        chats.conversation(conversationId)?.title.orEmpty()
+        val conversation = chats.conversation(conversationId)
+        val profile = conversation?.let { profiles.profileOnce(it.assistantId) }
+        if (profile?.kind == AssistantKind.Roleplay) {
+            profile.name
+        } else {
+            conversation?.title.orEmpty()
+        }
     } catch (e: CancellationException) {
         throw e
     } catch (_: Throwable) {

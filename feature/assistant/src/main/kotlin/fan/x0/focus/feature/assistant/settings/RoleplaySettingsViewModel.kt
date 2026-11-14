@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import fan.x0.focus.core.mvi.BaseViewModel
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfileStore
+import fan.x0.focus.data.roleplay.RoleplayOverride
 import fan.x0.focus.data.roleplay.RoleplaySettings
 import fan.x0.focus.data.roleplay.RoleplayStore
 import kotlinx.coroutines.flow.combine
@@ -24,15 +25,17 @@ class RoleplaySettingsViewModel(
                 profiles.profiles,
                 settings.global,
                 settings.userPersona,
-            ) { list, config, persona ->
-                Triple(list.filter { it.kind == AssistantKind.Roleplay }, config, persona)
-            }.collect { (assistants, config, persona) ->
+                settings.overrides,
+            ) { list, config, persona, overrides ->
+                OverrideBundle(list.filter { it.kind == AssistantKind.Roleplay }, config, persona, overrides)
+            }.collect { bundle ->
                 updateState {
                     copy(
                         loading = false,
-                        assistants = assistants,
-                        config = config,
-                        userPersona = persona,
+                        assistants = bundle.assistants,
+                        config = bundle.config,
+                        userPersona = bundle.persona,
+                        overrides = bundle.overrides,
                     )
                 }
             }
@@ -66,6 +69,13 @@ class RoleplaySettingsViewModel(
                 roleplayStore.deleteSticker(action.id)
                 refreshStickers()
             }
+            is RoleplaySettingsAction.SetOverride -> viewModelScope.launch {
+                if (action.override == null) {
+                    settings.clearOverride(action.assistantId)
+                } else {
+                    settings.setOverride(action.assistantId, action.override)
+                }
+            }
         }
     }
 
@@ -73,4 +83,11 @@ class RoleplaySettingsViewModel(
         val list = roleplayStore.stickers()
         updateState { copy(stickers = list) }
     }
+
+    private data class OverrideBundle(
+        val assistants: List<fan.x0.focus.data.assistant.AssistantProfile>,
+        val config: fan.x0.focus.data.roleplay.RoleplayConfig,
+        val persona: fan.x0.focus.data.roleplay.RoleplayUserPersona,
+        val overrides: Map<String, RoleplayOverride>,
+    )
 }

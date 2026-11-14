@@ -19,6 +19,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -585,12 +586,19 @@ private fun ChatHome(
         hour < 18 -> R.string.chat_greeting_afternoon
         else -> R.string.chat_greeting_evening
     }
-    val title = buildString {
-        append(stringResource(greeting))
-        state.name?.takeIf { it.isNotBlank() }?.let { append(", ").append(it) }
+    val roleplay = state.assistantKind == fan.x0.focus.data.assistant.AssistantKind.Roleplay
+    val title = if (roleplay) {
+        state.assistantName.ifBlank { stringResource(R.string.chat_title) }
+    } else {
+        buildString {
+            append(stringResource(greeting))
+            state.name?.takeIf { it.isNotBlank() }?.let { append(", ").append(it) }
+        }
     }
     val generated = state.suggestions
-    val suggestions = if (generated.isEmpty()) {
+    val suggestions = if (roleplay) {
+        emptyList()
+    } else if (generated.isEmpty()) {
         defaultSuggestions()
     } else {
         generated.map { Suggestion(it.text) }
@@ -611,14 +619,28 @@ private fun ChatHome(
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 96.dp)
+                if (roleplay && state.assistantEmoji.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(text = state.assistantEmoji, fontSize = 44.sp)
+                    }
+                } else {
+                    FocusAvatar(style = AvatarStyle(preset = 0, palette = 0), size = 96.dp)
+                }
                 Text(
                     text = title,
                     style = LocalFocusTypography.current.displaySmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = stringResource(R.string.chat_home_tagline),
+                    text = stringResource(
+                        if (roleplay) R.string.chat_roleplay_home_tagline else R.string.chat_home_tagline,
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

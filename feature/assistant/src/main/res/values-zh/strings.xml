@@ -869,4 +869,11 @@
     <string name="assistant_roleplay_stage_acquaintance">熟悉</string>
     <string name="assistant_roleplay_stage_close">亲密</string>
     <string name="assistant_roleplay_feeling">心情 %1$d · 好感 %2$d · 精力 %3$d</string>
+    <string name="settings_roleplay_override">角色设置</string>
+    <string name="settings_roleplay_override_follow">跟随全局设置</string>
+    <string name="settings_roleplay_override_follow_body">关掉后可以单独调整这个角色的节奏、主动发信、记忆和表情包。</string>
+    <string name="settings_roleplay_override_save">保存</string>
+    <string name="settings_roleplay_memory_switch">记忆</string>
+    <string name="settings_roleplay_world_switch">世界书</string>
+    <string name="settings_roleplay_sticker_switch">表情包</string>
 </resources>

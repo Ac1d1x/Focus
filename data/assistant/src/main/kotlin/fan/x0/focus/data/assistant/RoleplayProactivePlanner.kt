@@ -105,7 +105,7 @@ class RoleplayProactivePlanner(
         prompt: String,
     ) {
         val day = java.time.LocalDate.now().toString()
-        val tag = "greeting:$day:$slot:$conversationId"
+        val tag = "greeting:$assistantId:$day:$slot"
         if (store.hasOpenTag(tag)) return
         schedule(
             conversationId = conversationId,

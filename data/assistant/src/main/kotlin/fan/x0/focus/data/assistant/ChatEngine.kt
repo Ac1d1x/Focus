@@ -705,6 +705,9 @@ class ChatEngine(
             }
             val context = chats.context(conversationId)
             val state = roleplayStore.tick(conversationId)
+            if (roleplayConfig.memoryEnabled) {
+                roleplayStore.decay(profile.id, roleplayConfig.memoryHalfLifeDays)
+            }
             val memories = if (roleplayConfig.memoryEnabled) {
                 roleplayStore.forContext(profile.id, text, roleplayConfig.memoryLimit)
             } else {
@@ -722,6 +725,14 @@ class ChatEngine(
                 )
             } else {
                 fan.x0.focus.data.roleplay.RoleplayWorldContext()
+            }
+            val stickers = if (roleplayConfig.stickerEnabled) {
+                roleplayStore.stickers().take(30).joinToString("\n") { sticker ->
+                    val label = sticker.name.ifBlank { sticker.emotion }.ifBlank { sticker.value }
+                    "- ${sticker.id.takeLast(6)} [${sticker.emotion.ifBlank { "-" }}] $label ${sticker.value}"
+                }
+            } else {
+                ""
             }
             val system = roleplayPrompt.build(
                 RoleplayPromptInput(
@@ -744,6 +755,7 @@ class ChatEngine(
                     worldBefore = world.beforeChar,
                     worldAfter = world.afterChar,
                     worldBottom = world.bottomNote,
+                    stickers = stickers,
                     proactive = options.proactive,
                     toolsEnabled = true,
                 ),

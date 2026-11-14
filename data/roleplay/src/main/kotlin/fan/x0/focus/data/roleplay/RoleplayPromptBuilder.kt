@@ -72,10 +72,14 @@ class RoleplayPromptBuilder {
             builder.appendLine("Scheduled messages you set earlier:")
             input.reminders.forEach { builder.appendLine("- $it") }
         }
-        if (input.stickers.isNotBlank()) {
+        if (input.config.stickerEnabled) {
             builder.appendLine()
-            builder.appendLine("Sticker library. Use send_sticker when it genuinely fits this moment, not on every turn:")
-            builder.appendLine(input.stickers)
+            builder.appendLine("Sticker library. Use send_sticker when it genuinely fits this moment, not on every turn. Target frequency: about ${(input.config.stickerFrequency * 100).toInt()}% of turns.")
+            if (input.stickers.isBlank()) {
+                builder.appendLine("(empty)")
+            } else {
+                builder.appendLine(input.stickers)
+            }
         }
         builder.appendLine()
         builder.appendLine(outputContract(input))

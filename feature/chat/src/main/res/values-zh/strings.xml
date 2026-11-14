@@ -226,4 +226,5 @@
     <string name="chat_status_dnd">请勿打扰</string>
     <string name="chat_status_read_no_reply">已读</string>
     <string name="chat_scene_title">场景 · %1$s</string>
+    <string name="chat_roleplay_home_tagline">开始一个场景，说点什么。</string>
 </resources>

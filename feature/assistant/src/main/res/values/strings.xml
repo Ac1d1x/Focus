@@ -869,4 +869,11 @@
     <string name="assistant_roleplay_stage_acquaintance">Acquaintance</string>
     <string name="assistant_roleplay_stage_close">Close</string>
     <string name="assistant_roleplay_feeling">Mood %1$d · Affection %2$d · Energy %3$d</string>
+    <string name="settings_roleplay_override">Character settings</string>
+    <string name="settings_roleplay_override_follow">Follow global settings</string>
+    <string name="settings_roleplay_override_follow_body">Turn this off to override pacing, proactive messages, memory and stickers for this character.</string>
+    <string name="settings_roleplay_override_save">Save</string>
+    <string name="settings_roleplay_memory_switch">Memory</string>
+    <string name="settings_roleplay_world_switch">World books</string>
+    <string name="settings_roleplay_sticker_switch">Stickers</string>
 </resources>

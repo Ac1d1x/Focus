@@ -5,9 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,6 +37,9 @@ import fan.x0.focus.core.designsystem.components.switchItem
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.mvi.CollectEffect
+import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.roleplay.RoleplayConfig
+import fan.x0.focus.data.roleplay.RoleplayOverride
 import fan.x0.focus.data.roleplay.RoleplayUserPersona
 import fan.x0.focus.feature.assistant.AssistantAvatar
 import fan.x0.focus.feature.assistant.R
@@ -59,6 +68,7 @@ internal fun SettingsRoleplayPage(
     onAction: (RoleplaySettingsAction) -> Unit,
     onBack: () -> Unit,
 ) {
+    var editing by remember { mutableStateOf<AssistantProfile?>(null) }
     SettingsPageScaffold(
         title = stringResource(R.string.settings_page_roleplay),
         onBack = onBack,
@@ -101,11 +111,20 @@ internal fun SettingsRoleplayPage(
                                 },
                                 leadingContent = { AssistantAvatar(assistant = assistant, size = 36.dp) },
                                 trailingContent = {
-                                    Text(
-                                        text = stringResource(R.string.settings_roleplay_open),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.primary,
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(onClick = { editing = assistant }) {
+                                            Icon(
+                                                FocusIcons.Tune,
+                                                contentDescription = stringResource(R.string.settings_roleplay_override),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Text(
+                                            text = stringResource(R.string.settings_roleplay_open),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
                                 },
                                 onClick = {
                                     onAction(RoleplaySettingsAction.OpenAssistant(assistant.id))
@@ -264,6 +283,137 @@ internal fun SettingsRoleplayPage(
                 StickerCard(state = state, onAction = onAction)
             }
         }
+    }
+    editing?.let { assistant ->
+        RoleplayOverrideDialog(
+            assistant = assistant,
+            global = state.config,
+            override = state.overrides[assistant.id],
+            onSave = { next ->
+                onAction(RoleplaySettingsAction.SetOverride(assistant.id, next))
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+@Composable
+private fun RoleplayOverrideDialog(
+    assistant: AssistantProfile,
+    global: RoleplayConfig,
+    override: RoleplayOverride?,
+    onSave: (RoleplayOverride?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var follow by remember(assistant.id, override) { mutableStateOf(override?.config == null) }
+    var config by remember(assistant.id, override) { mutableStateOf(override?.config ?: global) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(assistant.name) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OverrideSwitch(
+                    title = stringResource(R.string.settings_roleplay_override_follow),
+                    body = stringResource(R.string.settings_roleplay_override_follow_body),
+                    checked = follow,
+                    onChange = { follow = it },
+                )
+                if (!follow) {
+                    OverrideSwitch(
+                        title = stringResource(R.string.settings_roleplay_proactive_on),
+                        checked = config.proactive,
+                        onChange = { config = config.copy(proactive = it) },
+                    )
+                    OverrideSwitch(
+                        title = stringResource(R.string.settings_roleplay_memory_switch),
+                        checked = config.memoryEnabled,
+                        onChange = { config = config.copy(memoryEnabled = it) },
+                    )
+                    OverrideSwitch(
+                        title = stringResource(R.string.settings_roleplay_world_switch),
+                        checked = config.worldBookEnabled,
+                        onChange = { config = config.copy(worldBookEnabled = it) },
+                    )
+                    OverrideSwitch(
+                        title = stringResource(R.string.settings_roleplay_sticker_switch),
+                        checked = config.stickerEnabled,
+                        onChange = { config = config.copy(stickerEnabled = it) },
+                    )
+                    OverrideSwitch(
+                        title = stringResource(R.string.settings_roleplay_trace),
+                        checked = config.showToolTrace,
+                        onChange = { config = config.copy(showToolTrace = it) },
+                    )
+                    Text(
+                        text = "${stringResource(R.string.settings_roleplay_read_delay)}  ${config.readDelayMs} ms",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Slider(
+                        value = config.readDelayMs.toFloat().coerceIn(300f, 4_000f),
+                        onValueChange = { config = config.copy(readDelayMs = it.roundToInt()) },
+                        valueRange = 300f..4_000f,
+                        steps = 36,
+                    )
+                    Text(
+                        text = "${stringResource(R.string.settings_roleplay_pace)}  ${(config.paceScale * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Slider(
+                        value = config.paceScale.coerceIn(0.5f, 1.8f),
+                        onValueChange = { config = config.copy(paceScale = it) },
+                        valueRange = 0.5f..1.8f,
+                        steps = 12,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (follow) {
+                        onSave(null)
+                    } else {
+                        onSave((override ?: RoleplayOverride()).copy(config = config))
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.settings_roleplay_override_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.assistant_profile_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun OverrideSwitch(
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    body: String? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            body?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
 

@@ -4,6 +4,8 @@ import android.graphics.BitmapFactory
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,6 +62,7 @@ internal fun SettingsAboutPage(
     onAction: (SettingsAction) -> Unit,
     snackbar: SnackbarHostState,
     onBack: () -> Unit,
+    onOpenDebug: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) {
         onAction(SettingsAction.RefreshData)
@@ -93,7 +96,7 @@ internal fun SettingsAboutPage(
     ) {
         item(key = "about") {
             FocusReveal {
-                AboutGroup(state = state, onAction = onAction)
+                AboutGroup(state = state, onAction = onAction, onOpenDebug = onOpenDebug)
             }
         }
     }
@@ -103,6 +106,7 @@ internal fun SettingsAboutPage(
 private fun AboutGroup(
     state: SettingsUiState,
     onAction: (SettingsAction) -> Unit,
+    onOpenDebug: () -> Unit,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -118,7 +122,17 @@ private fun AboutGroup(
     )
     FocusCardGroup {
         item(
-            headlineContent = { Text(stringResource(R.string.settings_about_app)) },
+            headlineContent = {
+                Text(
+                    text = stringResource(R.string.settings_about_app),
+                    modifier = Modifier.combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {},
+                        onLongClick = hapticTap(onOpenDebug),
+                    ),
+                )
+            },
             supportingContent = { Text(stringResource(R.string.settings_about_tagline)) },
             leadingContent = {
                 FocusCardGroupIcon(

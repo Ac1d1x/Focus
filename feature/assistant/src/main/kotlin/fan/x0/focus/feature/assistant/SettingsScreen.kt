@@ -29,6 +29,7 @@ import fan.x0.focus.feature.assistant.settings.SettingsChatAgentPage
 import fan.x0.focus.feature.assistant.settings.SettingsChatDetailRoute
 import fan.x0.focus.feature.assistant.settings.SettingsCrashLogsRoute
 import fan.x0.focus.feature.assistant.settings.SettingsDataPage
+import fan.x0.focus.feature.assistant.settings.SettingsDebugPage
 import fan.x0.focus.feature.assistant.settings.SettingsDestination
 import fan.x0.focus.feature.assistant.settings.SettingsHomePage
 import fan.x0.focus.feature.assistant.settings.SettingsImRoute
@@ -236,6 +237,10 @@ internal fun SettingsScreen(
                         state = latestState.value,
                         onAction = onAction,
                         snackbar = snackbar,
+                        onBack = { backStack.removeLastOrNull() },
+                        onOpenDebug = { backStack.add(SettingsDestination.Debug) },
+                    )
+                    SettingsDestination.Debug -> SettingsDebugPage(
                         onBack = { backStack.removeLastOrNull() },
                     )
                 }

@@ -24,6 +24,7 @@ object FocusLook {
     private const val DYNAMIC_COLOR_KEY = "dynamic_color"
     private const val SEED_KEY = "seed"
     private const val AMOLED_KEY = "amoled"
+    private const val AMBIENT_KEY = "ambient_background"
     private var context: Context? = null
 
     var cornerScale by mutableFloatStateOf(1f)
@@ -41,6 +42,9 @@ object FocusLook {
     var amoled by mutableStateOf(false)
         private set
 
+    var ambientBackground by mutableStateOf(true)
+        private set
+
     fun init(context: Context) {
         if (this.context != null) return
         val app = context.applicationContext ?: context
@@ -53,6 +57,7 @@ object FocusLook {
         dynamicColor = prefs.getBoolean(DYNAMIC_COLOR_KEY, true)
         seed = prefs.getLong(SEED_KEY, DEFAULT_SEED)
         amoled = prefs.getBoolean(AMOLED_KEY, false)
+        ambientBackground = prefs.getBoolean(AMBIENT_KEY, true)
     }
 
     fun updateCornerScale(value: Float) {
@@ -84,6 +89,12 @@ object FocusLook {
         if (value == amoled) return
         amoled = value
         persist { putBoolean(AMOLED_KEY, value) }
+    }
+
+    fun updateAmbientBackground(value: Boolean) {
+        if (value == ambientBackground) return
+        ambientBackground = value
+        persist { putBoolean(AMBIENT_KEY, value) }
     }
 
     private fun persist(block: android.content.SharedPreferences.Editor.() -> Unit) {

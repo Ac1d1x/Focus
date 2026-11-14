@@ -261,6 +261,8 @@
     <string name="settings_theme_dynamic_body">使用系统根据壁纸生成的配色。</string>
     <string name="settings_theme_accent">主题色</string>
     <string name="settings_theme_accent_body">为整个应用选择一种颜色。</string>
+    <string name="settings_theme_ambient">流体背景</string>
+    <string name="settings_theme_ambient_body">界面后方的流动色彩动画。</string>
     <string name="settings_theme_amoled">纯黑深色</string>
     <string name="settings_theme_amoled_body">深色模式下使用纯黑背景。</string>
     <string name="settings_page_appearance">外观与语言</string>

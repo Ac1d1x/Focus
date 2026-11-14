@@ -145,6 +145,19 @@ internal fun SettingsAppearancePage(
                             )
                         },
                     )
+                    switchItem(
+                        checked = FocusLook.ambientBackground,
+                        onCheckedChange = { FocusLook.updateAmbientBackground(it) },
+                        headlineContent = { Text(stringResource(R.string.settings_theme_ambient)) },
+                        supportingContent = { Text(stringResource(R.string.settings_theme_ambient_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Today,
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                        },
+                    )
                 }
             }
         }

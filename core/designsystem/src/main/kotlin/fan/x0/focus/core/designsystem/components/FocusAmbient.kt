@@ -1,7 +1,9 @@
 package fan.x0.focus.core.designsystem.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -12,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import fan.x0.focus.core.designsystem.theme.FocusLook
 
 internal class FocusAmbientActivity {
     private var count = 0
@@ -47,10 +50,14 @@ fun FocusAmbientBackground(
     content: @Composable () -> Unit,
 ) {
     val activity = remember { FocusAmbientActivity() }
-    FocusAmbientClock(activity)
+    if (FocusLook.ambientBackground) FocusAmbientClock(activity)
     CompositionLocalProvider(LocalFocusAmbientActivity provides activity) {
         Box(modifier = modifier.fillMaxSize()) {
-            FocusAmbientBackdrop(activity)
+            if (FocusLook.ambientBackground) {
+                FocusAmbientBackdrop(activity)
+            } else {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+            }
             content()
         }
     }
@@ -63,7 +70,11 @@ fun FocusAmbientSurface(
 ) {
     val activity = LocalFocusAmbientActivity.current
     Box(modifier = modifier.fillMaxSize()) {
-        FocusAmbientBackdrop(activity)
+        if (FocusLook.ambientBackground) {
+            FocusAmbientBackdrop(activity)
+        } else {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+        }
         content()
     }
 }

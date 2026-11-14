@@ -261,6 +261,8 @@
     <string name="settings_theme_dynamic_body">Use the system palette based on your wallpaper.</string>
     <string name="settings_theme_accent">Accent color</string>
     <string name="settings_theme_accent_body">Pick a color for the whole app.</string>
+    <string name="settings_theme_ambient">Fluid background</string>
+    <string name="settings_theme_ambient_body">Animated ambient colors behind the interface.</string>
     <string name="settings_theme_amoled">Pure black</string>
     <string name="settings_theme_amoled_body">Use true black in dark mode.</string>
     <string name="settings_page_appearance">Appearance and language</string>

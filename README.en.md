@@ -59,7 +59,8 @@ Side chats run alongside the main conversation with their own model, tools, and 
 
 - The overlay assistant can float above any app so you can ask without switching back and forth.
 - You can attach the current screen or draw a region and ask about it. This works well for reading images, translating, and extracting text, similar to Circle to Search.
-- Voice input supports a local offline model and cloud transcription.
+- Voice input supports a local offline model, cloud transcription, and DeepSeek speech recognition.
+- The message menu can read replies aloud with the system voice or a DeepSeek voice, and can read new replies automatically.
 - There is a Focus tile in Quick Settings.
 - A 4x2 home screen widget shows the latest reply and running state.
 - Long-press the app icon, or ask the assistant to create a home screen shortcut, to open Focus quickly.
@@ -135,6 +136,8 @@ Supported protocols:
 - OpenAI Responses
 - OpenAI Chat Completions
 - Anthropic Messages
+
+DeepSeek providers also support server-side web search, link reading, file parsing, conversation titles, and user metadata. These features need the deepseek-flash model and can be toggled on the DeepSeek settings page.
 
 Main and side chats use the current model. Context compaction, the safety judge, chat titles, and opening suggestions can use separate helper models. When unset, they follow the current model.
 

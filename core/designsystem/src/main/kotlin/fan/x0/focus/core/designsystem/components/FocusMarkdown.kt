@@ -667,8 +667,11 @@ private fun splitTableRow(line: String): List<String> {
 private fun inline(text: String, color: Color, linkColor: Color): MarkdownInline {
     val codeSpans = mutableListOf<IntRange>()
     val formulas = mutableListOf<String>()
-    val annotated = buildAnnotatedString { appendInline(text, color, linkColor, codeSpans, formulas) }
-    return MarkdownInline(annotated, codeSpans, formulas)
+    val citations = mutableListOf<InlineCitation>()
+    val annotated = buildAnnotatedString {
+        appendInline(text, color, linkColor, codeSpans, formulas, citations)
+    }
+    return MarkdownInline(annotated, codeSpans, formulas, citations)
 }
 
 private fun AnnotatedString.Builder.appendInline(
@@ -677,6 +680,7 @@ private fun AnnotatedString.Builder.appendInline(
     linkColor: Color,
     codeSpans: MutableList<IntRange>,
     formulas: MutableList<String>,
+    citations: MutableList<InlineCitation>,
 ) {
     var index = 0
     while (index < text.length) {
@@ -736,7 +740,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(marker, index + 3)
                 if (end > index) {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
-                        appendInline(text.substring(index + 3, end), color, linkColor, codeSpans, formulas)
+                        appendInline(text.substring(index + 3, end), color, linkColor, codeSpans, formulas, citations)
                     }
                     index = end + 3
                 } else {
@@ -749,7 +753,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(marker, index + 2)
                 if (end > index) {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas)
+                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas, citations)
                     }
                     index = end + 2
                 } else {
@@ -761,7 +765,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf("~~", index + 2)
                 if (end > index) {
                     withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
-                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas)
+                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas, citations)
                     }
                     index = end + 2
                 } else {
@@ -780,7 +784,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(text[index], index + 1)
                 if (end > index) {
                     withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                        appendInline(text.substring(index + 1, end), color, linkColor, codeSpans, formulas)
+                        appendInline(text.substring(index + 1, end), color, linkColor, codeSpans, formulas, citations)
                     }
                     index = end + 1
                 } else {
@@ -794,14 +798,20 @@ private fun AnnotatedString.Builder.appendInline(
                 if (labelEnd > index && urlEnd > labelEnd) {
                     val label = text.substring(index + 1, labelEnd)
                     val url = text.substring(labelEnd + 2, urlEnd)
-                    appendLink(
-                        label = label,
-                        url = url,
-                        color = color,
-                        linkColor = linkColor,
-                        codeSpans = codeSpans,
-                        formulas = formulas,
-                    )
+                    if (label.isNotEmpty() && label.all { it.isDigit() }) {
+                        citations += InlineCitation(label.toIntOrNull() ?: 0, url)
+                        appendInlineContent("cite${citations.size - 1}", "[$label]")
+                    } else {
+                        appendLink(
+                            label = label,
+                            url = url,
+                            color = color,
+                            linkColor = linkColor,
+                            codeSpans = codeSpans,
+                            formulas = formulas,
+                            citations = citations,
+                        )
+                    }
                     index = urlEnd + 1
                 } else {
                     append(text[index])
@@ -819,6 +829,7 @@ private fun AnnotatedString.Builder.appendInline(
                         linkColor = linkColor,
                         codeSpans = codeSpans,
                         formulas = formulas,
+                        citations = citations,
                     )
                     index = end + 1
                 } else {
@@ -841,6 +852,7 @@ private fun AnnotatedString.Builder.appendLink(
     linkColor: Color,
     codeSpans: MutableList<IntRange>,
     formulas: MutableList<String>,
+    citations: MutableList<InlineCitation>,
 ) {
     withLink(
         LinkAnnotation.Url(
@@ -850,7 +862,7 @@ private fun AnnotatedString.Builder.appendLink(
             ),
         ),
     ) {
-        appendInline(label, color, linkColor, codeSpans, formulas)
+        appendInline(label, color, linkColor, codeSpans, formulas, citations)
     }
 }
 

@@ -143,7 +143,13 @@ class RoleplayDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "
 
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
-        if (!hasColumn(db, "roleplay_states", "conversation_id")) {
+        val valid = hasColumn(db, "roleplay_states", "conversation_id") &&
+            hasColumn(db, "roleplay_memories", "assistant_id") &&
+            hasColumn(db, "roleplay_world_books", "id") &&
+            hasColumn(db, "roleplay_world_entries", "book_id") &&
+            hasColumn(db, "roleplay_stickers", "id") &&
+            hasColumn(db, "roleplay_tasks", "conversation_id")
+        if (!valid) {
             dropTables(db)
             createTables(db)
         }

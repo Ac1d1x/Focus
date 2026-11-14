@@ -1,338 +1,159 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
 package fan.x0.focus.feature.library
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
-import fan.x0.focus.core.designsystem.components.FocusIcons
-import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
-import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
-import fan.x0.focus.core.designsystem.components.FocusTabContent
-import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
-import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.components.FocusMarkdown
+import fan.x0.focus.core.designsystem.components.LocalFocusDrawerAvailable
+import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import fan.x0.focus.core.designsystem.kit.*
 import org.koin.compose.viewmodel.koinViewModel
 
+/** Reading and reference: fetched articles, feed subscriptions, and a connected notes folder. */
 @Composable
-fun LibraryRoute(viewModel: LibraryViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+fun LibraryRoute(onMenu: (() -> Unit)? = LocalFocusDrawerOpener.current.takeIf { LocalFocusDrawerAvailable.current }) {
+    val vm: LibraryViewModel = koinViewModel()
+    val s by vm.state.collectAsStateWithLifecycle()
+    val act = vm::onAction
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
-    HandleAppErrors(viewModel.errors)
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) viewModel.onAction(LibraryAction.FolderPicked(uri.toString()))
-    }
-    LibraryScreen(
-        state = state,
-        onAction = viewModel::onAction,
-        onPickFolder = { folderPicker.launch(null) },
-        snackbar = snackbar,
-    )
-}
-
-private sealed interface LibraryView {
-    data object Main : LibraryView
-    data class Article(val id: String) : LibraryView
-    data class File(val uri: String) : LibraryView
-}
-
-@Composable
-fun LibraryScreen(
-    state: LibraryUiState,
-    onAction: (LibraryAction) -> Unit,
-    onPickFolder: () -> Unit,
-    snackbar: SnackbarHostState,
-) {
-    val view: LibraryView = when {
-        state.reader != null -> LibraryView.Article(state.reader.id)
-        state.fileReader != null -> LibraryView.File(state.fileReader.uri)
-        else -> LibraryView.Main
-    }
-    val close: () -> Unit = {
-        when (view) {
-            LibraryView.Main -> Unit
-            is LibraryView.Article -> onAction(LibraryAction.CloseReader)
-            is LibraryView.File -> onAction(LibraryAction.CloseFile)
+    HandleAppErrors(vm.errors)
+    val scheme = MaterialTheme.colorScheme
+    val motion = MaterialTheme.motionScheme
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri -> if (uri != null) act(LibraryAction.FolderPicked(uri.toString())) }
+    val sectionLabels = LibrarySection.entries.associateWith { section ->
+        when (section) {
+            LibrarySection.Articles -> tr("文章", "Articles")
+            LibrarySection.Feeds -> tr("订阅", "Feeds")
+            LibrarySection.Files -> tr("文件", "Files")
         }
     }
-    Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-        snackbarHost = { FocusSnackbarHost(snackbar) },
-        topBar = {
-            AnimatedContent(targetState = view, label = "libraryTopBar") { target ->
-                when (target) {
-                    LibraryView.Main -> FocusCompactTopBar(
-                        title = stringResource(R.string.library_title),
-                        actions = {
-                            MainActions(state = state, onAction = onAction, onPickFolder = onPickFolder)
-                        },
-                    )
-                    is LibraryView.Article -> FocusCompactTopBar(
-                        title = state.reader?.feed?.ifBlank { stringResource(R.string.library_tab_articles) }
-                            ?: stringResource(R.string.library_tab_articles),
-                        subtitle = state.reader?.time,
-                        onBack = close,
-                        actions = {
-                            IconButton(
-                                onClick = hapticTap {
-                                    state.reader?.id?.let { onAction(LibraryAction.AskDeleteArticle(it)) }
-                                },
-                            ) {
-                                Icon(
-                                    FocusIcons.Delete,
-                                    contentDescription = stringResource(R.string.library_delete),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        },
-                    )
-                    is LibraryView.File -> FocusCompactTopBar(
-                        title = state.fileReader?.name?.ifBlank { stringResource(R.string.library_tab_files) }
-                            ?: stringResource(R.string.library_tab_files),
-                        onBack = close,
-                    )
+    ExPage(
+        tr("资料库", "Library"), onMenu = onMenu, snackbar = snackbar,
+        actions = { ExIconButton(Ic.Refresh, tr("刷新", "Refresh"), { act(LibraryAction.Refresh) }) },
+        fab = {
+            AnimatedVisibility(
+                visible = s.section == LibrarySection.Feeds || (s.section == LibrarySection.Files && s.folderName != null),
+                enter = fadeIn(motion.defaultEffectsSpec()) + scaleIn(motion.defaultSpatialSpec(), initialScale = 0.85f),
+                exit = fadeOut(motion.fastEffectsSpec()) + scaleOut(motion.fastSpatialSpec(), targetScale = 0.85f),
+            ) {
+                if (s.section == LibrarySection.Feeds) {
+                    ExFab(tr("添加订阅", "Add feed"), Ic.Add, { act(LibraryAction.OpenAddFeed) })
+                } else {
+                    ExFab(tr("新笔记", "New note"), Ic.Edit, { act(LibraryAction.OpenNote) })
                 }
             }
         },
-    ) { inner ->
-        AnimatedContent(
-            targetState = view,
-            transitionSpec = {
-                (fadeIn() + slideInHorizontally { it / 8 }) togetherWith
-                    (fadeOut() + slideOutHorizontally { -it / 8 })
-            },
-            label = "libraryContent",
-        ) { target ->
-            Box(modifier = Modifier.fillMaxSize().padding(inner)) {
-                when (target) {
-                    LibraryView.Main -> MainPane(state, onAction, onPickFolder)
-                    is LibraryView.Article -> state.reader?.let { ArticleReader(it) }
-                    is LibraryView.File -> state.fileReader?.let { FileReader(it) }
+    ) {
+        item {
+            ExSegmented(LibrarySection.entries, s.section, { act(LibraryAction.SectionChanged(it)) }) { sectionLabels[it].orEmpty() }
+        }
+        item(key = "loading", contentType = "loading") {
+            AnimatedVisibility(
+                visible = s.loading || s.refreshing,
+                enter = fadeIn(motion.defaultEffectsSpec()),
+                exit = fadeOut(motion.fastEffectsSpec()),
+            ) {
+                LinearWavyProgressIndicator(Modifier.fillMaxWidth())
+            }
+        }
+        when (s.section) {
+            LibrarySection.Articles -> {
+                item { FilterChip(s.unreadOnly, { act(LibraryAction.ToggleUnread) }, label = { Text(tr("只看未读", "Unread only")) }) }
+                if (s.articles.isEmpty() && !s.loading) item { ExEmpty(Ic.Article, tr("还没有文章", "No articles yet"), text = tr("添加订阅后刷新一下。", "Add a feed, then refresh.")) }
+                group(key = "articles") {
+                    s.articles.forEach { a ->
+                        val articleTint by animateColorAsState(if (a.read) scheme.outline else scheme.primary, motion.defaultEffectsSpec(), label = "articleTint")
+                        ExRow(
+                            a.title, subtitle = listOfNotNull("${a.feed} · ${a.time}", a.summary?.take(90)).joinToString("\n"),
+                            icon = if (a.read) Ic.Article else Ic.Sparkle, tint = articleTint,
+                            onClick = { act(LibraryAction.OpenArticle(a.id)) }, onLongClick = { act(LibraryAction.AskDeleteArticle(a.id)) },
+                        )
+                    }
+                }
+            }
+            LibrarySection.Feeds -> {
+                if (s.feeds.isEmpty() && !s.loading) item { ExEmpty(Ic.Rss, tr("还没有订阅", "No feeds yet"), text = tr("支持 RSS 和 Atom。", "RSS and Atom are supported.")) }
+                group(key = "feeds") {
+                    s.feeds.forEach { f ->
+                        ExRow(f.title.ifBlank { f.url }, subtitle = f.error ?: f.url, icon = Ic.Rss, tint = if (f.error != null) scheme.error else scheme.primary) {
+                            ExIconButton(Ic.Delete, tr("取消订阅", "Remove feed"), { act(LibraryAction.AskRemoveFeed(f.id)) })
+                        }
+                    }
+                }
+            }
+            LibrarySection.Files -> {
+                group(key = "folder") {
+                    ExRow(s.folderName ?: tr("连接一个文件夹", "Connect a folder"), subtitle = if (s.folderName == null) tr("助手可以读写其中的文件", "The assistant can read and write files in it") else tr("点按更换", "Tap to change"), icon = Ic.Folder, onClick = { pickFolder.launch(null) }) {
+                        if (s.folderName != null) ExIconButton(Ic.Close, tr("断开", "Disconnect"), { act(LibraryAction.ClearFolder) })
+                    }
+                }
+                if (s.files.isNotEmpty()) {
+                    group(key = "files") {
+                        s.files.forEach { f ->
+                            ExRow(f.name, subtitle = f.sizeLabel, icon = if (f.isDirectory) Ic.Folder else Ic.File, tint = if (f.isDirectory) scheme.tertiary else scheme.primary, onClick = { act(LibraryAction.OpenFile(f.uri)) }, onLongClick = { act(LibraryAction.AskDeleteFile(f.uri)) })
+                        }
+                    }
                 }
             }
         }
     }
-    if (state.addFeedOpen) {
-        AddFeedDialog(state = state, onAction = onAction)
+    s.reader?.let { r ->
+        ExSheet(onDismiss = { act(LibraryAction.CloseReader) }, title = r.title, full = true) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExPill("${r.feed} · ${r.time}", color = scheme.outline)
+                if (r.url.isNotBlank()) ExButton(tr("原文", "Open original"), { openUrl(context, r.url) }, kind = BtnKind.Text, icon = Ic.OpenNew)
+            }
+            FocusMarkdown(text = r.content, modifier = Modifier.fillMaxWidth())
+        }
     }
-    if (state.noteOpen) {
-        NoteDialog(state = state, onAction = onAction)
+    s.fileReader?.let { f ->
+        ExSheet(onDismiss = { act(LibraryAction.CloseFile) }, title = f.name, full = true) {
+            if (f.name.endsWith(".md", ignoreCase = true)) {
+                FocusMarkdown(text = f.content, modifier = Modifier.fillMaxWidth())
+            } else {
+                Text(f.content, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
-    state.deleteTarget?.let { target ->
+    if (s.addFeedOpen) {
+        ExSheet(onDismiss = { act(LibraryAction.DismissAddFeed) }, title = tr("添加订阅", "Add a feed")) {
+            ExField(s.feedUrl, { act(LibraryAction.FeedUrlChanged(it)) }, tr("RSS 或 Atom 地址", "RSS or Atom URL"), keyboard = KeyboardType.Uri, mono = true)
+            ExButton(tr("订阅", "Subscribe"), { act(LibraryAction.SubmitFeed) }, Modifier.fillMaxWidth(), loading = s.addingFeed, enabled = s.feedUrl.isNotBlank())
+        }
+    }
+    if (s.noteOpen) {
+        ExSheet(onDismiss = { act(LibraryAction.DismissNote) }, title = tr("新笔记", "New note"), full = true) {
+            ExField(s.noteName, { act(LibraryAction.NoteNameChanged(it)) }, tr("文件名", "File name"))
+            ExField(s.noteBody, { act(LibraryAction.NoteBodyChanged(it)) }, tr("内容", "Content"), singleLine = false, minLines = 6, maxLines = 16)
+            ExButton(tr("保存", "Save"), { act(LibraryAction.SaveNote) }, Modifier.fillMaxWidth(), loading = s.savingNote, enabled = s.noteName.isNotBlank())
+        }
+    }
+    s.deleteTarget?.let { target ->
         val name = when (target) {
             is DeleteTarget.Article -> target.title
             is DeleteTarget.Feed -> target.title
             is DeleteTarget.File -> target.name
         }
-        AlertDialog(
-            onDismissRequest = { onAction(LibraryAction.CancelDelete) },
-            title = { Text(stringResource(R.string.library_delete_title)) },
-            text = { Text(stringResource(R.string.library_delete_body, name)) },
-            confirmButton = {
-                TextButton(onClick = hapticTap { onAction(LibraryAction.ConfirmDelete) }) {
-                    Text(stringResource(R.string.library_delete_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = hapticTap { onAction(LibraryAction.CancelDelete) }) {
-                    Text(stringResource(R.string.library_cancel))
-                }
-            },
-        )
+        ExConfirm(tr("确认删除？", "Delete this?"), name, tr("删除", "Delete"), onConfirm = { act(LibraryAction.ConfirmDelete) }, onDismiss = { act(LibraryAction.CancelDelete) }, danger = true)
     }
-}
-
-@Composable
-private fun MainPane(
-    state: LibraryUiState,
-    onAction: (LibraryAction) -> Unit,
-    onPickFolder: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        val sections = listOf(
-            LibrarySection.Articles to stringResource(R.string.library_tab_articles),
-            LibrarySection.Feeds to stringResource(R.string.library_tab_feeds),
-            LibrarySection.Files to stringResource(R.string.library_tab_files),
-        )
-        val selected = sections.indexOfFirst { it.first == state.section }.coerceAtLeast(0)
-        FocusTabSwitcher(
-            labels = sections.map { it.second },
-            selectedIndex = selected,
-            onSelect = { index -> onAction(LibraryAction.SectionChanged(sections[index].first)) },
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
-        when {
-            state.loading -> Box(modifier = Modifier.weight(1f)) { FocusLoadingBlock() }
-            else -> FocusTabContent(
-                selectedIndex = selected,
-                modifier = Modifier.weight(1f),
-            ) { index ->
-                when (sections[index].first) {
-                    LibrarySection.Articles -> ArticleList(state, onAction)
-                    LibrarySection.Feeds -> FeedList(state, onAction)
-                    LibrarySection.Files -> FileList(state, onAction, onPickFolder)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MainActions(
-    state: LibraryUiState,
-    onAction: (LibraryAction) -> Unit,
-    onPickFolder: () -> Unit,
-) {
-    if (state.section == LibrarySection.Feeds) {
-        IconButton(onClick = hapticTap { onAction(LibraryAction.OpenAddFeed) }) {
-            Icon(
-                FocusIcons.Add,
-                contentDescription = stringResource(R.string.library_add_feed),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-    if (state.section == LibrarySection.Files) {
-        IconButton(onClick = hapticTap(onPickFolder)) {
-            Icon(
-                FocusIcons.Folder,
-                contentDescription = stringResource(R.string.library_pick_folder),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-    val transition = rememberInfiniteTransition(label = "libraryRefresh")
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(1200, easing = LinearEasing)),
-        label = "libraryRefreshRotation",
-    )
-    IconButton(onClick = hapticTap { onAction(LibraryAction.Refresh) }, enabled = !state.refreshing) {
-        Icon(
-            FocusIcons.Refresh,
-            contentDescription = stringResource(R.string.library_refresh),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .size(22.dp)
-                .graphicsLayer { rotationZ = if (state.refreshing) rotation else 0f },
-        )
-    }
-}
-
-@Composable
-private fun AddFeedDialog(state: LibraryUiState, onAction: (LibraryAction) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(LibraryAction.DismissAddFeed) },
-        title = { Text(stringResource(R.string.library_add_feed_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.library_add_feed_body),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = state.feedUrl,
-                    onValueChange = { onAction(LibraryAction.FeedUrlChanged(it)) },
-                    label = { Text(stringResource(R.string.library_feed_url)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = hapticTap { onAction(LibraryAction.SubmitFeed) },
-                enabled = state.feedUrl.isNotBlank() && !state.addingFeed,
-            ) {
-                Text(stringResource(R.string.library_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = hapticTap { onAction(LibraryAction.DismissAddFeed) }) {
-                Text(stringResource(R.string.library_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun NoteDialog(state: LibraryUiState, onAction: (LibraryAction) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(LibraryAction.DismissNote) },
-        title = { Text(stringResource(R.string.library_note_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = state.noteName,
-                    onValueChange = { onAction(LibraryAction.NoteNameChanged(it)) },
-                    label = { Text(stringResource(R.string.library_note_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
-                OutlinedTextField(
-                    value = state.noteBody,
-                    onValueChange = { onAction(LibraryAction.NoteBodyChanged(it)) },
-                    label = { Text(stringResource(R.string.library_note_body)) },
-                    minLines = 4,
-                    maxLines = 8,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = hapticTap { onAction(LibraryAction.SaveNote) },
-                enabled = state.noteName.isNotBlank() && !state.savingNote,
-            ) {
-                Text(stringResource(R.string.library_note_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = hapticTap { onAction(LibraryAction.DismissNote) }) {
-                Text(stringResource(R.string.library_cancel))
-            }
-        },
-    )
 }

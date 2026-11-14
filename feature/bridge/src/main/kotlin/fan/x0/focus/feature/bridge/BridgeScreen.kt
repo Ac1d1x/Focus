@@ -1,443 +1,172 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
 package fan.x0.focus.feature.bridge
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
-import fan.x0.focus.core.designsystem.components.FocusEmptyState
-import fan.x0.focus.core.designsystem.components.FocusIcons
-import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
-import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
-import fan.x0.focus.core.designsystem.components.FocusPrimaryButton
-import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
-import fan.x0.focus.core.designsystem.components.FocusStatusPill
-import fan.x0.focus.core.designsystem.components.FocusTabContent
-import fan.x0.focus.core.designsystem.components.FocusTabSwitcher
-import fan.x0.focus.core.designsystem.components.FocusTextButton
-import fan.x0.focus.core.designsystem.components.FocusTonalButton
-import fan.x0.focus.core.designsystem.components.StatusTone
-import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.components.LocalFocusDrawerAvailable
+import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
-import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
+import fan.x0.focus.core.designsystem.kit.*
 import org.koin.compose.viewmodel.koinViewModel
 
+/** Computers reached through the bridge: pairing, persistent terminals, and background jobs. */
 @Composable
-fun BridgeRoute(viewModel: BridgeViewModel = koinViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+fun BridgeRoute(onMenu: (() -> Unit)? = LocalFocusDrawerOpener.current.takeIf { LocalFocusDrawerAvailable.current }) {
+    val vm: BridgeViewModel = koinViewModel()
+    val s by vm.state.collectAsStateWithLifecycle()
+    val act = vm::onAction
     val snackbar = remember { SnackbarHostState() }
-    val context = LocalContext.current
-    val localNetworkPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= 37 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_LOCAL_NETWORK) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            localNetworkPermission.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+    HandleAppErrors(vm.errors)
+    val scheme = MaterialTheme.colorScheme
+    val pairedTitle = if (s.devices.isEmpty()) null else tr("已配对", "Paired")
+    val discoveryTitle = tr("局域网发现", "Found on the network")
+    val rootsTitle = tr("工作区目录", "Workspace folders")
+    val tabLabels = BridgeTab.entries.associateWith { tab ->
+        when (tab) {
+            BridgeTab.Devices -> tr("电脑", "Computers")
+            BridgeTab.Terminal -> tr("终端", "Terminal")
+            BridgeTab.Background -> tr("后台任务", "Background")
         }
     }
-    HandleAppErrors(viewModel.errors)
-    BridgeScreen(
-        state = state,
-        onAction = viewModel::onAction,
-        snackbar = snackbar,
-    )
-}
-
-@Composable
-fun BridgeScreen(
-    state: BridgeUiState,
-    onAction: (BridgeAction) -> Unit,
-    snackbar: SnackbarHostState,
-) {
-    Scaffold(
-        containerColor = Color.Transparent,
-        snackbarHost = { FocusSnackbarHost(snackbar) },
-        topBar = { BridgeTopBar(state = state, onAction = onAction) },
-    ) { inner ->
-        Column(modifier = Modifier.fillMaxSize().padding(inner)) {
-            val sections = listOf(
-                BridgeTab.Devices to stringResource(R.string.bridge_tab_devices),
-                BridgeTab.Terminal to stringResource(R.string.bridge_tab_terminal),
-                BridgeTab.Background to stringResource(R.string.bridge_tab_background),
-            )
-            val selected = sections.indexOfFirst { it.first == state.tab }.coerceAtLeast(0)
-            FocusTabSwitcher(
-                labels = sections.map { it.second },
-                selectedIndex = selected,
-                onSelect = { index -> onAction(BridgeAction.TabChanged(sections[index].first)) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            FocusTabContent(
-                selectedIndex = selected,
-                modifier = Modifier.weight(1f),
-            ) { index ->
-                when (sections[index].first) {
-                    BridgeTab.Devices -> DevicesPane(state = state, onAction = onAction)
-                    BridgeTab.Terminal -> TerminalPane(state = state, onAction = onAction)
-                    BridgeTab.Background -> BackgroundPane(state = state, onAction = onAction)
-                }
-            }
-        }
+    LaunchedEffect(s.tab) {
+        if (s.tab == BridgeTab.Terminal) act(BridgeAction.LoadSessions)
+        if (s.tab == BridgeTab.Background) act(BridgeAction.LoadBackground)
     }
-    if (state.addOpen) {
-        PairDialog(state = state, onAction = onAction)
-    }
-    state.deleteTarget?.let { target ->
-        AlertDialog(
-            onDismissRequest = { onAction(BridgeAction.CancelForget) },
-            title = { Text(stringResource(R.string.bridge_forget_title)) },
-            text = { Text(stringResource(R.string.bridge_forget_body, target.name)) },
-            confirmButton = {
-                TextButton(onClick = hapticTap { onAction(BridgeAction.ConfirmForget) }) {
-                    Text(stringResource(R.string.bridge_forget))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = hapticTap { onAction(BridgeAction.CancelForget) }) {
-                    Text(stringResource(R.string.bridge_cancel))
-                }
-            },
-        )
-    }
-}
-
-@Composable
-private fun BridgeTopBar(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
-    FocusCompactTopBar(
-        title = stringResource(R.string.bridge_title),
-        actions = {
-            IconButton(onClick = hapticTap { onAction(BridgeAction.Scan) }, enabled = !state.scanning) {
-                Icon(
-                    FocusIcons.Search,
-                    contentDescription = stringResource(R.string.bridge_scan),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = hapticTap { onAction(BridgeAction.OpenAdd) }) {
-                Icon(
-                    FocusIcons.Add,
-                    contentDescription = stringResource(R.string.bridge_add_device),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    ExPage(
+        tr("电脑", "Computer"), onMenu = onMenu, snackbar = snackbar,
+        actions = { ExIconButton(Ic.Refresh, tr("刷新", "Refresh"), { act(BridgeAction.Refresh) }) },
+        fab = {
+            when (s.tab) {
+                BridgeTab.Devices -> ExFab(tr("配对电脑", "Pair a computer"), Ic.Add, { act(BridgeAction.OpenAdd) })
+                BridgeTab.Terminal -> if (s.devices.isNotEmpty()) ExFab(tr("新终端", "New terminal"), Ic.Terminal, { act(BridgeAction.NewSession) })
+                BridgeTab.Background -> Unit
             }
         },
-    )
-}
-
-@Composable
-private fun DevicesPane(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
-    if (state.loading) {
-        Box(modifier = Modifier.fillMaxSize()) { FocusLoadingBlock() }
-        return
-    }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (state.discovered.isNotEmpty()) {
-            item(key = "discovered") {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.bridge_discovered_title),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    state.discovered.forEach { found ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = found.name.ifBlank { found.host },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = "${found.host}:${found.port}  ${found.os} ${found.arch}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+        item {
+            ExSegmented(BridgeTab.entries, s.tab, { act(BridgeAction.TabChanged(it)) }) { tabLabels[it].orEmpty() }
+        }
+        if (s.loading || s.sessionsLoading || s.backgroundLoading) item { LinearWavyProgressIndicator(Modifier.fillMaxWidth()) }
+        when (s.tab) {
+            BridgeTab.Devices -> {
+                if (s.devices.isEmpty() && !s.loading) {
+                    item { ExEmpty(Ic.Computer, tr("还没有配对的电脑", "No paired computers"), text = tr("在电脑上运行 focus-bridge serve，会打印一个六位配对码。", "Run focus-bridge serve on the computer. It prints a six-digit code.")) }
+                }
+                group(pairedTitle) {
+                    s.devices.forEach { d ->
+                        ExRow(d.name, subtitle = "${d.host}:${d.port} · ${d.os} ${d.arch} · v${d.version}", icon = Ic.Computer, tint = if (d.active) scheme.primary else scheme.outline, onClick = { act(BridgeAction.SelectDevice(d.id)) }) {
+                            if (d.id in s.liveDevices) ExPill(tr("在线", "Online"))
+                            ExIconButton(Ic.Delete, tr("移除", "Forget"), { act(BridgeAction.AskForgetDevice(d.id)) })
+                        }
+                    }
+                }
+                group(discoveryTitle) {
+                    ExRow(tr("扫描局域网", "Scan the network"), icon = Ic.Search, onClick = { act(BridgeAction.Scan) }) { if (s.scanning) LoadingIndicator(Modifier.size(24.dp)) }
+                    s.discovered.forEach { f -> ExRow(f.name, subtitle = "${f.host}:${f.port} · ${f.os} ${f.arch}", icon = Ic.Devices, chevron = true, onClick = { act(BridgeAction.UseDiscovered(f.host, f.port)) }) }
+                }
+                if (s.devices.any { it.active }) {
+                    group(rootsTitle) {
+                        s.roots.forEach { root -> ExRow(root, icon = Ic.Folder) { ExIconButton(Ic.Close, tr("移除", "Remove"), { act(BridgeAction.RemoveRoot(root)) }) } }
+                        ExRow(tr("添加目录", "Add a folder"), icon = Ic.Add, below = {
+                            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ExField(s.rootDraft, { act(BridgeAction.RootDraftChanged(it)) }, tr("电脑上的绝对路径", "Absolute path on the computer"), Modifier.weight(1f), mono = true)
+                                ExIconButton(Ic.Add, tr("添加", "Add"), { act(BridgeAction.AddRoot) }, enabled = s.rootDraft.isNotBlank())
                             }
-                            FocusTonalButton(
-                                text = stringResource(R.string.bridge_pair),
-                                onClick = { onAction(BridgeAction.UseDiscovered(found.host, found.port)) },
-                            )
+                        })
+                        ExRow(tr("保存目录", "Save folders"), icon = Ic.Check, onClick = { act(BridgeAction.SaveRoots) }) { if (s.savingRoots) LoadingIndicator(Modifier.size(24.dp)) }
+                    }
+                }
+            }
+            BridgeTab.Terminal -> {
+                if (s.sessions.isEmpty() && !s.sessionsLoading) item { ExEmpty(Ic.Terminal, tr("还没有终端", "No terminals yet"), text = tr("终端在电脑上常驻，断开后可以再接回来。", "Terminals persist on the computer, so you can reattach later.")) }
+                group {
+                    s.sessions.forEach { t ->
+                        ExRow(t.name.ifBlank { t.id.take(8) }, subtitle = "${t.shell} · ${t.cols}×${t.rows}", icon = Ic.Terminal, onClick = { act(BridgeAction.OpenSession(t.id)) }) {
+                            ExIconButton(Ic.Close, tr("结束", "Close"), { act(BridgeAction.CloseSession(t.id)) })
                         }
                     }
                 }
             }
-        }
-        if (state.devices.isEmpty()) {
-            item(key = "empty") {
-                Box(
-                    modifier = Modifier.fillParentMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    FocusEmptyState(
-                        icon = FocusIcons.Provider,
-                        title = stringResource(R.string.bridge_empty_title),
-                        body = stringResource(R.string.bridge_empty_body),
-                        actionLabel = stringResource(R.string.bridge_add_device),
-                        onAction = { onAction(BridgeAction.OpenAdd) },
-                    )
-                }
-            }
-        } else {
-            items(state.devices, key = { it.id }) { device ->
-                DeviceCard(state = state, device = device, onAction = onAction)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeviceCard(
-    state: BridgeUiState,
-    device: BridgeDeviceUi,
-    onAction: (BridgeAction) -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = FocusShapeTokens.card,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = device.name,
-                    style = MaterialTheme.typography.titleSmallEmphasized,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (device.active) {
-                    FocusStatusPill(
-                        text = stringResource(R.string.bridge_active),
-                        tone = StatusTone.Active,
-                    )
-                }
-                if (state.liveDevices.contains(device.id)) {
-                    FocusStatusPill(
-                        text = stringResource(R.string.bridge_device_live),
-                        tone = StatusTone.Success,
-                    )
-                }
-                Text(
-                    text = "${device.host}:${device.port}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            val meta = listOf(device.os, device.arch, device.version)
-                .filter { it.isNotBlank() }
-                .joinToString(" ")
-            if (meta.isNotBlank()) {
-                Text(
-                    text = meta,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (device.active) {
-                WorkspaceEditor(state = state, onAction = onAction)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FocusTonalButton(
-                    text = stringResource(R.string.bridge_use),
-                    onClick = { onAction(BridgeAction.SelectDevice(device.id)) },
-                    enabled = !device.active,
-                    modifier = Modifier.weight(1f),
-                )
-                FocusOutlinedButton(
-                    text = stringResource(R.string.bridge_forget),
-                    onClick = { onAction(BridgeAction.AskForgetDevice(device.id)) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun WorkspaceEditor(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.bridge_workspace_title),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = stringResource(R.string.bridge_workspace_body),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (state.roots.isEmpty()) {
-            Text(
-                text = stringResource(R.string.bridge_workspace_empty),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            state.roots.forEach { root ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = root,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = hapticTap { onAction(BridgeAction.RemoveRoot(root)) }) {
-                        Icon(
-                            FocusIcons.Close,
-                            contentDescription = stringResource(R.string.bridge_forget),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+            BridgeTab.Background -> {
+                if (s.backgroundJobs.isEmpty() && !s.backgroundLoading) item { ExEmpty(Ic.Pending, tr("没有后台任务", "No background jobs"), text = tr("长命令结束后会通知你，也能自动接着聊。", "Long commands notify you when done and can continue the chat.")) }
+                group {
+                    s.backgroundJobs.forEach { j ->
+                        val running = j.endedAt <= 0
+                        val failed = !running && (j.exitCode != 0 || j.timedOut)
+                        ExRow(
+                            j.command, subtitle = listOf(j.status, if (running) relativeTime(j.startedAt) else tr("退出码 ${j.exitCode}", "exit ${j.exitCode}"), if (j.timedOut) tr("超时", "timed out") else "").filter { it.isNotBlank() }.joinToString(" · "),
+                            icon = if (running) Ic.Play else if (failed) Ic.Error else Ic.Done, tint = if (failed) scheme.error else if (running) scheme.tertiary else scheme.primary,
+                            onClick = { act(BridgeAction.OpenBackground(j.id)) },
+                        ) { if (running) ExIconButton(Ic.Stop, tr("终止", "Kill"), { act(BridgeAction.KillBackground(j.id)) }) }
                     }
                 }
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = state.rootDraft,
-                onValueChange = { onAction(BridgeAction.RootDraftChanged(it)) },
-                label = { Text(stringResource(R.string.bridge_workspace_path)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = FocusShapeTokens.input,
-            )
-            IconButton(
-                onClick = hapticTap { onAction(BridgeAction.AddRoot) },
-                enabled = state.rootDraft.isNotBlank(),
-            ) {
-                Icon(
-                    FocusIcons.Add,
-                    contentDescription = stringResource(R.string.bridge_workspace_add),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (s.backgroundJobs.isNotEmpty()) item { ExButton(tr("清除已结束的任务", "Clear finished jobs"), { act(BridgeAction.ClearBackgroundJobs) }, kind = BtnKind.Text, icon = Ic.Delete) }
             }
         }
     }
-}
-
-@Composable
-private fun PairDialog(state: BridgeUiState, onAction: (BridgeAction) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onAction(BridgeAction.DismissAdd) },
-        title = { Text(stringResource(R.string.bridge_pair_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.bridge_pair_body),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = state.host,
-                    onValueChange = { onAction(BridgeAction.HostChanged(it)) },
-                    label = { Text(stringResource(R.string.bridge_host)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
-                OutlinedTextField(
-                    value = state.port,
-                    onValueChange = { onAction(BridgeAction.PortChanged(it)) },
-                    label = { Text(stringResource(R.string.bridge_port)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
-                OutlinedTextField(
-                    value = state.code,
-                    onValueChange = { onAction(BridgeAction.CodeChanged(it)) },
-                    label = { Text(stringResource(R.string.bridge_code)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = FocusShapeTokens.input,
-                )
+    if (s.addOpen) {
+        ExSheet(onDismiss = { act(BridgeAction.DismissAdd) }, title = tr("配对电脑", "Pair a computer")) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExField(s.host, { act(BridgeAction.HostChanged(it)) }, tr("地址", "Host"), Modifier.weight(2f), mono = true)
+                ExField(s.port, { act(BridgeAction.PortChanged(it)) }, tr("端口", "Port"), Modifier.weight(1f), keyboard = KeyboardType.Number, mono = true)
             }
-        },
-        confirmButton = {
-            FocusPrimaryButton(
-                text = stringResource(R.string.bridge_pair),
-                onClick = { onAction(BridgeAction.SubmitPair) },
-                enabled = state.host.isNotBlank() && state.port.isNotBlank() &&
-                    state.code.isNotBlank() && !state.pairing,
-                loading = state.pairing,
-            )
-        },
-        dismissButton = {
-            FocusTextButton(
-                text = stringResource(R.string.bridge_cancel),
-                onClick = { onAction(BridgeAction.DismissAdd) },
-            )
-        },
-    )
+            ExField(s.code, { act(BridgeAction.CodeChanged(it)) }, tr("六位配对码", "Six-digit code"), keyboard = KeyboardType.Number, mono = true, supporting = tr("五分钟内有效，只能用一次", "Valid for five minutes, single use"))
+            ExButton(tr("配对", "Pair"), { act(BridgeAction.SubmitPair) }, Modifier.fillMaxWidth(), loading = s.pairing, enabled = s.host.isNotBlank() && s.code.isNotBlank(), icon = Ic.Link)
+        }
+    }
+    s.opened?.let { session ->
+        val lines = remember(s.terminalOutput) { parseTerminal(s.terminalOutput, 60_000) }
+        val listState = rememberLazyListState()
+        LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex) }
+        ExSheet(onDismiss = { act(BridgeAction.CloseTerminal) }, title = session.name.ifBlank { tr("终端", "Terminal") }, full = true, scroll = false) {
+            if (s.connecting) LinearWavyProgressIndicator(Modifier.fillMaxWidth())
+            LazyColumn(Modifier.fillMaxWidth().weight(1f).clip(MaterialTheme.shapes.large).background(TerminalBackground).padding(10.dp), state = listState) {
+                items(lines) { line -> Text(line, color = Color(0xFFE6E6E6), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp) }
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Esc" to TerminalKey.Escape, "Tab" to TerminalKey.Tab, "⏎" to TerminalKey.Enter, "Ctrl+C" to TerminalKey.ControlC, "Ctrl+D" to TerminalKey.ControlD).forEach { (label, key) ->
+                    ExButton(label, { act(BridgeAction.SendTerminalKey(key)) }, kind = BtnKind.Tonal)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ExField(s.terminalInput, { act(BridgeAction.TerminalInputChanged(it)) }, tr("输入命令", "Type a command"), Modifier.weight(1f), mono = true)
+                ExIconButton(Ic.Send, tr("发送", "Send"), { act(BridgeAction.SendTerminalInput) })
+            }
+        }
+    }
+    s.backgroundSelected?.let { id ->
+        ExSheet(onDismiss = { act(BridgeAction.CloseBackground) }, title = tr("任务输出", "Job output"), full = true) {
+            Text(s.backgroundJobs.firstOrNull { it.id == id }?.command.orEmpty(), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (s.backgroundFollowing) ExPill(tr("实时跟随", "Following"), color = scheme.tertiary)
+                ExButton(tr("清空输出", "Clear output"), { act(BridgeAction.ClearBackgroundLogs) }, kind = BtnKind.Text)
+            }
+            Column(Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(TerminalBackground).padding(10.dp)) {
+                s.backgroundLogs.forEach { log -> Text(log.data, color = if (log.stream == "stderr") Color(0xFFFF8A80) else Color(0xFFE6E6E6), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 16.sp) }
+            }
+        }
+    }
+    s.deleteTarget?.let { d ->
+        ExConfirm(tr("移除这台电脑？", "Forget this computer?"), tr("「${d.name}」需要重新配对才能再用。", "\"${d.name}\" will need pairing again."), tr("移除", "Forget"), onConfirm = { act(BridgeAction.ConfirmForget) }, onDismiss = { act(BridgeAction.CancelForget) }, danger = true)
+    }
 }

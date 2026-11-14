@@ -390,6 +390,14 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
         db.execSQL("CREATE INDEX idx_agent_triggers_due ON agent_triggers(enabled, next_run)")
     }
 
+    override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion == 26 && newVersion == 25) {
+            // v26 only added columns with defaults, so this code can keep using it.
+            return
+        }
+        super.onDowngrade(db, oldVersion, newVersion)
+    }
+
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE conversations ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")

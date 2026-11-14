@@ -3,6 +3,7 @@ package fan.x0.focus
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import androidx.glance.appwidget.updateAll
 import fan.x0.focus.app.AndroidMessageNotifier
 import fan.x0.focus.app.AppModule
@@ -91,7 +92,8 @@ class FocusApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        CrashLogStore(this).install { throwable ->
+        val crashLogs = CrashLogStore(this)
+        crashLogs.install { throwable ->
             CrashNotifier.notify(this, throwable)
         }
         startKoin<FocusApplication> {
@@ -102,6 +104,13 @@ class FocusApplication : Application() {
             AppPresenceCallbacks(KoinPlatform.getKoin().get<AppPresence>()),
         )
         createChannels()
+        if (crashLogs.hasUnreviewed()) {
+            startActivity(
+                Intent(this, CrashLogActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            )
+            return
+        }
         scope.launch { bootstrap() }
     }
 

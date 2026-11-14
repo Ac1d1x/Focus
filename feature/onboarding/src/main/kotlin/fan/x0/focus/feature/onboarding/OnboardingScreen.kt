@@ -89,6 +89,9 @@ import fan.x0.focus.core.designsystem.kit.ExSegmented
 import fan.x0.focus.core.designsystem.kit.ExSheet
 import fan.x0.focus.core.designsystem.kit.ExSwitchRow
 import fan.x0.focus.core.designsystem.kit.Ic
+import fan.x0.focus.core.designsystem.kit.ExButton
+import fan.x0.focus.core.designsystem.kit.ExGroup
+import fan.x0.focus.core.designsystem.kit.ExRow
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.error.message
@@ -317,12 +320,11 @@ private fun ProviderGate(onAction: (OnboardingAction) -> Unit) {
         Box(
             modifier = Modifier
                 .size(112.dp)
-                .clip(RoundedCornerShape(36.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(36.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = FocusIcons.Assistant,
+                imageVector = Ic.Sparkle,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.size(52.dp),
@@ -330,7 +332,7 @@ private fun ProviderGate(onAction: (OnboardingAction) -> Unit) {
         }
         Text(
             text = stringResource(R.string.onboarding_gate_title),
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.displaySmall,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 20.dp),
@@ -342,36 +344,36 @@ private fun ProviderGate(onAction: (OnboardingAction) -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp),
         )
-        FocusCardGroup(modifier = Modifier.padding(top = 24.dp)) {
-            item(
-                headlineContent = { Text(stringResource(R.string.onboarding_welcome_local_title)) },
-                supportingContent = { Text(stringResource(R.string.onboarding_welcome_local_body)) },
-                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Lock) },
+        ExGroup(modifier = Modifier.padding(top = 24.dp)) {
+            ExRow(
+                title = stringResource(R.string.onboarding_welcome_local_title),
+                subtitle = stringResource(R.string.onboarding_welcome_local_body),
+                icon = Ic.Lock,
             )
-            item(
-                headlineContent = { Text(stringResource(R.string.onboarding_welcome_more_title)) },
-                supportingContent = { Text(stringResource(R.string.onboarding_welcome_more_body)) },
-                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Bolt) },
+            ExRow(
+                title = stringResource(R.string.onboarding_welcome_more_title),
+                subtitle = stringResource(R.string.onboarding_welcome_more_body),
+                icon = Ic.Bolt,
             )
-            item(
-                headlineContent = { Text(stringResource(R.string.onboarding_welcome_style_title)) },
-                supportingContent = { Text(stringResource(R.string.onboarding_welcome_style_body)) },
-                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Tune) },
+            ExRow(
+                title = stringResource(R.string.onboarding_welcome_style_title),
+                subtitle = stringResource(R.string.onboarding_welcome_style_body),
+                icon = Ic.Palette,
             )
         }
-        FocusPrimaryButton(
+        ExButton(
             text = stringResource(R.string.onboarding_connect_model),
             onClick = { onAction(OnboardingAction.OpenProviderSheet) },
-            icon = FocusIcons.Tune,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp)
-                .height(56.dp),
+                .padding(top = 24.dp),
+            icon = Ic.Api,
         )
-        FocusTextButton(
+        ExButton(
             text = stringResource(R.string.onboarding_controlled_only),
             onClick = { onAction(OnboardingAction.UseAsControlled) },
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = 4.dp),
+            kind = BtnKind.Text,
         )
     }
 }

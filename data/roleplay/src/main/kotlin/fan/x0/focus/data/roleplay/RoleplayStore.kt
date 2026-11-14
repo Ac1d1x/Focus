@@ -418,6 +418,19 @@ class RoleplayStore(private val database: RoleplayDatabase) {
         ).use { it.moveToFirst() }
     }
 
+    suspend fun claimTask(id: String): Boolean = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply {
+            put("status", "firing")
+            put("note", "sending")
+        }
+        database.writableDatabase.update(
+            "roleplay_tasks",
+            values,
+            "id = ? AND status = 'pending'",
+            arrayOf(id),
+        ) > 0
+    }
+
     suspend fun setTaskStatus(
         id: String,
         status: String,

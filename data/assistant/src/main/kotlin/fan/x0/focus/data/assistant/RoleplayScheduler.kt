@@ -122,7 +122,7 @@ class RoleplayScheduler(
                 return false
             }
         }
-        store.setTaskStatus(task.id, "firing", "sending")
+        if (!store.claimTask(task.id)) return false
         val options = TurnOptions(
             providerId = conversation.providerId,
             model = conversation.model,
@@ -180,7 +180,6 @@ class RoleplayScheduler(
                 fireSafe(task.id)
             }
         }
-        store.dueTasks(now).forEach { task -> fireSafe(task.id) }
         store.trimTasks(now)
     }
 

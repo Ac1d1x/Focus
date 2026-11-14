@@ -7,7 +7,7 @@ import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 
 @Single
-class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 27) {
+class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "assistant.db", null, 28) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -829,24 +829,36 @@ class AssistantDatabase(@Provided context: Context) : SQLiteOpenHelper(context, 
             db.execSQL("ALTER TABLE messages ADD COLUMN wire TEXT NOT NULL DEFAULT ''")
         }
         if (oldVersion < 27) {
-            if (!hasColumn(db, "messages", "turn_id")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN turn_id TEXT NOT NULL DEFAULT ''")
-            }
-            if (!hasColumn(db, "messages", "kind")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
-            }
-            if (!hasColumn(db, "messages", "meta_json")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN meta_json TEXT")
-            }
-            if (!hasColumn(db, "messages", "recalled")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN recalled INTEGER NOT NULL DEFAULT 0")
-            }
-            if (!hasColumn(db, "messages", "edited")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN edited INTEGER NOT NULL DEFAULT 0")
-            }
-            if (!hasColumn(db, "messages", "proactive")) {
-                db.execSQL("ALTER TABLE messages ADD COLUMN proactive INTEGER NOT NULL DEFAULT 0")
-            }
+            ensureMessageColumns(db)
+        }
+        if (oldVersion < 28) {
+            ensureMessageColumns(db)
+        }
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        ensureMessageColumns(db)
+    }
+
+    private fun ensureMessageColumns(db: SQLiteDatabase) {
+        if (!hasColumn(db, "messages", "turn_id")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN turn_id TEXT NOT NULL DEFAULT ''")
+        }
+        if (!hasColumn(db, "messages", "kind")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
+        }
+        if (!hasColumn(db, "messages", "meta_json")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN meta_json TEXT")
+        }
+        if (!hasColumn(db, "messages", "recalled")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN recalled INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!hasColumn(db, "messages", "edited")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN edited INTEGER NOT NULL DEFAULT 0")
+        }
+        if (!hasColumn(db, "messages", "proactive")) {
+            db.execSQL("ALTER TABLE messages ADD COLUMN proactive INTEGER NOT NULL DEFAULT 0")
         }
     }
 

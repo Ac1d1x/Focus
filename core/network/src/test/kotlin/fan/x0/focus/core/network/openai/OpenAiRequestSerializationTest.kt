@@ -61,4 +61,22 @@ class OpenAiRequestSerializationTest {
 
         assertTrue(body, body.contains("\"type\":\"function\""))
     }
+
+    @Test
+    fun `deepseek extras keep required fields`() {
+        val request = ChatCompletionRequest(
+            model = "deepseek-flash",
+            messages = listOf(ChatMessageDto(role = "user", content = "hi")),
+            stream = true,
+            tools = listOf(ToolDto.server("deepseek_web_search")),
+            thinking = ThinkingDto(),
+            title = TitleDto(),
+        )
+
+        val body = json.encodeToString(ChatCompletionRequest.serializer(), request)
+
+        assertTrue(body, body.contains("\"thinking\":{\"type\":\"enabled\"}"))
+        assertTrue(body, body.contains("\"title\":{\"enabled\":true}"))
+        assertTrue(body, body.contains("\"type\":\"deepseek_web_search\""))
+    }
 }

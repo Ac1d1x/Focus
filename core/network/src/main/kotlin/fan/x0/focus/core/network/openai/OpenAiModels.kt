@@ -193,12 +193,12 @@ data class StreamOptionsDto(
 
 @Serializable
 data class ThinkingDto(
-    val type: String = "enabled",
+    @EncodeDefault val type: String = "enabled",
 )
 
 @Serializable
 data class TitleDto(
-    val enabled: Boolean = true,
+    @EncodeDefault val enabled: Boolean = true,
 )
 
 @Serializable

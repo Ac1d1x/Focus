@@ -116,6 +116,11 @@ internal fun SettingsOverlayPage(
                     }
                 },
             )
+            ExRow(
+                title = stringResource(R.string.settings_overlay_quick_tile),
+                subtitle = stringResource(R.string.settings_overlay_quick_tile_body),
+                icon = Ic.Widgets,
+            )
         }
         group {
             ExRow(

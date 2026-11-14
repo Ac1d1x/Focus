@@ -600,6 +600,8 @@
     <string name="settings_overlay_shortcut_body">把“问问 Focus”固定到桌面。</string>
     <string name="settings_overlay_shortcut_pinned">已请求添加快捷方式。</string>
     <string name="settings_overlay_shortcut_unsupported">当前桌面不支持固定快捷方式，请长按应用图标添加。</string>
+    <string name="settings_overlay_quick_tile">快捷设置磁贴</string>
+    <string name="settings_overlay_quick_tile_body">在下拉面板的编辑里添加 Focus。</string>
     <string name="settings_overlay_try">试一下</string>
     <string name="settings_overlay_try_body">在当前界面上打开悬浮面板。</string>
     <string name="settings_overlay_start_failed">无法打开悬浮助手。</string>

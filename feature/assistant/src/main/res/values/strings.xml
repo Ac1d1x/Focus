@@ -600,6 +600,8 @@
     <string name="settings_overlay_shortcut_body">Pin Ask Focus to the home screen.</string>
     <string name="settings_overlay_shortcut_pinned">Shortcut requested.</string>
     <string name="settings_overlay_shortcut_unsupported">This launcher does not support pinning shortcuts. Long press the app icon instead.</string>
+    <string name="settings_overlay_quick_tile">Quick settings tile</string>
+    <string name="settings_overlay_quick_tile_body">Add Focus from the tile editor in the shade.</string>
     <string name="settings_overlay_try">Try it</string>
     <string name="settings_overlay_try_body">Open the panel over this screen.</string>
     <string name="settings_overlay_start_failed">Could not open the floating assistant.</string>

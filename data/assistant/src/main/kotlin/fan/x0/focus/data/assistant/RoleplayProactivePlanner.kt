@@ -11,6 +11,7 @@ import org.koin.core.annotation.Single
 @Single
 class RoleplayProactivePlanner(
     private val store: RoleplayStore,
+    private val chats: ChatStore,
 ) {
     suspend fun onUserMessage(conversationId: String) {
         store.cancelOptionalTasks(conversationId)
@@ -53,34 +54,65 @@ class RoleplayProactivePlanner(
                 condition = "user_silent",
             )
         }
+        maintenance(conversationId, assistantId, config)
+    }
+
+    suspend fun maintenance(
+        conversationId: String,
+        assistantId: String,
+        config: RoleplayConfig,
+    ) {
+        if (!config.proactive || assistantId.isBlank()) return
+        val now = System.currentTimeMillis()
+        val state = store.tick(conversationId, now)
+        val random = Random(now.toInt())
+        val will = proactiveWill(state, config, now)
         val silence = if (state.lastUserAt == 0L) Long.MAX_VALUE else now - state.lastUserAt
-        if (silence > config.checkinSilenceMinutes * 60_000L && random.nextFloat() < will) {
+        val hasHistory = state.lastUserAt > 0 || state.aiMsgs > 1
+        val day = java.time.LocalDate.now().toString()
+        if (hasHistory && silence > config.checkinSilenceMinutes * 60_000L && random.nextFloat() < will) {
             schedule(
                 conversationId = conversationId,
                 assistantId = assistantId,
                 delayMs = random.nextLong(1, 10) * 60_000L,
                 prompt = "The user has been quiet for a while. Ask where they went or how they are doing, in your own tone. Do not nag.",
                 type = "checkin",
-                tag = "checkin:$conversationId",
+                tag = "checkin:$conversationId:$day",
                 condition = "user_silent",
+                once = true,
             )
         }
-        if (silence > config.icebreakDays * 86_400_000L && random.nextFloat() < 0.5f) {
+        if (hasHistory && silence > config.icebreakDays * 86_400_000L && random.nextFloat() < 0.5f) {
             schedule(
                 conversationId = conversationId,
                 assistantId = assistantId,
                 delayMs = random.nextLong(2, 20) * 60_000L,
                 prompt = "It has been a long time since you talked. Open the conversation gently, without pretending no time passed.",
                 type = "icebreak",
-                tag = "icebreak:$conversationId",
+                tag = "icebreak:$conversationId:$day",
                 condition = "user_silent",
+                once = true,
             )
         }
+        store.dueMemories(assistantId, now).forEach { memory ->
+            val target = chats.ensureMainConversation(assistantId).id
+            schedule(
+                conversationId = target,
+                assistantId = assistantId,
+                delayMs = 60_000L,
+                prompt = "A promise or todo is due: ${memory.content}. Remind the user naturally in one short message, then call complete_todo if it is settled.",
+                type = "reminder",
+                tag = "reminder:${memory.id}",
+                urgent = true,
+                once = true,
+            )
+            store.markReminded(memory.id)
+        }
         val hour = LocalTime.now().hour
-        if (config.morningGreeting && hour in 7..9) {
+        if (hasHistory && silence > 30 * 60_000L && config.morningGreeting && hour in 7..9) {
             scheduleGreeting(conversationId, assistantId, "morning", "Say good morning in your own way. Keep it light.")
         }
-        if (config.eveningGreeting && hour in 21..23) {
+        if (hasHistory && silence > 30 * 60_000L && config.eveningGreeting && hour in 21..23) {
             scheduleGreeting(conversationId, assistantId, "evening", "Say good night in your own way. Keep it short.")
         }
     }
@@ -106,14 +138,15 @@ class RoleplayProactivePlanner(
     ) {
         val day = java.time.LocalDate.now().toString()
         val tag = "greeting:$assistantId:$day:$slot"
-        if (store.hasOpenTag(tag)) return
+        val target = chats.ensureMainConversation(assistantId).id
         schedule(
-            conversationId = conversationId,
+            conversationId = target,
             assistantId = assistantId,
             delayMs = 60_000L,
             prompt = prompt,
             type = "greeting",
             tag = tag,
+            once = true,
         )
     }
 
@@ -125,8 +158,14 @@ class RoleplayProactivePlanner(
         type: String,
         tag: String,
         condition: String = "always",
+        once: Boolean = false,
+        urgent: Boolean = false,
     ) {
-        if (store.hasOpenTag(tag)) return
+        if (once) {
+            if (store.hasTaskTag(tag)) return
+        } else if (store.hasOpenTag(tag)) {
+            return
+        }
         store.scheduleTask(
             conversationId = conversationId,
             assistantId = assistantId,
@@ -134,6 +173,7 @@ class RoleplayProactivePlanner(
             prompt = prompt,
             type = type,
             condition = condition,
+            urgent = urgent,
             tag = tag,
         )
     }

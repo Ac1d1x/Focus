@@ -315,7 +315,14 @@ private fun AssistantPicker(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) },
+                        text = if (assistant.kind == AssistantKind.Roleplay) {
+                            listOf(
+                                stringResource(R.string.drawer_roleplay_type),
+                                assistant.role,
+                            ).filter { it.isNotBlank() }.joinToString(" · ")
+                        } else {
+                            assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) }
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -429,8 +436,13 @@ private fun AssistantSwitcherSheet(
                                     overflow = TextOverflow.Ellipsis,
                                 )
                                 Text(
-                                    text = assistant.role.ifBlank {
-                                        stringResource(R.string.drawer_assistant_default_role)
+                                    text = if (assistant.kind == AssistantKind.Roleplay) {
+                                        listOf(
+                                            stringResource(R.string.drawer_roleplay_type),
+                                            assistant.role,
+                                        ).filter { it.isNotBlank() }.joinToString(" · ")
+                                    } else {
+                                        assistant.role.ifBlank { stringResource(R.string.drawer_assistant_default_role) }
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,

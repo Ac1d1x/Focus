@@ -1,5 +1,6 @@
 package fan.x0.focus.feature.chat
 
+import android.content.Context
 import androidx.lifecycle.viewModelScope
 import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.error.AppErrorType
@@ -114,6 +115,7 @@ class ChatViewModel(
     private val profiles: AssistantProfileStore,
     private val roleplayStore: RoleplayStore,
     private val roleplaySettings: RoleplaySettings,
+    private val context: Context,
 ) : BaseViewModel<ChatAction, ChatUiState, ChatEffect>(ChatUiState()) {
 
     private var loadJob: Job? = null
@@ -1637,7 +1639,10 @@ class ChatViewModel(
             val profile = profiles.profileOnce(currentState.assistantId)
             if (profile != null) {
                 val count = chats.conversationIds(profile.id).size
-                val scene = chats.createRoleplayScene(profile.id, "场景 $count")
+                val scene = chats.createRoleplayScene(
+                    profile.id,
+                    context.getString(R.string.chat_new_scene_title, count),
+                )
                 val greeting = profile.roleplay?.greeting?.trim().orEmpty()
                 if (greeting.isNotBlank()) {
                     chats.append(

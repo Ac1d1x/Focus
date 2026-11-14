@@ -75,6 +75,13 @@ class RoleplayPromptBuilder {
         if (input.config.stickerEnabled) {
             builder.appendLine()
             builder.appendLine("Sticker library. Use send_sticker when it genuinely fits this moment, not on every turn. Target frequency: about ${(input.config.stickerFrequency * 100).toInt()}% of turns.")
+            builder.appendLine(
+                if (input.config.stickerOnly) {
+                    "You may answer with only a sticker and no text when a human would."
+                } else {
+                    "Never reply with only a sticker, write text as well."
+                },
+            )
             if (input.stickers.isBlank()) {
                 builder.appendLine("(empty)")
             } else {

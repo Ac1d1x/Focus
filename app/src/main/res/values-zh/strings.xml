@@ -90,4 +90,5 @@
     <string name="history_delete_confirm">删除</string>
     <string name="history_cancel">取消</string>
     <string name="drawer_new_scene">新场景</string>
+    <string name="drawer_roleplay_type">角色扮演</string>
 </resources>

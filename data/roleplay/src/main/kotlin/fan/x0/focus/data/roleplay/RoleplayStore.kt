@@ -115,6 +115,7 @@ class RoleplayStore(private val database: RoleplayDatabase) {
     suspend fun tick(conversationId: String, now: Long = System.currentTimeMillis()): RoleplayState =
         withContext(Dispatchers.IO) {
             val current = state(conversationId)
+            if (current.lastTickAt > 0 && now - current.lastTickAt < 60_000L) return@withContext current
             val from = if (current.lastTickAt == 0L) now else current.lastTickAt
             val hours = (now - from).toDouble() / 3_600_000.0
             var energy = current.energy
@@ -328,8 +329,14 @@ class RoleplayStore(private val database: RoleplayDatabase) {
             memories(assistantId).filter { it.sticky && it.dueAt in 1..now && !it.reminded }
         }
 
+    suspend fun markReminded(id: String) = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply { put("reminded", 1) }
+        database.writableDatabase.update("roleplay_memories", values, "id = ?", arrayOf(id))
+    }
+
     suspend fun clearAssistant(assistantId: String) = withContext(Dispatchers.IO) {
         database.writableDatabase.delete("roleplay_memories", "assistant_id = ?", arrayOf(assistantId))
+        database.writableDatabase.delete("roleplay_tasks", "assistant_id = ?", arrayOf(assistantId))
     }
 
     suspend fun clearConversation(conversationId: String) = withContext(Dispatchers.IO) {
@@ -398,6 +405,14 @@ class RoleplayStore(private val database: RoleplayDatabase) {
         if (tag.isBlank()) return@withContext false
         database.readableDatabase.rawQuery(
             "SELECT 1 FROM roleplay_tasks WHERE tag = ? AND status IN ('pending', 'suspended') LIMIT 1",
+            arrayOf(tag),
+        ).use { it.moveToFirst() }
+    }
+
+    suspend fun hasTaskTag(tag: String): Boolean = withContext(Dispatchers.IO) {
+        if (tag.isBlank()) return@withContext false
+        database.readableDatabase.rawQuery(
+            "SELECT 1 FROM roleplay_tasks WHERE tag = ? LIMIT 1",
             arrayOf(tag),
         ).use { it.moveToFirst() }
     }

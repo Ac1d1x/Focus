@@ -1,7 +1,9 @@
 package fan.x0.focus.app
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fan.x0.focus.R
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantManager
 import fan.x0.focus.data.assistant.AssistantProfile
@@ -42,6 +44,7 @@ class ShellViewModel(
     private val sideChats: SideChatManager,
     private val profiles: AssistantProfileStore,
     private val manager: AssistantManager,
+    private val context: Context,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShellState())
@@ -113,7 +116,10 @@ class ShellViewModel(
             val profile = profiles.activeProfileOnce()
             if (profile.kind == AssistantKind.Roleplay) {
                 val count = chats.conversationIds(profile.id).size
-                val scene = chats.createRoleplayScene(profile.id, "场景 $count")
+                val scene = chats.createRoleplayScene(
+                    profile.id,
+                    "${context.getString(R.string.drawer_new_scene)} $count",
+                )
                 manager.ensureGreeting(profile, scene.id)
                 switcher.open(scene.id)
                 load()

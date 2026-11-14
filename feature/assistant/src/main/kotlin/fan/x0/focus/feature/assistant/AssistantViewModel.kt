@@ -43,6 +43,9 @@ class AssistantViewModel(
             }
         }
         viewModelScope.launch {
+            chats.changes.collect { load() }
+        }
+        viewModelScope.launch {
             profiles.activeId.collectLatest { id ->
                 prompts.config(id).collect { config ->
                     updateState { copy(mainPrompt = config.main, sidePrompt = config.side) }

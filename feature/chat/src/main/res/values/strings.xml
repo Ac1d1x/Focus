@@ -226,6 +226,8 @@
     <string name="chat_status_away">Away</string>
     <string name="chat_status_dnd">Do not disturb</string>
     <string name="chat_status_read_no_reply">Read</string>
-    <string name="chat_scene_title">Scene · %1$s</string>
+    <string name="chat_scene_title">%1$s</string>
     <string name="chat_roleplay_home_tagline">Start a scene and say something.</string>
+    <string name="chat_new_scene_title">Scene %1$d</string>
+    <string name="chat_recalled_character">%1$s recalled a message</string>
 </resources>

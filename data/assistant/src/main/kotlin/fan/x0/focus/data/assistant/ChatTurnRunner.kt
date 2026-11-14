@@ -187,7 +187,7 @@ class ChatTurnRunner(
                             entries.appendAnswer(event.text, reasoning = false, now = System.currentTimeMillis())
                         }
                         is ChatEvent.RoleplayBubbleShown -> {
-                            val paced = presence.foreground.value
+                            val paced = presence.foreground.value && roleplayConfig?.immersive != false
                             val sticker = event.kind == "sticker"
                             if (roleplayConfig != null && paced && !sticker) {
                                 if (firstBubble) {

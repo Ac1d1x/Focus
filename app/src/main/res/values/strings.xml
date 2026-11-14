@@ -91,4 +91,5 @@
     <string name="history_delete_confirm">Delete</string>
     <string name="history_cancel">Cancel</string>
     <string name="drawer_new_scene">New scene</string>
+    <string name="drawer_roleplay_type">Roleplay</string>
 </resources>

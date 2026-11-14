@@ -911,7 +911,10 @@ private fun ChatThread(
                         }
                         is ChatEntry.Assistant -> when {
                             entry.recalled -> RecalledLine(
-                                text = stringResource(R.string.chat_recalled_other),
+                                text = stringResource(
+                                    R.string.chat_recalled_character,
+                                    state.assistantName.ifBlank { stringResource(R.string.chat_title) },
+                                ),
                             )
                             entry.kind == "sticker" -> StickerBubble(meta = entry.meta)
                             entry.text.isNotBlank() -> ChatMessageBubble(

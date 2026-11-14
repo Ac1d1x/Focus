@@ -178,10 +178,13 @@ object SillyTavernCodec {
         val position = raw.string("position") ?: extensions.string("position")
         val mappedPosition = when (position?.lowercase()) {
             "after_char", "1", "after" -> RoleplayEntryPosition.AfterChar
+            "2", "top", "top_note" -> RoleplayEntryPosition.BeforeChar
             "bottom", "3", "bottom_note" -> RoleplayEntryPosition.BottomNote
             "at_depth", "4", "depth" -> RoleplayEntryPosition.AtDepth
             else -> RoleplayEntryPosition.BeforeChar
         }
+        val rawProbability = extensions.double("probability") ?: raw.double("probability") ?: 1.0
+        val probability = if (rawProbability > 1.0) rawProbability / 100.0 else rawProbability
         return RoleplayWorldEntry(
             id = "entry_${UUID.randomUUID()}",
             bookId = bookId,
@@ -191,8 +194,7 @@ object SillyTavernCodec {
             keys = keys,
             secondaryKeys = secondary,
             logic = logic,
-            probability = (extensions.double("probability") ?: raw.double("probability") ?: 1.0)
-                .coerceIn(0.0, 1.0),
+            probability = probability.coerceIn(0.0, 1.0),
             constant = raw.boolean("constant") == true,
             position = mappedPosition,
             depth = raw.int("depth") ?: 4,

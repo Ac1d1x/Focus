@@ -10,6 +10,7 @@ import androidx.work.workDataOf
 import fan.x0.focus.data.roleplay.RoleplayStatus
 import fan.x0.focus.data.roleplay.RoleplayStore
 import fan.x0.focus.data.roleplay.RoleplayTask
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,8 @@ class RoleplayTaskWorker(context: Context, params: WorkerParameters) : Coroutine
         return try {
             KoinPlatform.getKoin().get<RoleplayScheduler>().fire(id)
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             Result.retry()
         }
@@ -42,6 +45,9 @@ class RoleplayScheduler(
     private val store: RoleplayStore,
     private val planner: RoleplayProactivePlanner,
     private val turns: ChatTurnRunner,
+    private val profiles: AssistantProfileStore,
+    private val chats: ChatStore,
+    private val settings: fan.x0.focus.data.roleplay.RoleplaySettings,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -52,11 +58,20 @@ class RoleplayScheduler(
         if (started) return
         started = true
         scope.launch {
-            runCatching { store.resetFiring() }
-            runCatching { scan() }
+            try {
+                store.resetFiring()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+            }
             while (true) {
+                try {
+                    scan()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                }
                 delay(SCAN_MS)
-                runCatching { scan() }
             }
         }
     }
@@ -64,15 +79,14 @@ class RoleplayScheduler(
     suspend fun fire(id: String): Boolean {
         val task = store.task(id) ?: return false
         if (task.status != "pending") return false
-        val conversation = KoinPlatform.getKoin().get<ChatStore>().conversation(task.conversationId)
+        val conversation = chats.conversation(task.conversationId)
         if (conversation == null) {
             store.setTaskStatus(task.id, "cancelled", "conversation is gone")
             return false
         }
         val state = store.state(task.conversationId)
         val now = System.currentTimeMillis()
-        val config = KoinPlatform.getKoin().get<fan.x0.focus.data.roleplay.RoleplaySettings>()
-            .effectiveOnce(task.assistantId)
+        val config = settings.effectiveOnce(task.assistantId)
         if (!config.proactive && !task.urgent) {
             store.setTaskStatus(task.id, "skipped", "proactive messages are off")
             return false
@@ -143,6 +157,19 @@ class RoleplayScheduler(
 
     private suspend fun scan() {
         val now = System.currentTimeMillis()
+        profiles.profilesOnce()
+            .filter { it.kind == AssistantKind.Roleplay }
+            .forEach { profile ->
+                val config = settings.effectiveOnce(profile.id)
+                chats.conversationIds(profile.id).forEach { conversationId ->
+                    try {
+                        planner.maintenance(conversationId, profile.id, config)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Throwable) {
+                    }
+                }
+            }
         store.openTasks().forEach { task ->
             if (task.fireAt > now) {
                 scheduleWork(task)

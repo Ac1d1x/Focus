@@ -761,7 +761,9 @@ class ChatEngine(
                 ),
             ).withSummary(context.summary)
             val agentConfig = agent.configOnce()
-            val specs = tools.roleplaySpecs()
+            val specs = tools.roleplaySpecs().filterNot {
+                it.name == RoleplayToolCatalog.SEND_STICKER && !roleplayConfig.stickerEnabled
+            }
             var totalStats = MessageStats(
                 providerId = providerId,
                 providerName = provider?.name ?: providerId,
@@ -787,10 +789,11 @@ class ChatEngine(
                     roleplay = true,
                 )
                 val bubbles = mutableListOf<RoleplayBubble>()
+                val split = roleplayConfig.immersive && roleplayConfig.splitBubbles
                 val parser = RoleplayBubbleParser(
-                    enabled = roleplayConfig.splitBubbles,
+                    enabled = split,
                     defaultDelayMs = 600,
-                    autoSplitChars = if (roleplayConfig.splitBubbles) 72 else 0,
+                    autoSplitChars = if (split) 72 else 0,
                 )
                 val roundResult = streamRound(
                     endpoint = endpoint,

@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import fan.x0.focus.data.roleplay.RoleplayStore
 import org.koin.core.annotation.Single
 import java.util.UUID
 
@@ -21,6 +22,7 @@ class ChatStore(
     private val database: AssistantDatabase,
     private val mainSession: MainSessionStore,
     private val profiles: AssistantProfileStore,
+    private val roleplayStore: RoleplayStore,
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = false }
     private val callsSerializer = ListSerializer(ToolCallRecord.serializer())
@@ -417,6 +419,7 @@ class ChatStore(
         } finally {
             db.endTransaction()
         }
+        roleplayStore.clearConversation(id)
         _changes.tryEmit(id)
     }
 

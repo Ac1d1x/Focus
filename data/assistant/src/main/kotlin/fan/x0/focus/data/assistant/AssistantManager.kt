@@ -1,5 +1,6 @@
 package fan.x0.focus.data.assistant
 
+import fan.x0.focus.data.roleplay.RoleplayStore
 import org.koin.core.annotation.Single
 
 @Single
@@ -12,6 +13,7 @@ class AssistantManager(
     private val turns: ChatTurnRunner,
     private val switcher: ChatSwitcher,
     private val avatars: AssistantAvatarStore,
+    private val roleplayStore: RoleplayStore,
 ) {
     suspend fun create(
         name: String,
@@ -54,6 +56,10 @@ class AssistantManager(
             avatars.delete(previous.avatar)
         }
         workspace.updateAssistantName(profile.id, profile.name)
+        if (profile.kind == AssistantKind.Roleplay) {
+            val main = chats.ensureMainConversation(profile.id)
+            if (main.title != profile.name) chats.rename(main.id, profile.name)
+        }
         ensureGreeting(profile)
     }
 
@@ -63,7 +69,9 @@ class AssistantManager(
         chats.conversationIds(profile.id).forEach { id ->
             sideChats.stop(id)
             turns.stop(id)
+            roleplayStore.clearConversation(id)
         }
+        roleplayStore.clearAssistant(profile.id)
         profiles.delete(profile.id)
         if (profile.avatar.isNotBlank()) avatars.delete(profile.avatar)
         workspace.delete(profile.id)

@@ -1,10 +1,18 @@
 package fan.x0.focus.feature.assistant.settings
 
+import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -15,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
@@ -22,7 +32,11 @@ import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.components.switchItem
 import fan.x0.focus.core.designsystem.theme.FocusLook
+import fan.x0.focus.core.designsystem.theme.SeedPresets
+import fan.x0.focus.core.designsystem.theme.ThemeMode
 import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
@@ -50,8 +64,92 @@ internal fun SettingsAppearancePage(
                 )
             }
         }
-        item(key = "language") {
+        item(key = "theme") {
             FocusReveal(index = 1) {
+                FocusCardGroup(title = stringResource(R.string.settings_theme_title)) {
+                    formItem(
+                        headlineContent = { Text(stringResource(R.string.settings_theme_mode)) },
+                        supportingContent = { Text(stringResource(R.string.settings_theme_mode_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Tune,
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                    ) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FocusChip(
+                                label = stringResource(R.string.settings_theme_system),
+                                selected = FocusLook.themeMode == ThemeMode.System,
+                                onClick = { FocusLook.updateThemeMode(ThemeMode.System) },
+                            )
+                            FocusChip(
+                                label = stringResource(R.string.settings_theme_light),
+                                selected = FocusLook.themeMode == ThemeMode.Light,
+                                onClick = { FocusLook.updateThemeMode(ThemeMode.Light) },
+                            )
+                            FocusChip(
+                                label = stringResource(R.string.settings_theme_dark),
+                                selected = FocusLook.themeMode == ThemeMode.Dark,
+                                onClick = { FocusLook.updateThemeMode(ThemeMode.Dark) },
+                            )
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        switchItem(
+                            checked = FocusLook.dynamicColor,
+                            onCheckedChange = { FocusLook.updateDynamicColor(it) },
+                            headlineContent = { Text(stringResource(R.string.settings_theme_dynamic)) },
+                            supportingContent = { Text(stringResource(R.string.settings_theme_dynamic_body)) },
+                            leadingContent = {
+                                FocusCardGroupIcon(
+                                    icon = FocusIcons.Photo,
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                            },
+                        )
+                    }
+                    if (!FocusLook.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+                        formItem(
+                            headlineContent = { Text(stringResource(R.string.settings_theme_accent)) },
+                            supportingContent = { Text(stringResource(R.string.settings_theme_accent_body)) },
+                            leadingContent = {
+                                FocusCardGroupIcon(
+                                    icon = FocusIcons.Bolt,
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                            },
+                        ) {
+                            AccentDots(
+                                selected = FocusLook.seed,
+                                onPick = FocusLook::updateSeed,
+                            )
+                        }
+                    }
+                    switchItem(
+                        checked = FocusLook.amoled,
+                        onCheckedChange = { FocusLook.updateAmoled(it) },
+                        headlineContent = { Text(stringResource(R.string.settings_theme_amoled)) },
+                        supportingContent = { Text(stringResource(R.string.settings_theme_amoled_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Chat,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+        item(key = "language") {
+            FocusReveal(index = 2) {
                 FocusCardGroup(title = stringResource(R.string.settings_language_title)) {
                     formItem(
                         headlineContent = { Text(stringResource(R.string.settings_language_item)) },
@@ -89,7 +187,7 @@ internal fun SettingsAppearancePage(
             }
         }
         item(key = "corner") {
-            FocusReveal(index = 2) {
+            FocusReveal(index = 3) {
                 FocusCardGroup(title = stringResource(R.string.settings_corner_title)) {
                     formItem(
                         headlineContent = {
@@ -128,7 +226,7 @@ internal fun SettingsAppearancePage(
             }
         }
         item(key = "reply_style") {
-            FocusReveal(index = 3) {
+            FocusReveal(index = 4) {
                 FocusCardGroup(title = stringResource(R.string.settings_reply_style_title)) {
                     formItem(
                         headlineContent = { Text(stringResource(R.string.settings_reply_style_item)) },
@@ -154,6 +252,41 @@ internal fun SettingsAppearancePage(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccentDots(selected: Long, onPick: (Long) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SeedPresets.forEach { value ->
+            val on = value == selected
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(value))
+                    .border(
+                        width = if (on) 3.dp else 0.dp,
+                        color = if (on) scheme.onSurface else Color.Transparent,
+                        shape = CircleShape,
+                    )
+                    .clickable(onClick = hapticTap { onPick(value) }),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (on) {
+                    Icon(
+                        imageVector = FocusIcons.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }

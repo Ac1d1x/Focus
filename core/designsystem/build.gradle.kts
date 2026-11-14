@@ -20,5 +20,6 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.haze)
     implementation(libs.haze.blur)
+    implementation(libs.kotlinx.coroutines.core)
     debugImplementation(libs.compose.ui.tooling)
 }

@@ -1,6 +1,8 @@
 package fan.x0.focus.core.designsystem.theme
 
 import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
@@ -14,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import java.io.File
 
 enum class ThemeMode { System, Light, Dark }
 
@@ -25,6 +28,12 @@ object FocusLook {
     private const val SEED_KEY = "seed"
     private const val AMOLED_KEY = "amoled"
     private const val AMBIENT_KEY = "ambient_background"
+    private const val WALLPAPER_KEY = "wallpaper"
+    private const val WALLPAPER_BLUR_KEY = "wallpaper_blur"
+    private const val WALLPAPER_DIM_KEY = "wallpaper_dim"
+    private const val PREV_SEED_KEY = "prev_seed"
+    private const val PREV_DYNAMIC_KEY = "prev_dynamic"
+    private const val PREV_ACTIVE_KEY = "prev_active"
     private var context: Context? = null
 
     var cornerScale by mutableFloatStateOf(1f)
@@ -45,6 +54,19 @@ object FocusLook {
     var ambientBackground by mutableStateOf(true)
         private set
 
+    var wallpaper by mutableStateOf("")
+        private set
+
+    var wallpaperBlur by mutableFloatStateOf(18f)
+        private set
+
+    var wallpaperDim by mutableFloatStateOf(0.45f)
+        private set
+
+    private var previousSeed = DEFAULT_SEED
+    private var previousDynamic = true
+    private var previousActive = false
+
     fun init(context: Context) {
         if (this.context != null) return
         val app = context.applicationContext ?: context
@@ -58,6 +80,12 @@ object FocusLook {
         seed = prefs.getLong(SEED_KEY, DEFAULT_SEED)
         amoled = prefs.getBoolean(AMOLED_KEY, false)
         ambientBackground = prefs.getBoolean(AMBIENT_KEY, true)
+        wallpaper = prefs.getString(WALLPAPER_KEY, "").orEmpty()
+        wallpaperBlur = prefs.getFloat(WALLPAPER_BLUR_KEY, 18f).coerceIn(0f, 40f)
+        wallpaperDim = prefs.getFloat(WALLPAPER_DIM_KEY, 0.45f).coerceIn(0f, 0.8f)
+        previousSeed = prefs.getLong(PREV_SEED_KEY, DEFAULT_SEED)
+        previousDynamic = prefs.getBoolean(PREV_DYNAMIC_KEY, true)
+        previousActive = prefs.getBoolean(PREV_ACTIVE_KEY, false)
     }
 
     fun updateCornerScale(value: Float) {
@@ -97,6 +125,75 @@ object FocusLook {
         persist { putBoolean(AMBIENT_KEY, value) }
     }
 
+    fun updateWallpaperBlur(value: Float) {
+        val next = value.coerceIn(0f, 40f)
+        if (next == wallpaperBlur) return
+        wallpaperBlur = next
+        persist { putFloat(WALLPAPER_BLUR_KEY, next) }
+    }
+
+    fun updateWallpaperDim(value: Float) {
+        val next = value.coerceIn(0f, 0.8f)
+        if (next == wallpaperDim) return
+        wallpaperDim = next
+        persist { putFloat(WALLPAPER_DIM_KEY, next) }
+    }
+
+    fun importWallpaper(context: Context, uri: Uri): String? = runCatching {
+        val dir = File(context.filesDir, "wallpapers").apply { mkdirs() }
+        val target = File(dir, "wallpaper-${System.currentTimeMillis()}.img")
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        }
+        if (target.length() <= 0L) return@runCatching null
+        dir.listFiles { file -> file.name.startsWith("wallpaper-") && file != target }
+            ?.forEach { it.delete() }
+        target.absolutePath
+    }.getOrNull()
+
+    fun applyWallpaper(path: String, color: Long?) {
+        if (path.isBlank()) return
+        if (wallpaper.isBlank()) {
+            previousSeed = seed
+            previousDynamic = dynamicColor
+            previousActive = true
+            persist {
+                putLong(PREV_SEED_KEY, previousSeed)
+                putBoolean(PREV_DYNAMIC_KEY, previousDynamic)
+                putBoolean(PREV_ACTIVE_KEY, true)
+            }
+        }
+        wallpaper = path
+        persist { putString(WALLPAPER_KEY, path) }
+        if (color != null) {
+            seed = color
+            dynamicColor = false
+            persist {
+                putLong(SEED_KEY, color)
+                putBoolean(DYNAMIC_COLOR_KEY, false)
+            }
+        }
+    }
+
+    fun clearWallpaper() {
+        if (wallpaper.isBlank()) return
+        runCatching { File(wallpaper).delete() }
+        wallpaper = ""
+        persist { remove(WALLPAPER_KEY) }
+        if (previousActive) {
+            seed = previousSeed
+            dynamicColor = previousDynamic
+            previousActive = false
+            persist {
+                putLong(SEED_KEY, seed)
+                putBoolean(DYNAMIC_COLOR_KEY, dynamicColor)
+                remove(PREV_SEED_KEY)
+                remove(PREV_DYNAMIC_KEY)
+                remove(PREV_ACTIVE_KEY)
+            }
+        }
+    }
+
     private fun persist(block: android.content.SharedPreferences.Editor.() -> Unit) {
         context
             ?.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -109,6 +206,52 @@ object FocusLook {
     const val MAX = 1.6f
     const val DEFAULT_SEED = 0xFF3F6B4F
 }
+
+fun extractSeedFromWallpaper(path: String): Long? = runCatching {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 96) sample *= 2
+    val bitmap = BitmapFactory.decodeFile(
+        path,
+        BitmapFactory.Options().apply { inSampleSize = sample },
+    ) ?: return@runCatching null
+    val pixels = IntArray(bitmap.width * bitmap.height)
+    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    bitmap.recycle()
+    val hsv = FloatArray(3)
+    var cosSum = 0.0
+    var sinSum = 0.0
+    var saturationSum = 0.0
+    var valueSum = 0.0
+    var weightSum = 0.0
+    val step = maxOf(1, pixels.size / 4096)
+    var index = 0
+    while (index < pixels.size) {
+        val pixel = pixels[index]
+        if (((pixel ushr 24) and 0xFF) >= 128) {
+            android.graphics.Color.colorToHSV(pixel, hsv)
+            val saturation = hsv[1]
+            val value = hsv[2]
+            if (saturation >= 0.15f && value >= 0.12f && value <= 0.97f) {
+                val weight = saturation * (1f - kotlin.math.abs(value - 0.6f)).coerceAtLeast(0.1f)
+                val angle = Math.toRadians(hsv[0].toDouble())
+                cosSum += kotlin.math.cos(angle) * weight
+                sinSum += kotlin.math.sin(angle) * weight
+                saturationSum += saturation * weight
+                valueSum += value * weight
+                weightSum += weight
+            }
+        }
+        index += step
+    }
+    if (weightSum <= 0.0) return@runCatching null
+    val hue = ((Math.toDegrees(kotlin.math.atan2(sinSum, cosSum)) + 360.0) % 360.0).toFloat()
+    val saturation = (saturationSum / weightSum).toFloat().coerceIn(0.3f, 0.75f)
+    val value = (valueSum / weightSum).toFloat().coerceIn(0.35f, 0.78f)
+    android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value)).toLong() and 0xFFFFFFFFL
+}.getOrNull()
 
 val SeedPresets: List<Long> = listOf(
     FocusLook.DEFAULT_SEED,

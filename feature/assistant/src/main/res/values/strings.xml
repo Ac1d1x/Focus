@@ -251,6 +251,16 @@
     <string name="settings_page_plugins_body">Install code that adds tools, pages, overlays, device access and automation.</string>
     <string name="settings_page_chat_detail">Chat details</string>
     <string name="settings_page_chat_detail_body">Choose which stats appear under the last reply and in what order.</string>
+    <string name="settings_wallpaper_title">Wallpaper</string>
+    <string name="settings_wallpaper_item">Custom wallpaper</string>
+    <string name="settings_wallpaper_none">Default background.</string>
+    <string name="settings_wallpaper_active">Theme color extracted from this image.</string>
+    <string name="settings_wallpaper_choose">Choose image</string>
+    <string name="settings_wallpaper_remove">Remove</string>
+    <string name="settings_wallpaper_blur">Blur</string>
+    <string name="settings_wallpaper_blur_body">Soften the wallpaper behind the interface.</string>
+    <string name="settings_wallpaper_dim">Dim</string>
+    <string name="settings_wallpaper_dim_body">Darken the wallpaper for readability.</string>
     <string name="settings_theme_title">Theme</string>
     <string name="settings_theme_mode">Dark mode</string>
     <string name="settings_theme_mode_body">Choose light, dark, or follow the system.</string>

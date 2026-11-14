@@ -1,6 +1,9 @@
 package fan.x0.focus.feature.assistant.settings
 
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,28 +23,36 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusIcons
+import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.switchItem
 import fan.x0.focus.core.designsystem.theme.FocusLook
 import fan.x0.focus.core.designsystem.theme.SeedPresets
 import fan.x0.focus.core.designsystem.theme.ThemeMode
+import fan.x0.focus.core.designsystem.theme.extractSeedFromWallpaper
 import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.SettingsAction
 import fan.x0.focus.feature.assistant.SettingsUiState
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun SettingsAppearancePage(
@@ -50,6 +61,18 @@ internal fun SettingsAppearancePage(
     onBack: () -> Unit,
 ) {
     var corner by remember { mutableFloatStateOf(FocusLook.cornerScale) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val pickWallpaper = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val path = withContext(Dispatchers.IO) {
+                FocusLook.importWallpaper(context, uri)
+            } ?: return@launch
+            val seed = withContext(Dispatchers.IO) { extractSeedFromWallpaper(path) }
+            FocusLook.applyWallpaper(path, seed)
+        }
+    }
     SettingsPageScaffold(
         title = stringResource(R.string.settings_page_appearance),
         onBack = onBack,
@@ -161,8 +184,79 @@ internal fun SettingsAppearancePage(
                 }
             }
         }
-        item(key = "language") {
+        item(key = "wallpaper") {
             FocusReveal(index = 2) {
+                FocusCardGroup(title = stringResource(R.string.settings_wallpaper_title)) {
+                    formItem(
+                        headlineContent = { Text(stringResource(R.string.settings_wallpaper_item)) },
+                        supportingContent = {
+                            Text(
+                                if (FocusLook.wallpaper.isBlank()) {
+                                    stringResource(R.string.settings_wallpaper_none)
+                                } else {
+                                    stringResource(R.string.settings_wallpaper_active)
+                                },
+                            )
+                        },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Photo,
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                        },
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            FocusOutlinedButton(
+                                text = stringResource(R.string.settings_wallpaper_choose),
+                                onClick = {
+                                    pickWallpaper.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                icon = FocusIcons.Photo,
+                            )
+                            if (FocusLook.wallpaper.isNotBlank()) {
+                                FocusTextButton(
+                                    text = stringResource(R.string.settings_wallpaper_remove),
+                                    onClick = FocusLook::clearWallpaper,
+                                )
+                            }
+                        }
+                    }
+                    if (FocusLook.wallpaper.isNotBlank()) {
+                        formItem(
+                            headlineContent = { Text(stringResource(R.string.settings_wallpaper_blur)) },
+                            supportingContent = { Text(stringResource(R.string.settings_wallpaper_blur_body)) },
+                        ) {
+                            Slider(
+                                value = FocusLook.wallpaperBlur,
+                                onValueChange = FocusLook::updateWallpaperBlur,
+                                valueRange = 0f..40f,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        formItem(
+                            headlineContent = { Text(stringResource(R.string.settings_wallpaper_dim)) },
+                            supportingContent = { Text(stringResource(R.string.settings_wallpaper_dim_body)) },
+                        ) {
+                            Slider(
+                                value = FocusLook.wallpaperDim,
+                                onValueChange = FocusLook::updateWallpaperDim,
+                                valueRange = 0f..0.8f,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        item(key = "language") {
+            FocusReveal(index = 3) {
                 FocusCardGroup(title = stringResource(R.string.settings_language_title)) {
                     formItem(
                         headlineContent = { Text(stringResource(R.string.settings_language_item)) },
@@ -200,7 +294,7 @@ internal fun SettingsAppearancePage(
             }
         }
         item(key = "corner") {
-            FocusReveal(index = 3) {
+            FocusReveal(index = 4) {
                 FocusCardGroup(title = stringResource(R.string.settings_corner_title)) {
                     formItem(
                         headlineContent = {
@@ -239,7 +333,7 @@ internal fun SettingsAppearancePage(
             }
         }
         item(key = "reply_style") {
-            FocusReveal(index = 4) {
+            FocusReveal(index = 5) {
                 FocusCardGroup(title = stringResource(R.string.settings_reply_style_title)) {
                     formItem(
                         headlineContent = { Text(stringResource(R.string.settings_reply_style_item)) },

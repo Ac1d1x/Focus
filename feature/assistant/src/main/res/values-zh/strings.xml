@@ -330,6 +330,7 @@
     <string name="settings_tools_feeds_title">订阅</string>
     <string name="settings_web_title">网页搜索</string>
     <string name="settings_web_body">密钥保存在系统密钥库。爬取类提供方不需要密钥，会做频率限制。</string>
+    <string name="settings_web_set_default">设为默认</string>
     <string name="settings_web_default">默认提供方</string>
     <string name="settings_web_provider">提供方</string>
     <string name="settings_web_key">API Key</string>

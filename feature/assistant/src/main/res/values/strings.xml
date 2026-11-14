@@ -330,6 +330,7 @@
     <string name="settings_tools_feeds_title">Feeds</string>
     <string name="settings_web_title">Web search</string>
     <string name="settings_web_body">Keys are stored in the system keystore. Scraping providers need no key and are rate limited.</string>
+    <string name="settings_web_set_default">Make default</string>
     <string name="settings_web_default">Default provider</string>
     <string name="settings_web_provider">Provider</string>
     <string name="settings_web_key">API key</string>

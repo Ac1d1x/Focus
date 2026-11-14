@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -73,28 +74,23 @@ internal fun ChatMessageBubble(
     val canMenu = entry.messageId != null
     val citations = (entry as? ChatEntry.Assistant)?.citations.orEmpty()
     val display = remember(text, citations) { withCitationMarkers(text, citations) }
-    val header: (@Composable () -> Unit)? = if (quote != null || showAssistantHeader) {
+    val quoteHeader: (@Composable () -> Unit)? = quote?.let {
         {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (showAssistantHeader) {
-                    AssistantMessageHeader(
-                        name = state.assistantName.ifBlank { stringResource(R.string.chat_title) },
-                        emoji = state.assistantEmoji,
-                        avatar = state.assistantAvatar,
-                    )
-                }
-                quote?.let {
-                    MessageQuote(
-                        quote = it,
-                        onClick = { onAction(ChatAction.JumpToMessage("m${it.id}")) },
-                    )
-                }
-            }
+            MessageQuote(
+                quote = it,
+                onClick = { onAction(ChatAction.JumpToMessage("m${it.id}")) },
+            )
         }
-    } else {
-        null
     }
     Column(modifier = Modifier.fillMaxWidth()) {
+        if (!fromUser && showAssistantHeader) {
+            AssistantMessageHeader(
+                name = state.assistantName.ifBlank { stringResource(R.string.chat_title) },
+                emoji = state.assistantEmoji,
+                avatar = state.assistantAvatar,
+            )
+            Spacer(Modifier.height(6.dp))
+        }
         FocusChatBubble(
             text = display,
             fromUser = fromUser,
@@ -108,7 +104,7 @@ internal fun ChatMessageBubble(
             } else {
                 null
             },
-            header = header,
+            header = quoteHeader,
             menu = {
                 val menu = state.menu
                 if (menu?.key == key) {

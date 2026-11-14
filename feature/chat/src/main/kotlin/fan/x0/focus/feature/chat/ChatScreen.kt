@@ -117,7 +117,6 @@ import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.error.message
 import fan.x0.focus.core.designsystem.kit.plainText
-import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.data.voice.rememberReadAloud
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
@@ -812,8 +811,7 @@ private fun ChatThread(
                                 onCopy = onCopy,
                                 onSpeak = onSpeak,
                                 streaming = entry.live,
-                                showAssistantHeader = state.replyStyle == AssistantReplyStyle.Flat &&
-                                    (index == 0 || entries[index - 1] !is ChatEntry.Assistant),
+                                showAssistantHeader = index == 0 || entries[index - 1] !is ChatEntry.Assistant,
                             )
                         }
                         is ChatEntry.Trace -> FocusTraceCard(

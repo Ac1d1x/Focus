@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreHoriz
@@ -91,6 +92,7 @@ object FocusIcons {
     val Folder: ImageVector = Icons.Rounded.Folder
     val File: ImageVector = Icons.Rounded.Description
     val Link: ImageVector = Icons.Rounded.Link
+    val Lock: ImageVector = Icons.Rounded.Lock
     val Bolt: ImageVector = Icons.Rounded.Bolt
     val Idea: ImageVector = Icons.Rounded.Lightbulb
     val Task: ImageVector = Icons.Rounded.TaskAlt

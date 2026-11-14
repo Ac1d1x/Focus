@@ -3,6 +3,7 @@ package fan.x0.focus.feature.onboarding
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,11 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,6 +60,8 @@ import fan.x0.focus.core.designsystem.components.FocusAmbientBackground
 import fan.x0.focus.core.designsystem.components.FocusAmbientWorking
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
 import fan.x0.focus.core.designsystem.components.FocusChatBubble
+import fan.x0.focus.core.designsystem.components.FocusCardGroup
+import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusChip
 import fan.x0.focus.core.designsystem.components.FocusChoiceButtons
 import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
@@ -291,28 +297,63 @@ private fun ProviderGate(onAction: (OnboardingAction) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 28.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Box(
+            modifier = Modifier
+                .size(112.dp)
+                .clip(RoundedCornerShape(36.dp))
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = FocusIcons.Assistant,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(52.dp),
+            )
+        }
         Text(
             text = stringResource(R.string.onboarding_gate_title),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 20.dp),
         )
         Text(
             text = stringResource(R.string.onboarding_gate_body),
-            modifier = Modifier.padding(top = 12.dp),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 10.dp),
         )
+        FocusCardGroup(modifier = Modifier.padding(top = 24.dp)) {
+            item(
+                headlineContent = { Text(stringResource(R.string.onboarding_welcome_local_title)) },
+                supportingContent = { Text(stringResource(R.string.onboarding_welcome_local_body)) },
+                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Lock) },
+            )
+            item(
+                headlineContent = { Text(stringResource(R.string.onboarding_welcome_more_title)) },
+                supportingContent = { Text(stringResource(R.string.onboarding_welcome_more_body)) },
+                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Bolt) },
+            )
+            item(
+                headlineContent = { Text(stringResource(R.string.onboarding_welcome_style_title)) },
+                supportingContent = { Text(stringResource(R.string.onboarding_welcome_style_body)) },
+                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Tune) },
+            )
+        }
         FocusPrimaryButton(
             text = stringResource(R.string.onboarding_connect_model),
             onClick = { onAction(OnboardingAction.OpenProviderSheet) },
             icon = FocusIcons.Tune,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 28.dp)
+                .padding(top = 24.dp)
                 .height(56.dp),
         )
         FocusTextButton(

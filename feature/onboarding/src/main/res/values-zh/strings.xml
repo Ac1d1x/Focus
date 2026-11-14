@@ -6,8 +6,14 @@
     <string name="onboarding_input_hint">给 %1$s 发消息</string>
     <string name="onboarding_connect_model">连接自己的模型</string>
     <string name="onboarding_controlled_only">仅作为受控端使用</string>
-    <string name="onboarding_gate_title">先连接你的模型</string>
-    <string name="onboarding_gate_body">填写你自己的接口和密钥，保存后继续设置。</string>
+    <string name="onboarding_gate_title">你好，我是 Focus</string>
+    <string name="onboarding_welcome_local_title">留在本机</string>
+    <string name="onboarding_welcome_local_body">对话、记忆和密钥都只存在这台设备上</string>
+    <string name="onboarding_welcome_more_title">不只是聊天</string>
+    <string name="onboarding_welcome_more_body">目标、提醒、订阅、文件，还能操作手机和电脑</string>
+    <string name="onboarding_welcome_style_title">按你的喜好</string>
+    <string name="onboarding_welcome_style_body">名字、头像、配色和聊天样式都能改</string>
+    <string name="onboarding_gate_body">一个记得住事、能替你动手的私人助理。先接上一个模型，我们就开始。</string>
     <string name="onboarding_model_settings">模型设置</string>
     <string name="onboarding_provider_title">连接模型</string>
     <string name="onboarding_provider_body">填写你自己的接口和密钥。连接模型后才能继续设置。</string>

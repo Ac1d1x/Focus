@@ -7,8 +7,12 @@ import org.koin.core.annotation.Provided
 import org.koin.core.annotation.Single
 
 @Single
-class RoleplayDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "roleplay.db", null, 1) {
+class RoleplayDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "roleplay.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
+        createTables(db)
+    }
+
+    private fun createTables(db: SQLiteDatabase) {
         db.execSQL(
             """
             CREATE TABLE roleplay_states(
@@ -130,5 +134,38 @@ class RoleplayDatabase(@Provided context: Context) : SQLiteOpenHelper(context, "
         db.execSQL("CREATE INDEX idx_roleplay_tasks_due ON roleplay_tasks(status, fire_at)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            dropTables(db)
+            createTables(db)
+        }
+    }
+
+    override fun onOpen(db: SQLiteDatabase) {
+        super.onOpen(db)
+        if (!hasColumn(db, "roleplay_states", "conversation_id")) {
+            dropTables(db)
+            createTables(db)
+        }
+    }
+
+    private fun dropTables(db: SQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS roleplay_states")
+        db.execSQL("DROP TABLE IF EXISTS roleplay_memories")
+        db.execSQL("DROP TABLE IF EXISTS roleplay_world_books")
+        db.execSQL("DROP TABLE IF EXISTS roleplay_world_entries")
+        db.execSQL("DROP TABLE IF EXISTS roleplay_stickers")
+        db.execSQL("DROP TABLE IF EXISTS roleplay_tasks")
+    }
+
+    private fun hasColumn(db: SQLiteDatabase, table: String, column: String): Boolean =
+        runCatching {
+            db.rawQuery("PRAGMA table_info($table)", null).use { cursor ->
+                val nameIndex = cursor.getColumnIndex("name")
+                while (cursor.moveToNext()) {
+                    if (nameIndex >= 0 && cursor.getString(nameIndex) == column) return true
+                }
+                false
+            }
+        }.getOrDefault(false)
 }

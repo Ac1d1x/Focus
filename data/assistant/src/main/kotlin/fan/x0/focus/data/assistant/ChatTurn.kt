@@ -54,6 +54,7 @@ sealed interface ChatTurnEntry {
         val reasoning: String,
         val reasoningMs: Long = 0,
         val reasoningStartedAt: Long = 0,
+        val citations: List<ChatCitation> = emptyList(),
     ) : ChatTurnEntry
     data class Trace(val steps: List<ChatTurnStep>) : ChatTurnEntry
     data class Approval(val card: ChatTurnApproval) : ChatTurnEntry

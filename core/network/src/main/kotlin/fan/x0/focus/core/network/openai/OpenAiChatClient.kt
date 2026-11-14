@@ -19,6 +19,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 
 data class ModelEndpoint(val baseUrl: String, val model: String) {
     val rootUrl: String
@@ -112,6 +114,13 @@ class OpenAiChatClient(
                         ?: message.reasoning?.takeIf { it.isNotBlank() })
                         ?.let { emit(ChatStreamEvent.Reasoning(it)) }
                     message.content?.takeIf { it.isNotBlank() }?.let { emit(ChatStreamEvent.Text(it)) }
+                    message.serverToolCalls?.let { raw ->
+                        emit(ChatStreamEvent.ServerToolCalls(raw))
+                        emitServerSteps(raw)
+                    }
+                    message.annotations?.let { emit(ChatStreamEvent.Annotations(it)) }
+                    message.title?.takeIf { it.isNotBlank() }?.let { emit(ChatStreamEvent.Title(it)) }
+                    message.refusal?.takeIf { it.isNotBlank() }?.let { emit(ChatStreamEvent.Refused(it)) }
                 }
                 choice.message?.toolCalls?.forEachIndexed { index, call ->
                     emit(
@@ -123,21 +132,38 @@ class OpenAiChatClient(
                         ),
                     )
                 }
+                if (choice.finishReason == "content_filter") {
+                    emit(ChatStreamEvent.Refused(null))
+                }
                 emit(ChatStreamEvent.Finished(choice.finishReason))
             }
             return@flow
         }
         val channel = response.bodyAsChannel()
         val decoder = SseDecoder()
+        val serverCalls = mutableMapOf<String, ServerToolCall>()
         while (true) {
             val line = channel.readUTF8Line() ?: break
             val payload = decoder.onLine(line) ?: continue
             if (payload == "[DONE]") break
-            for (event in decodeChunk(payload)) emit(event)
+            for (event in decodeChunk(payload, serverCalls)) emit(event)
         }
     }
 
-    private fun decodeChunk(payload: String): List<ChatStreamEvent> {
+    private suspend fun kotlinx.coroutines.flow.FlowCollector<ChatStreamEvent>.emitServerSteps(raw: JsonArray) {
+        raw.forEach { element ->
+            val step = (element as? JsonObject)?.toServerToolStep() ?: return@forEach
+            step.calls.forEach { call ->
+                emit(ChatStreamEvent.ServerToolStarted(step.index, call))
+                emit(ChatStreamEvent.ServerToolFinished(step.index, call))
+            }
+        }
+    }
+
+    private fun decodeChunk(
+        payload: String,
+        serverCalls: MutableMap<String, ServerToolCall>,
+    ): List<ChatStreamEvent> {
         val chunk = runCatching { json.decodeFromString(ChatCompletionResponse.serializer(), payload) }
             .getOrElse {
                 val error = NetworkExceptionMapper.decodeError(payload)
@@ -156,10 +182,35 @@ class OpenAiChatClient(
             )
         }
         chunk.choices.forEach { choice: ChoiceDto ->
+            choice.serverToolEvent?.let { event ->
+                val step = event.wireInt("step") ?: 0
+                val call = event.wireObject("call")?.toServerToolCall()
+                when (event.wireString("type")) {
+                    "call_started" -> if (call != null) {
+                        serverCalls[call.id] = call
+                        events += ChatStreamEvent.ServerToolStarted(step, call)
+                    }
+                    "call_completed" -> if (call != null) {
+                        val started = serverCalls[call.id]
+                        events += ChatStreamEvent.ServerToolFinished(
+                            step,
+                            call.copy(
+                                name = call.name.ifBlank { started?.name.orEmpty() },
+                                kind = call.kind.ifBlank { started?.kind.orEmpty() },
+                                action = call.action ?: started?.action,
+                            ),
+                        )
+                    }
+                }
+            }
             choice.delta?.let { delta ->
                 (delta.reasoningContent?.takeIf { it.isNotBlank() } ?: delta.reasoning?.takeIf { it.isNotBlank() })
                     ?.let { events += ChatStreamEvent.Reasoning(it) }
                 delta.content?.takeIf { it.isNotEmpty() }?.let { events += ChatStreamEvent.Text(it) }
+                delta.serverToolCalls?.let { events += ChatStreamEvent.ServerToolCalls(it) }
+                delta.annotations?.let { events += ChatStreamEvent.Annotations(it) }
+                delta.title?.takeIf { it.isNotBlank() }?.let { events += ChatStreamEvent.Title(it) }
+                delta.refusal?.takeIf { it.isNotBlank() }?.let { events += ChatStreamEvent.Refused(it) }
             }
             choice.delta?.toolCalls?.forEach { call: ToolCallDeltaDto ->
                 events += ChatStreamEvent.ToolDelta(
@@ -169,7 +220,10 @@ class OpenAiChatClient(
                     arguments = call.function?.arguments,
                 )
             }
-            choice.finishReason?.let { events += ChatStreamEvent.Finished(it) }
+            choice.finishReason?.let {
+                if (it == "content_filter") events += ChatStreamEvent.Refused(null)
+                events += ChatStreamEvent.Finished(it)
+            }
         }
         return events
     }

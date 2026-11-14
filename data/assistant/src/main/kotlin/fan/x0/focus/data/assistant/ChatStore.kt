@@ -24,6 +24,7 @@ class ChatStore(
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = false }
     private val callsSerializer = ListSerializer(ToolCallRecord.serializer())
+    private val citationsSerializer = ListSerializer(ChatCitation.serializer())
     private val attachmentsSerializer = ListSerializer(ChatAttachment.serializer())
     private val reactionsSerializer = ListSerializer(String.serializer())
     private val diffsSerializer = ListSerializer(ListSerializer(FileDiff.serializer()))
@@ -551,6 +552,9 @@ class ChatStore(
         reactions: List<String> = emptyList(),
         elapsedMs: Long = 0,
         diffs: List<List<FileDiff>> = emptyList(),
+        serverBlocks: String? = null,
+        citations: List<ChatCitation> = emptyList(),
+        wire: String = "",
     ): Long = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         val values = ContentValues().apply {
@@ -572,6 +576,9 @@ class ChatStore(
             put("reaction", if (reactions.isEmpty()) null else json.encodeToString(reactionsSerializer, reactions))
             put("elapsed_ms", elapsedMs)
             put("diff_json", if (diffs.isEmpty()) null else json.encodeToString(diffsSerializer, diffs))
+            put("server_blocks", serverBlocks)
+            put("citations", if (citations.isEmpty()) null else json.encodeToString(citationsSerializer, citations))
+            put("wire", wire)
         }
         val id = database.writableDatabase.insertOrThrow("messages", null, values)
         val touch = ContentValues().apply { put("updated_at", now) }
@@ -726,6 +733,10 @@ class ChatStore(
         val diffs = rawDiffs?.let {
             runCatching { json.decodeFromString(diffsSerializer, it) }.getOrDefault(emptyList())
         }.orEmpty()
+        val rawCitations = if (isNull(17)) null else getString(17)
+        val citations = rawCitations?.let {
+            runCatching { json.decodeFromString(citationsSerializer, it) }.getOrDefault(emptyList())
+        }.orEmpty()
         return ChatMessage(
             id = getLong(0),
             conversationId = getString(1),
@@ -755,6 +766,9 @@ class ChatStore(
             },
             elapsedMs = getLong(14),
             stepDiffs = diffs,
+            serverBlocks = if (isNull(16)) null else getString(16),
+            citations = citations,
+            wire = getString(18).orEmpty(),
         )
     }
 
@@ -773,6 +787,7 @@ class ChatStore(
 
         private const val MESSAGE_COLUMNS =
             "id, conversation_id, role, content, reasoning, tool_calls, tool_call_id, name, " +
-                "created_at, attachments, label, reply_to_id, stats_json, reaction, elapsed_ms, diff_json"
+                "created_at, attachments, label, reply_to_id, stats_json, reaction, elapsed_ms, diff_json, " +
+                "server_blocks, citations, wire"
     }
 }

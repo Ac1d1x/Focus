@@ -31,6 +31,7 @@ import fan.x0.focus.feature.assistant.settings.SettingsCrashLogsRoute
 import fan.x0.focus.feature.assistant.settings.SettingsDataPage
 import fan.x0.focus.feature.assistant.settings.SettingsDebugPage
 import fan.x0.focus.feature.assistant.settings.SettingsDestination
+import fan.x0.focus.feature.assistant.settings.SettingsDeepSeekRoute
 import fan.x0.focus.feature.assistant.settings.SettingsHomePage
 import fan.x0.focus.feature.assistant.settings.SettingsImRoute
 import fan.x0.focus.feature.assistant.settings.SettingsMcpRoute
@@ -172,6 +173,10 @@ internal fun SettingsScreen(
                         onAction = onAction,
                         onOpen = { backStack.add(it) },
                         onBack = { backStack.removeLastOrNull() },
+                    )
+                    SettingsDestination.DeepSeek -> SettingsDeepSeekRoute(
+                        onBack = { backStack.removeLastOrNull() },
+                        snackbar = snackbar,
                     )
                     SettingsDestination.Plugins -> SettingsPluginsRoute(
                         onBack = { backStack.removeLastOrNull() },

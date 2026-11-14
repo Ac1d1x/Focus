@@ -141,6 +141,7 @@
     <string name="chat_copied">Copied</string>
     <string name="chat_speak_playing">Reading aloud</string>
     <string name="chat_speak_preparing">Preparing audio</string>
+    <string name="chat_sources">Sources</string>
     <string name="chat_deleted">Message deleted</string>
     <string name="chat_edit_saved">Message updated</string>
     <string name="chat_selection_mode">Select text, then copy.</string>

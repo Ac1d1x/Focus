@@ -15,6 +15,7 @@ import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.BtwRunner
 import fan.x0.focus.data.assistant.ChatAppearanceSettings
 import fan.x0.focus.data.assistant.ChatAttachment
+import fan.x0.focus.data.assistant.ChatCitation
 import fan.x0.focus.data.assistant.ChatCommand
 import fan.x0.focus.data.assistant.ChatDetailSettings
 import fan.x0.focus.data.assistant.ChatEvent
@@ -1799,6 +1800,7 @@ class ChatViewModel(
             reasoning = reasoning,
             reasoningMs = reasoningMs,
             reasoningStartedAt = reasoningStartedAt,
+            citations = citations.map { it.toCitationUi() },
         )
         is ChatTurnEntry.Trace -> ChatEntry.Trace(
             key = "$prefix-trace-$index",
@@ -1870,6 +1872,14 @@ class ChatViewModel(
         media = media.map { it.toUi() },
     )
 
+    private fun ChatCitation.toCitationUi(): CitationUi = CitationUi(
+        index = index,
+        url = url,
+        title = title,
+        siteName = siteName,
+        anchor = anchor,
+    )
+
     private fun ChatTurnApprovalPhase.toUi(): ApprovalPhase = when (this) {
         ChatTurnApprovalPhase.Waiting -> ApprovalPhase.Waiting
         ChatTurnApprovalPhase.Running -> ApprovalPhase.Running
@@ -1937,6 +1947,7 @@ class ChatViewModel(
                             messageId = message.id,
                             reactions = message.reactions.filter { it.isNotBlank() },
                             stats = stats,
+                            citations = message.citations.map { it.toCitationUi() },
                         )
                     } else if (stats != null) {
                         pendingStats = stats

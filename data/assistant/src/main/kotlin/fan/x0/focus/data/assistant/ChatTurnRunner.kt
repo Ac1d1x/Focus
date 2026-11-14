@@ -1,6 +1,7 @@
 package fan.x0.focus.data.assistant
 
 import fan.x0.focus.core.error.AppError
+import fan.x0.focus.core.error.AppErrorType
 import fan.x0.focus.core.error.toAppError
 import fan.x0.focus.core.notify.MessageNotifier
 import fan.x0.focus.core.notify.NotifyActionKind
@@ -341,6 +342,27 @@ class ChatTurnRunner(
                         ChatEvent.RetryReset -> {
                             updateEntries(conversationId, turnId) { entries -> entries.resetAnswer() }
                             updateState(conversationId, turnId) { state -> state.copy(retry = null) }
+                        }
+                        is ChatEvent.Citations -> updateEntries(conversationId, turnId) { entries ->
+                            entries.addCitations(event.citations)
+                        }
+                        is ChatEvent.TitleGenerated -> {
+                            titleJobs.remove(conversationId)?.cancel()
+                            chats.rename(conversationId, event.title)
+                            _titleUpdates.tryEmit(conversationId)
+                        }
+                        is ChatEvent.Refused -> {
+                            updateEntries(conversationId, turnId) { entries -> entries.resetAnswer() }
+                            val error = AppError(
+                                type = AppErrorType.Generic,
+                                serverMessage = event.message
+                                    ?: "The reply was blocked by content review.",
+                            )
+                            val finished = _states.value[conversationId]
+                            finish(conversationId, turnId, error, compactionFailed, status = "failed")
+                            if (finished != null && !manualCompact) {
+                                pushReply(finished, error, failed = true, silent = options.silentReply)
+                            }
                         }
                         ChatEvent.Completed -> {
                             updateState(conversationId, turnId) { state -> state.copy(retry = null) }

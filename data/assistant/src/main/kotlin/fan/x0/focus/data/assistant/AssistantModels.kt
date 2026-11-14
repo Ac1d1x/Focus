@@ -11,6 +11,15 @@ data class ToolCallRecord(
     val arguments: String,
 )
 
+@Serializable
+data class ChatCitation(
+    val index: Int,
+    val url: String,
+    val title: String = "",
+    val siteName: String = "",
+    val anchor: Int = 0,
+)
+
 data class ChatMessage(
     val id: Long,
     val conversationId: String,
@@ -28,6 +37,9 @@ data class ChatMessage(
     val reactions: List<String> = emptyList(),
     val elapsedMs: Long = 0,
     val stepDiffs: List<List<FileDiff>> = emptyList(),
+    val serverBlocks: String? = null,
+    val citations: List<ChatCitation> = emptyList(),
+    val wire: String = "",
 )
 
 enum class AgentMode {
@@ -92,6 +104,7 @@ data class ChatAttachment(
     val mime: String = "",
     val text: String? = null,
     val base64: String? = null,
+    val fileId: String? = null,
 ) {
     val dataUrl: String?
         get() = base64?.let { "data:$mime;base64,$it" }

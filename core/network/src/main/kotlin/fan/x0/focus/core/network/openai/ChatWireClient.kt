@@ -45,5 +45,9 @@ private fun ChatCompletionResponse.toReply(): ChatReply {
         text = message?.content.orEmpty(),
         model = model,
         toolCalls = calls,
+        serverToolCalls = message?.serverToolCalls,
+        annotations = message?.annotations,
+        title = message?.title,
+        refusal = message?.refusal,
     )
 }

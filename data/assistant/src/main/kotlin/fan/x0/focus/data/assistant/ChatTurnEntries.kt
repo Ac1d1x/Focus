@@ -40,6 +40,14 @@ internal fun List<ChatTurnEntry>.finishReasoning(durationMs: Long): List<ChatTur
     return dropLast(1) + last.copy(reasoningMs = durationMs, reasoningStartedAt = 0)
 }
 
+internal fun List<ChatTurnEntry>.addCitations(citations: List<ChatCitation>): List<ChatTurnEntry> {
+    if (citations.isEmpty()) return this
+    val index = indexOfLast { it is ChatTurnEntry.Answer }
+    if (index < 0) return this
+    val answer = this[index] as ChatTurnEntry.Answer
+    return toMutableList().also { it[index] = answer.copy(citations = citations) }
+}
+
 internal fun List<ChatTurnEntry>.stopReasoning(now: Long): List<ChatTurnEntry> {
     val last = lastOrNull() as? ChatTurnEntry.Answer ?: return this
     if (last.reasoningStartedAt <= 0) return this

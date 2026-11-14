@@ -32,8 +32,12 @@ data class ToolFunctionDto(
 @Serializable
 data class ToolDto(
     @EncodeDefault val type: String = "function",
-    val function: ToolFunctionDto,
-)
+    val function: ToolFunctionDto? = null,
+) {
+    companion object {
+        fun server(type: String): ToolDto = ToolDto(type = type)
+    }
+}
 
 @Serializable
 data class FunctionCallDto(
@@ -151,6 +155,7 @@ data class ChatMessageDto(
     @SerialName("tool_calls") val toolCalls: List<ToolCallDto>? = null,
     @SerialName("tool_call_id") val toolCallId: String? = null,
     val name: String? = null,
+    @SerialName("server_tool_calls") val serverToolCalls: JsonArray? = null,
 ) {
     constructor(
         role: String,
@@ -176,6 +181,16 @@ data class StreamOptionsDto(
 )
 
 @Serializable
+data class ThinkingDto(
+    val type: String = "enabled",
+)
+
+@Serializable
+data class TitleDto(
+    val enabled: Boolean = true,
+)
+
+@Serializable
 data class ChatCompletionRequest(
     val model: String,
     val messages: List<ChatMessageDto>,
@@ -186,6 +201,8 @@ data class ChatCompletionRequest(
     val temperature: Double? = null,
     @SerialName("max_tokens") val maxTokens: Int? = null,
     @SerialName("reasoning_effort") val reasoningEffort: String? = null,
+    val thinking: ThinkingDto? = null,
+    val title: TitleDto? = null,
 )
 
 @Serializable
@@ -209,6 +226,10 @@ data class ResponseMessageDto(
     @SerialName("reasoning_content") val reasoningContent: String? = null,
     val reasoning: String? = null,
     @SerialName("tool_calls") val toolCalls: List<ToolCallDto>? = null,
+    @SerialName("server_tool_calls") val serverToolCalls: JsonArray? = null,
+    val annotations: JsonArray? = null,
+    val title: String? = null,
+    val refusal: String? = null,
 )
 
 @Serializable
@@ -231,6 +252,10 @@ data class DeltaDto(
     @SerialName("reasoning_content") val reasoningContent: String? = null,
     val reasoning: String? = null,
     @SerialName("tool_calls") val toolCalls: List<ToolCallDeltaDto>? = null,
+    @SerialName("server_tool_calls") val serverToolCalls: JsonArray? = null,
+    val annotations: JsonArray? = null,
+    val title: String? = null,
+    val refusal: String? = null,
 )
 
 @Serializable
@@ -239,6 +264,7 @@ data class ChoiceDto(
     val message: ResponseMessageDto? = null,
     val delta: DeltaDto? = null,
     @SerialName("finish_reason") val finishReason: String? = null,
+    @SerialName("server_tool_event") val serverToolEvent: JsonObject? = null,
 )
 
 @Serializable
@@ -271,6 +297,12 @@ sealed interface ChatStreamEvent {
         val name: String?,
         val arguments: String?,
     ) : ChatStreamEvent
+    data class ServerToolStarted(val step: Int, val call: ServerToolCall) : ChatStreamEvent
+    data class ServerToolFinished(val step: Int, val call: ServerToolCall) : ChatStreamEvent
+    data class ServerToolCalls(val raw: JsonArray) : ChatStreamEvent
+    data class Annotations(val raw: JsonArray) : ChatStreamEvent
+    data class Title(val title: String) : ChatStreamEvent
+    data class Refused(val message: String?) : ChatStreamEvent
     data class Finished(val reason: String?) : ChatStreamEvent
     data class Usage(
         val prompt: Int,
@@ -294,4 +326,8 @@ data class CompletedMessage(
     val toolCalls: List<CompletedToolCall>,
     val finishReason: String?,
     val usage: UsageDto?,
+    val serverToolCalls: JsonArray? = null,
+    val annotations: JsonArray? = null,
+    val title: String? = null,
+    val refusal: String? = null,
 )

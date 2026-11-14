@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +71,8 @@ internal fun ChatMessageBubble(
     val key = entry.key
     val selecting = state.selectionKey == key
     val canMenu = entry.messageId != null
+    val citations = (entry as? ChatEntry.Assistant)?.citations.orEmpty()
+    val display = remember(text, citations) { withCitationMarkers(text, citations) }
     val header: (@Composable () -> Unit)? = if (quote != null || showAssistantHeader) {
         {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -91,32 +94,40 @@ internal fun ChatMessageBubble(
     } else {
         null
     }
-    FocusChatBubble(
-        text = text,
-        fromUser = fromUser,
-        style = state.replyStyle.toBubbleStyle(),
-        streaming = streaming,
-        highlighted = state.highlightKey == key,
-        selectable = selecting,
-        reactions = reactions,
-        onLongPress = if (canMenu) {
-            { onAction(ChatAction.OpenMessageMenu(key)) }
-        } else {
-            null
-        },
-        header = header,
-        menu = {
-            val menu = state.menu
-            if (menu?.key == key) {
-                MessageActionPopup(
-                    menu = menu,
-                    onAction = onAction,
-                    onCopy = onCopy,
-                    onSpeak = onSpeak,
-                )
-            }
-        },
-    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        FocusChatBubble(
+            text = display,
+            fromUser = fromUser,
+            style = state.replyStyle.toBubbleStyle(),
+            streaming = streaming,
+            highlighted = state.highlightKey == key,
+            selectable = selecting,
+            reactions = reactions,
+            onLongPress = if (canMenu) {
+                { onAction(ChatAction.OpenMessageMenu(key)) }
+            } else {
+                null
+            },
+            header = header,
+            menu = {
+                val menu = state.menu
+                if (menu?.key == key) {
+                    MessageActionPopup(
+                        menu = menu,
+                        onAction = onAction,
+                        onCopy = onCopy,
+                        onSpeak = onSpeak,
+                    )
+                }
+            },
+        )
+        if (!fromUser && citations.isNotEmpty()) {
+            ChatCitationCard(
+                citations = citations,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
 }
 
 @Composable

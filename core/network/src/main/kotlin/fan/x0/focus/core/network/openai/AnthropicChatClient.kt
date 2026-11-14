@@ -151,12 +151,12 @@ class AnthropicChatClient(
         put("messages", buildMessages(request.messages))
         request.tools?.takeIf { it.isNotEmpty() }?.let { tools ->
             putJsonArray("tools") {
-                tools.forEach { tool ->
+                tools.mapNotNull { it.function }.forEach { function ->
                     add(
                         buildJsonObject {
-                            put("name", tool.function.name)
-                            put("description", tool.function.description)
-                            put("input_schema", tool.function.parameters)
+                            put("name", function.name)
+                            put("description", function.description)
+                            put("input_schema", function.parameters)
                         },
                     )
                 }

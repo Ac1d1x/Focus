@@ -46,6 +46,8 @@ internal fun SettingsToolsPage(
             FocusReveal(index = 1) {
                 val searchTitle = stringResource(R.string.settings_tools_search_title)
                 val searchBody = stringResource(R.string.settings_tools_search_body)
+                val deepSeekTitle = stringResource(R.string.settings_tools_deepseek_title)
+                val deepSeekBody = stringResource(R.string.settings_tools_deepseek_body)
                 val mcpTitle = stringResource(R.string.settings_tools_mcp_title)
                 val mcpBody = stringResource(R.string.settings_tools_mcp_body)
                 val skillsTitle = stringResource(R.string.settings_tools_skills_title)
@@ -62,6 +64,12 @@ internal fun SettingsToolsPage(
                         body = searchBody,
                         icon = FocusIcons.Search,
                         onClick = { onOpen(SettingsDestination.WebSearch) },
+                    )
+                    toolItem(
+                        title = deepSeekTitle,
+                        body = deepSeekBody,
+                        icon = FocusIcons.Assistant,
+                        onClick = { onOpen(SettingsDestination.DeepSeek) },
                     )
                     toolItem(
                         title = mcpTitle,

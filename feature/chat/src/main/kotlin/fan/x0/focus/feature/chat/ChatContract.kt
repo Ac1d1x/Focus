@@ -40,6 +40,14 @@ data class TraceStep(
     val media: List<AttachmentUi> = emptyList(),
 )
 
+data class CitationUi(
+    val index: Int,
+    val url: String,
+    val title: String,
+    val siteName: String,
+    val anchor: Int,
+)
+
 enum class ApprovalPhase { Waiting, Running, Finished, Declined }
 
 enum class ApprovalKind { Action, Plan }
@@ -227,6 +235,7 @@ sealed interface ChatEntry {
         val replyTo: QuotedMessageUi? = null,
         val reactions: List<String> = emptyList(),
         val stats: MessageStats? = null,
+        val citations: List<CitationUi> = emptyList(),
     ) : ChatEntry
 
     data class Trace(

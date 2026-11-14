@@ -159,13 +159,13 @@ class OpenAiResponsesClient(
         put("stream", stream)
         request.tools?.takeIf { it.isNotEmpty() }?.let { tools ->
             putJsonArray("tools") {
-                tools.forEach { tool ->
+                tools.mapNotNull { it.function }.forEach { function ->
                     add(
                         buildJsonObject {
                             put("type", "function")
-                            put("name", tool.function.name)
-                            put("description", tool.function.description)
-                            put("parameters", tool.function.parameters)
+                            put("name", function.name)
+                            put("description", function.description)
+                            put("parameters", function.parameters)
                         },
                     )
                 }

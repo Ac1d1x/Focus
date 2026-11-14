@@ -11,6 +11,7 @@ enum class SettingsDestination : NavKey {
     Models,
     Automation,
     Tools,
+    DeepSeek,
     Plugins,
     WebSearch,
     Mcp,

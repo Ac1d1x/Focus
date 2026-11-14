@@ -171,6 +171,11 @@ internal fun SettingsHomePage(
             icon = FocusIcons.Search,
         ) { onOpen(SettingsDestination.WebSearch) },
         SettingsEntry(
+            title = stringResource(R.string.settings_tools_deepseek_title),
+            body = stringResource(R.string.settings_tools_deepseek_body),
+            icon = FocusIcons.Assistant,
+        ) { onOpen(SettingsDestination.DeepSeek) },
+        SettingsEntry(
             title = stringResource(R.string.settings_tools_mcp_title),
             body = stringResource(R.string.settings_tools_mcp_body),
             icon = FocusIcons.Link,

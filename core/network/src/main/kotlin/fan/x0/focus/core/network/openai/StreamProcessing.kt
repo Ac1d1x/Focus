@@ -1,5 +1,7 @@
 package fan.x0.focus.core.network.openai
 
+import kotlinx.serialization.json.JsonArray
+
 // Incremental SSE decoder: returns a data payload for each complete event.
 class SseDecoder {
     private val buffer = StringBuilder()
@@ -27,6 +29,10 @@ class StreamAccumulator {
     private val toolCalls = LinkedHashMap<Int, MutableToolCall>()
     private var finishReason: String? = null
     private var usage: UsageDto? = null
+    private var serverToolCalls: JsonArray? = null
+    private var annotations: JsonArray? = null
+    private var title: String? = null
+    private var refusal: String? = null
 
     fun apply(event: ChatStreamEvent) {
         when (event) {
@@ -38,6 +44,10 @@ class StreamAccumulator {
                 if (!event.name.isNullOrBlank()) call.name = event.name
                 if (event.arguments != null) call.arguments.append(event.arguments)
             }
+            is ChatStreamEvent.ServerToolCalls -> serverToolCalls = event.raw
+            is ChatStreamEvent.Annotations -> annotations = event.raw
+            is ChatStreamEvent.Title -> title = event.title
+            is ChatStreamEvent.Refused -> refusal = event.message.orEmpty()
             is ChatStreamEvent.Finished -> finishReason = event.reason
             is ChatStreamEvent.Usage -> usage = UsageDto(
                 promptTokens = event.prompt,
@@ -45,7 +55,10 @@ class StreamAccumulator {
                 totalTokens = event.total,
                 promptDetails = PromptTokensDetailsDto(event.cached),
             )
-            is ChatStreamEvent.ProtocolError -> Unit
+            is ChatStreamEvent.ServerToolStarted,
+            is ChatStreamEvent.ServerToolFinished,
+            is ChatStreamEvent.ProtocolError,
+            -> Unit
         }
     }
 
@@ -61,6 +74,10 @@ class StreamAccumulator {
         }.filter { it.name.isNotBlank() },
         finishReason = finishReason,
         usage = usage,
+        serverToolCalls = serverToolCalls,
+        annotations = annotations,
+        title = title,
+        refusal = refusal,
     )
 
     private class MutableToolCall {

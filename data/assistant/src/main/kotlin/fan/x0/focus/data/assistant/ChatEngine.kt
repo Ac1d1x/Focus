@@ -16,9 +16,16 @@ import fan.x0.focus.core.network.openai.FunctionCallDto
 import fan.x0.focus.core.network.openai.MessageContent
 import fan.x0.focus.core.network.openai.ModelEndpoint
 import fan.x0.focus.core.network.openai.ModelProtocolException
+import fan.x0.focus.core.network.openai.ServerToolCall
 import fan.x0.focus.core.network.openai.StreamAccumulator
 import fan.x0.focus.core.network.openai.StreamOptionsDto
+import fan.x0.focus.core.network.openai.ThinkingDto
+import fan.x0.focus.core.network.openai.TitleDto
 import fan.x0.focus.core.network.openai.ToolCallDto
+import fan.x0.focus.core.network.openai.ToolDto
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
@@ -32,6 +39,12 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import org.koin.core.annotation.Single
 import java.util.concurrent.ConcurrentHashMap
 
@@ -82,6 +95,9 @@ sealed interface ChatEvent {
     data class PlanResolved(val plan: ProposedPlan, val approved: Boolean) : ChatEvent
     data class TodoUpdated(val todos: List<ConversationTodo>) : ChatEvent
     data class StatsUpdated(val stats: MessageStats) : ChatEvent
+    data class Citations(val citations: List<ChatCitation>) : ChatEvent
+    data class TitleGenerated(val title: String) : ChatEvent
+    data class Refused(val message: String?) : ChatEvent
     data class CompactionStarted(val automatic: Boolean) : ChatEvent
     data class CompactionDelta(val text: String) : ChatEvent
     data class CompactionFinished(
@@ -108,7 +124,10 @@ class ChatEngine(
     private val agent: AgentSettings,
     private val compactor: ChatCompactor,
     private val workspaceTrust: WorkspaceTrustService,
+    private val deepSeekSettings: DeepSeekSettings,
+    private val locale: LocaleController,
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
     private val waivers = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
     private val askReplies = ConcurrentHashMap<String, CompletableDeferred<AskReply>>()
     private val trustDecisions = ConcurrentHashMap<String, CompletableDeferred<Boolean>>()
@@ -164,6 +183,11 @@ class ChatEngine(
         var compactionTried = false
         val agentConfig = agent.configOnce()
         val retry = agentConfig.retry
+        val deepSeekConfig = if (provider?.isDeepSeek == true) deepSeekSettings.configOnce() else DeepSeekConfig()
+        val deepSeekEnabled = provider?.isDeepSeek == true &&
+            model.startsWith("deepseek-flash") &&
+            deepSeekConfig.enabled && protocol == ChatProtocol.ChatCompletions && mode == ChatMode.Chat
+        var userTurns = 0
 
         try {
             if (appendUser && (text.isNotBlank() || options.attachments.isNotEmpty())) {
@@ -178,6 +202,7 @@ class ChatEngine(
                     emit(ChatEvent.UserMessageAppended(chats.userTurnCount(conversationId)))
                 }
             }
+            userTurns = chats.userTurnCount(conversationId)
             val maxRounds = agentConfig.roundLimit
             repeat(maxRounds) { roundIndex ->
                 val round = roundIndex + 1
@@ -222,7 +247,7 @@ class ChatEngine(
                 }.withSummary(context.summary)
                 val messages = buildList {
                     add(ChatMessageDto(role = "system", content = system))
-                    addAll(context.messages.toDtos())
+                    addAll(context.messages.toDtos(deepSeekEnabled))
                     val media = pendingMedia.mapNotNull { it.dataUrl }
                     pendingMedia = emptyList()
                     if (media.isNotEmpty()) {
@@ -236,16 +261,44 @@ class ChatEngine(
                     if (context.messages.isEmpty() && context.summary.isBlank()) {
                         add(ChatMessageDto(role = "user", content = "Begin the setup conversation now."))
                     }
+                }.let { base ->
+                    if (deepSeekEnabled && deepSeekConfig.userMeta && base.lastOrNull()?.role == "user") {
+                        base.toMutableList().apply {
+                            add(
+                                lastIndex,
+                                ChatMessageDto(
+                                    role = "latest_reminder",
+                                    content = latestReminder(deepSeekConfig.location),
+                                ),
+                            )
+                        }
+                    } else {
+                        base
+                    }
+                }
+                val toolDtos = specs.map { it.toDto() }.toMutableList().apply {
+                    if (deepSeekEnabled) {
+                        if (deepSeekConfig.webSearch) add(ToolDto.server("deepseek_web_search"))
+                        if (deepSeekConfig.readLinks) add(ToolDto.server("deepseek_read_url"))
+                    }
                 }
                 val request = ChatCompletionRequest(
                     model = endpoint.model,
                     messages = messages,
                     stream = true,
                     streamOptions = StreamOptionsDto(includeUsage = true),
-                    tools = specs.map { it.toDto() },
+                    tools = toolDtos.takeIf { it.isNotEmpty() },
                     toolChoice = "auto",
-                    temperature = 0.4,
-                    reasoningEffort = options.reasoning.wire,
+                    temperature = if (deepSeekEnabled) null else 0.4,
+                    reasoningEffort = if (deepSeekEnabled) null else options.reasoning.wire,
+                    thinking = if (deepSeekEnabled && options.reasoning.isEnabled) ThinkingDto() else null,
+                    title = if (
+                        deepSeekEnabled && deepSeekConfig.title && userTurns == 1 && round == 1
+                    ) {
+                        TitleDto()
+                    } else {
+                        null
+                    },
                 )
                 val roundResult = streamRound(
                     endpoint = endpoint,
@@ -262,11 +315,19 @@ class ChatEngine(
                     emitStats = { stats -> emit(ChatEvent.StatsUpdated(stats)) },
                     emitRetry = { attempt, max, reason -> emit(ChatEvent.RetryScheduled(attempt, max, reason)) },
                     emitReset = { emit(ChatEvent.RetryReset) },
+                    emitEvent = { emit(it) },
                 )
                 if (roundResult.reasoningMs > 0) {
                     emit(ChatEvent.ReasoningTimed(roundResult.reasoningMs))
                 }
                 val message = roundResult.message
+                message.title?.takeIf { it.isNotBlank() }?.let { emit(ChatEvent.TitleGenerated(it)) }
+                if (roundResult.refusal) {
+                    emit(ChatEvent.Refused(roundResult.refusalMessage))
+                    return@flow
+                }
+                val citations = parseCitations(message.text, message.annotations)
+                if (citations.isNotEmpty()) emit(ChatEvent.Citations(citations))
                 totalStats = roundResult.stats.copy(
                     round = round,
                     step = stepCount,
@@ -283,6 +344,9 @@ class ChatEngine(
                     },
                     stats = totalStats,
                     elapsedMs = roundResult.reasoningMs,
+                    serverBlocks = message.serverToolCalls?.toString(),
+                    citations = citations,
+                    wire = if (deepSeekEnabled) WIRE_DEEPSEEK_CHAT else "",
                 )
                 if (message.toolCalls.isEmpty()) {
                     emit(ChatEvent.Completed)
@@ -581,6 +645,7 @@ class ChatEngine(
         emitStats: suspend (MessageStats) -> Unit,
         emitRetry: suspend (Int, Int, String) -> Unit,
         emitReset: suspend () -> Unit,
+        emitEvent: suspend (ChatEvent) -> Unit,
     ): RoundResult {
         var attempt = 0
         while (true) {
@@ -613,6 +678,33 @@ class ChatEngine(
                             }
                             emitReasoningDelta(event.delta)
                         }
+                        is ChatStreamEvent.ServerToolStarted -> {
+                            visible = true
+                            if (reasoningStartedAt > 0 && reasoningEndedAt == 0L) {
+                                reasoningEndedAt = System.currentTimeMillis()
+                            }
+                            emitEvent(
+                                ChatEvent.ToolStarted(
+                                    label = serverToolLabel(event.call),
+                                    id = event.call.id,
+                                    tool = event.call.name,
+                                    arguments = serverToolArguments(event.call),
+                                ),
+                            )
+                        }
+                        is ChatStreamEvent.ServerToolFinished -> {
+                            visible = true
+                            emitEvent(
+                                ChatEvent.ToolFinished(
+                                    label = serverToolLabel(event.call),
+                                    ok = event.call.error == null && event.call.status != "failed",
+                                    summary = serverToolSummary(event.call),
+                                    tool = event.call.name,
+                                    id = event.call.id,
+                                    output = serverToolOutput(event.call),
+                                ),
+                            )
+                        }
                         is ChatStreamEvent.Usage -> {
                             roundStats = roundStats.copy(
                                 inputTokens = event.prompt,
@@ -633,7 +725,9 @@ class ChatEngine(
                     }
                 }
                 val message = accumulator.result()
-                if (message.text.isBlank() && message.toolCalls.isEmpty() && message.reasoning.isBlank()) {
+                if (message.text.isBlank() && message.toolCalls.isEmpty() && message.reasoning.isBlank() &&
+                    message.refusal == null && message.finishReason != "content_filter"
+                ) {
                     throw ModelProtocolException("stream ended before a reply")
                 }
                 val reasoningMs = when {
@@ -641,7 +735,13 @@ class ChatEngine(
                     reasoningEndedAt > 0 -> reasoningEndedAt - reasoningStartedAt
                     else -> System.currentTimeMillis() - reasoningStartedAt
                 }
-                return RoundResult(message, latest, reasoningMs)
+                return RoundResult(
+                    message = message,
+                    stats = latest,
+                    reasoningMs = reasoningMs,
+                    refusal = message.refusal != null || message.finishReason == "content_filter",
+                    refusalMessage = message.refusal,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -698,7 +798,7 @@ class ChatEngine(
         }
     }
 
-    private suspend fun List<ChatMessage>.toDtos(): List<ChatMessageDto> {
+    private suspend fun List<ChatMessage>.toDtos(deepSeekChat: Boolean): List<ChatMessageDto> {
         val quotes = chats.messagesByIds(mapNotNull { it.replyToId }.toSet())
         return withoutDanglingToolCalls().mapNotNull { message ->
             when (message.role) {
@@ -719,6 +819,11 @@ class ChatEngine(
                             ),
                         )
                     }.ifEmpty { null },
+                    serverToolCalls = message.serverBlocks
+                        ?.takeIf { deepSeekChat && message.wire == WIRE_DEEPSEEK_CHAT }
+                        ?.let { raw ->
+                            runCatching { json.parseToJsonElement(raw) as? JsonArray }.getOrNull()
+                        },
                 )
                 ChatRole.Tool -> ChatMessageDto(
                     role = "tool",
@@ -787,6 +892,102 @@ class ChatEngine(
         return MessageContent.of(text.trim(), images)
     }
 
+    private fun latestReminder(location: String): String {
+        val language = locale.current()
+            ?.let { runCatching { Locale.forLanguageTag(it) }.getOrNull() }
+            ?: Locale.getDefault()
+        val date = LocalDate.now()
+        val weekday = date.dayOfWeek.getDisplayName(TextStyle.FULL, language)
+        return listOf(date.toString(), weekday, location.trim(), "App", language.getDisplayLanguage(language))
+            .joinToString(",")
+    }
+
+    private fun parseCitations(text: String, annotations: JsonArray?): List<ChatCitation> {
+        if (annotations == null) return emptyList()
+        val numbers = LinkedHashMap<String, Int>()
+        val result = mutableListOf<ChatCitation>()
+        annotations.forEach { element ->
+            val citation = (element as? JsonObject)?.get("url_citation") as? JsonObject ?: return@forEach
+            val url = (citation["url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+                ?: return@forEach
+            val end = (citation["end_index"] as? JsonPrimitive)?.intOrNull ?: return@forEach
+            result += ChatCitation(
+                index = numbers.getOrPut(url) { numbers.size + 1 },
+                url = url,
+                title = (citation["title"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                siteName = (citation["site_name"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                anchor = charIndex(text, end),
+            )
+        }
+        return result
+    }
+
+    private fun charIndex(text: String, codePointIndex: Int): Int {
+        if (codePointIndex <= 0) return 0
+        var codePoints = 0
+        var index = 0
+        while (index < text.length && codePoints < codePointIndex) {
+            val high = text[index].isHighSurrogate()
+            val low = index + 1 < text.length && text[index + 1].isLowSurrogate()
+            index += if (high && low) 2 else 1
+            codePoints++
+        }
+        return index
+    }
+
+    private fun serverToolLabel(call: ServerToolCall): String = when (call.action?.actionString("action")) {
+        "search" -> "Web search"
+        "open_page" -> "Open page"
+        "find_in_page" -> "Find in page"
+        "read_link" -> "Read link"
+        else -> ToolLabels.of(call.name)
+    }
+
+    private fun serverToolArguments(call: ServerToolCall): String {
+        val action = call.action ?: return call.name
+        return when (action.actionString("action")) {
+            "search" -> (action["queries"] as? JsonArray)
+                ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                ?.joinToString(" / ")
+                .orEmpty()
+            "open_page", "read_link" -> action.actionString("url").orEmpty()
+            "find_in_page" -> listOfNotNull(
+                action.actionString("url"),
+                action.actionString("pattern"),
+            ).joinToString(" ")
+            else -> call.name
+        }
+    }
+
+    private fun serverToolSummary(call: ServerToolCall): String {
+        call.error?.let { return it }
+        if (call.sources.isNotEmpty()) return "${call.sources.size} sources"
+        call.page?.let { page -> return page.title ?: page.url }
+        return if (call.status == "completed") {
+            when (call.action?.actionString("action")) {
+                "search" -> "Search completed"
+                "read_link" -> "Page loaded"
+                "open_page" -> "Page opened"
+                "find_in_page" -> "Search completed"
+                else -> "Done"
+            }
+        } else {
+            ""
+        }
+    }
+
+    private fun serverToolOutput(call: ServerToolCall): String = buildString {
+        call.sources.take(6).forEach { source ->
+            appendLine(listOfNotNull(source.title, source.url).joinToString(" "))
+        }
+        call.page?.let { page ->
+            appendLine(listOfNotNull(page.title, page.url).joinToString(" "))
+        }
+    }.trim()
+
+    private fun JsonObject?.actionString(key: String): String? =
+        (this?.get(key) as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+
     private fun mapError(e: Throwable): AppError = when (e) {
         is NetworkException -> e.toAppError()
         is ModelProtocolException -> AppError(AppErrorType.Generic, serverMessage = e.message)
@@ -796,6 +997,7 @@ class ChatEngine(
     companion object {
         private const val APPROVAL_TIMEOUT_MS = 15 * 60 * 1000L
         private const val TOOL_CONCURRENCY = 4
+        private const val WIRE_DEEPSEEK_CHAT = "deepseek.chat"
     }
 }
 
@@ -803,4 +1005,6 @@ private data class RoundResult(
     val message: CompletedMessage,
     val stats: MessageStats,
     val reasoningMs: Long = 0,
+    val refusal: Boolean = false,
+    val refusalMessage: String? = null,
 )

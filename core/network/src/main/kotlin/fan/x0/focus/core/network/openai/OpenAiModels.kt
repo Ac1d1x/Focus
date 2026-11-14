@@ -5,6 +5,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.Transient
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
@@ -165,6 +166,7 @@ data class ChatMessageDto(
     @SerialName("tool_call_id") val toolCallId: String? = null,
     val name: String? = null,
     @SerialName("server_tool_calls") val serverToolCalls: JsonArray? = null,
+    @Transient val protocolBlocks: JsonArray? = null,
 ) {
     constructor(
         role: String,

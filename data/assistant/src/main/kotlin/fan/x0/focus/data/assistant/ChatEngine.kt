@@ -184,9 +184,17 @@ class ChatEngine(
         val agentConfig = agent.configOnce()
         val retry = agentConfig.retry
         val deepSeekConfig = if (provider?.isDeepSeek == true) deepSeekSettings.configOnce() else DeepSeekConfig()
-        val deepSeekEnabled = provider?.isDeepSeek == true &&
+        val deepSeekBase = provider?.isDeepSeek == true &&
             model.startsWith("deepseek-flash") &&
-            deepSeekConfig.enabled && protocol == ChatProtocol.ChatCompletions && mode == ChatMode.Chat
+            deepSeekConfig.enabled && mode == ChatMode.Chat
+        val deepSeekChat = deepSeekBase && protocol == ChatProtocol.ChatCompletions
+        val deepSeekMessages = deepSeekBase && protocol == ChatProtocol.AnthropicMessages
+        val deepSeekEnabled = deepSeekChat || deepSeekMessages
+        val wire = when {
+            deepSeekChat -> WIRE_DEEPSEEK_CHAT
+            deepSeekMessages -> WIRE_DEEPSEEK_MESSAGES
+            else -> ""
+        }
         var userTurns = 0
 
         try {
@@ -247,7 +255,7 @@ class ChatEngine(
                 }.withSummary(context.summary)
                 val messages = buildList {
                     add(ChatMessageDto(role = "system", content = system))
-                    addAll(context.messages.toDtos(deepSeekEnabled, providerId))
+                    addAll(context.messages.toDtos(deepSeekEnabled, providerId, wire))
                     val media = pendingMedia.mapNotNull { it.dataUrl }
                     pendingMedia = emptyList()
                     if (media.isNotEmpty()) {
@@ -346,7 +354,7 @@ class ChatEngine(
                     elapsedMs = roundResult.reasoningMs,
                     serverBlocks = message.serverToolCalls?.toString(),
                     citations = citations,
-                    wire = if (deepSeekEnabled) WIRE_DEEPSEEK_CHAT else "",
+                    wire = wire,
                 )
                 if (message.toolCalls.isEmpty()) {
                     emit(ChatEvent.Completed)
@@ -799,35 +807,40 @@ class ChatEngine(
     }
 
     private suspend fun List<ChatMessage>.toDtos(
-        deepSeekChat: Boolean,
+        deepSeekEnabled: Boolean,
         providerId: String,
+        wire: String,
     ): List<ChatMessageDto> {
         val quotes = chats.messagesByIds(mapNotNull { it.replyToId }.toSet())
         return withoutDanglingToolCalls().mapNotNull { message ->
             when (message.role) {
                 ChatRole.User -> ChatMessageDto(
                     role = "user",
-                    content = message.toUserContent(quotes[message.replyToId], deepSeekChat, providerId),
+                    content = message.toUserContent(quotes[message.replyToId], deepSeekEnabled, providerId),
                 )
-                ChatRole.Assistant -> ChatMessageDto(
-                    role = "assistant",
-                    content = MessageContent.Text(message.content),
-                    reasoningContent = message.reasoning.ifBlank { null },
-                    toolCalls = message.toolCalls.map { call ->
-                        ToolCallDto(
-                            id = call.id,
-                            function = FunctionCallDto(
-                                name = call.name,
-                                arguments = tools.redactArguments(call.name, call.arguments),
-                            ),
-                        )
-                    }.ifEmpty { null },
-                    serverToolCalls = message.serverBlocks
-                        ?.takeIf { deepSeekChat && message.wire == WIRE_DEEPSEEK_CHAT }
+                ChatRole.Assistant -> {
+                    val raw = message.serverBlocks
+                        ?.takeIf { wire.isNotBlank() && message.wire == wire }
                         ?.let { raw ->
                             runCatching { json.parseToJsonElement(raw) as? JsonArray }.getOrNull()
-                        },
-                )
+                        }
+                    ChatMessageDto(
+                        role = "assistant",
+                        content = MessageContent.Text(message.content),
+                        reasoningContent = message.reasoning.ifBlank { null },
+                        toolCalls = message.toolCalls.map { call ->
+                            ToolCallDto(
+                                id = call.id,
+                                function = FunctionCallDto(
+                                    name = call.name,
+                                    arguments = tools.redactArguments(call.name, call.arguments),
+                                ),
+                            )
+                        }.ifEmpty { null },
+                        serverToolCalls = raw.takeIf { wire == WIRE_DEEPSEEK_CHAT },
+                        protocolBlocks = raw.takeIf { wire == WIRE_DEEPSEEK_MESSAGES },
+                    )
+                }
                 ChatRole.Tool -> ChatMessageDto(
                     role = "tool",
                     content = message.content.orEmpty(),
@@ -875,11 +888,11 @@ class ChatEngine(
 
     private fun ChatMessage.toUserContent(
         quoted: ChatMessage?,
-        deepSeekChat: Boolean,
+        deepSeekEnabled: Boolean,
         providerId: String,
     ): MessageContent {
         val images = attachments.filter { it.kind == AttachmentKind.Image }.mapNotNull { it.dataUrl }
-        val files = if (deepSeekChat) {
+        val files = if (deepSeekEnabled) {
             attachments
                 .filter { it.kind == AttachmentKind.Document }
                 .filter { it.providerId.isNullOrBlank() || it.providerId == providerId }
@@ -1013,6 +1026,7 @@ class ChatEngine(
         private const val APPROVAL_TIMEOUT_MS = 15 * 60 * 1000L
         private const val TOOL_CONCURRENCY = 4
         private const val WIRE_DEEPSEEK_CHAT = "deepseek.chat"
+        private const val WIRE_DEEPSEEK_MESSAGES = "deepseek.messages"
     }
 }
 

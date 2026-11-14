@@ -13,10 +13,13 @@ class ChatWireClient(
         protocol: ChatProtocol,
         config: ProviderRequestConfig,
         request: ChatCompletionRequest,
-    ): Flow<ChatStreamEvent> = when (protocol) {
-        ChatProtocol.ChatCompletions -> chat.stream(endpoint, config, request)
-        ChatProtocol.Responses -> responses.stream(endpoint, config, request)
-        ChatProtocol.AnthropicMessages -> anthropic.stream(endpoint, config, request)
+    ): Flow<ChatStreamEvent> {
+        val target = if (protocol == ChatProtocol.AnthropicMessages) endpoint.anthropicEndpoint() else endpoint
+        return when (protocol) {
+            ChatProtocol.ChatCompletions -> chat.stream(target, config, request)
+            ChatProtocol.Responses -> responses.stream(target, config, request)
+            ChatProtocol.AnthropicMessages -> anthropic.stream(target, config, request)
+        }
     }
 
     suspend fun complete(
@@ -24,11 +27,21 @@ class ChatWireClient(
         protocol: ChatProtocol,
         config: ProviderRequestConfig,
         request: ChatCompletionRequest,
-    ): ChatReply = when (protocol) {
-        ChatProtocol.ChatCompletions -> chat.complete(endpoint, config, request).toReply()
-        ChatProtocol.Responses -> responses.complete(endpoint, config, request)
-        ChatProtocol.AnthropicMessages -> anthropic.complete(endpoint, config, request)
+    ): ChatReply {
+        val target = if (protocol == ChatProtocol.AnthropicMessages) endpoint.anthropicEndpoint() else endpoint
+        return when (protocol) {
+            ChatProtocol.ChatCompletions -> chat.complete(target, config, request).toReply()
+            ChatProtocol.Responses -> responses.complete(target, config, request)
+            ChatProtocol.AnthropicMessages -> anthropic.complete(target, config, request)
+        }
     }
+}
+
+private fun ModelEndpoint.anthropicEndpoint(): ModelEndpoint {
+    val host = runCatching { java.net.URI(rootUrl).host }.getOrNull().orEmpty().lowercase()
+    if (host != "deepseek.com" && !host.endsWith(".deepseek.com")) return this
+    if (rootUrl.endsWith("/anthropic/v1")) return this
+    return copy(baseUrl = "https://api.deepseek.com/anthropic/v1")
 }
 
 private fun ChatCompletionResponse.toReply(): ChatReply {

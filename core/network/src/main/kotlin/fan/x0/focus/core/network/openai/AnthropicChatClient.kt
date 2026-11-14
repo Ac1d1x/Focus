@@ -39,6 +39,7 @@ class AnthropicChatClient(
         val response = try {
             http.post(endpoint.messagesUrl) {
                 applyProvider(config, ChatProtocol.AnthropicMessages)
+                if (request.hasFiles()) header("anthropic-beta", "files-api-2025-04-14")
                 header(HttpHeaders.Accept, "application/json")
                 contentType(ContentType.Application.Json)
                 setBody(payload(request, stream = false))
@@ -68,6 +69,7 @@ class AnthropicChatClient(
             http.post(endpoint.messagesUrl) {
                 allowLongStream()
                 applyProvider(config, ChatProtocol.AnthropicMessages)
+                if (request.hasFiles()) header("anthropic-beta", "files-api-2025-04-14")
                 header(HttpHeaders.Accept, "text/event-stream")
                 contentType(ContentType.Application.Json)
                 setBody(payload(request, stream = true))
@@ -92,7 +94,15 @@ class AnthropicChatClient(
             reply.toolCalls.forEachIndexed { index, call ->
                 emit(ChatStreamEvent.ToolDelta(index, call.id, call.name, call.arguments))
             }
-            emit(ChatStreamEvent.Finished(if (reply.toolCalls.isEmpty()) "stop" else "tool_use"))
+            reply.serverToolCalls?.let { emit(ChatStreamEvent.ServerToolCalls(it)) }
+            reply.annotations?.let { emit(ChatStreamEvent.Annotations(it)) }
+            reply.title?.takeIf { it.isNotBlank() }?.let { emit(ChatStreamEvent.Title(it)) }
+            if (reply.refusal != null) {
+                emit(ChatStreamEvent.Refused(reply.refusal))
+                emit(ChatStreamEvent.Finished("refusal"))
+            } else {
+                emit(ChatStreamEvent.Finished(if (reply.toolCalls.isEmpty()) "stop" else "tool_use"))
+            }
             return@flow
         }
         val decoder = AnthropicStreamDecoder()
@@ -113,12 +123,36 @@ class AnthropicChatClient(
         root.wireObject("error")?.let { error ->
             throw ModelProtocolException(error.wireString("message") ?: "request failed")
         }
-        val text = buildString {
-            root.wireArray("content")?.forEach { element ->
-                val block = element as? JsonObject ?: return@forEach
-                if (block.wireString("type") == "text") {
-                    block.wireText("text")?.let { append(it) }
+        val text = StringBuilder()
+        val annotations = mutableListOf<JsonObject>()
+        val serverBlocks = mutableListOf<JsonObject>()
+        var textCodePoints = 0
+        root.wireArray("content")?.forEach { element ->
+            val block = element as? JsonObject ?: return@forEach
+            when (block.wireString("type")) {
+                "text" -> {
+                    val value = block.wireText("text").orEmpty()
+                    if (value.isNotEmpty()) {
+                        textCodePoints += value.codePointCount(0, value.length)
+                        text.append(value)
+                    }
+                    block.wireArray("citations")?.forEach { item ->
+                        val citation = item as? JsonObject ?: return@forEach
+                        val url = citation.wireString("url") ?: return@forEach
+                        annotations += buildJsonObject {
+                            put("type", "url_citation")
+                            putJsonObject("url_citation") {
+                                put("url", url)
+                                put("title", citation.wireString("title").orEmpty())
+                                put("end_index", textCodePoints)
+                            }
+                        }
+                    }
                 }
+                "server_tool_use",
+                "web_search_tool_result",
+                "web_fetch_tool_result",
+                -> serverBlocks += block
             }
         }
         val calls = buildList {
@@ -135,7 +169,20 @@ class AnthropicChatClient(
                 )
             }
         }
-        return ChatReply(text = text, model = root.wireString("model"), toolCalls = calls)
+        val refusal = if (root.wireString("stop_reason") == "refusal") {
+            root.wireObject("stop_details")?.wireString("explanation").orEmpty()
+        } else {
+            null
+        }
+        return ChatReply(
+            text = text.toString(),
+            model = root.wireString("model"),
+            toolCalls = calls,
+            serverToolCalls = JsonArray(serverBlocks).takeIf { it.isNotEmpty() },
+            annotations = JsonArray(annotations).takeIf { it.isNotEmpty() },
+            title = root.wireString("title"),
+            refusal = refusal,
+        )
     }
 
     private fun payload(request: ChatCompletionRequest, stream: Boolean): String = buildJsonObject {
@@ -151,12 +198,20 @@ class AnthropicChatClient(
         put("messages", buildMessages(request.messages))
         request.tools?.takeIf { it.isNotEmpty() }?.let { tools ->
             putJsonArray("tools") {
-                tools.mapNotNull { it.function }.forEach { function ->
+                tools.forEach { tool ->
+                    val function = tool.function
                     add(
-                        buildJsonObject {
-                            put("name", function.name)
-                            put("description", function.description)
-                            put("input_schema", function.parameters)
+                        if (function == null) {
+                            buildJsonObject {
+                                put("type", tool.type)
+                                put("name", tool.type)
+                            }
+                        } else {
+                            buildJsonObject {
+                                put("name", function.name)
+                                put("description", function.description)
+                                put("input_schema", function.parameters)
+                            }
                         },
                     )
                 }
@@ -166,6 +221,12 @@ class AnthropicChatClient(
             putJsonObject("tool_choice") { put("type", choice) }
         }
         request.temperature?.let { put("temperature", it) }
+        request.thinking?.let { thinking ->
+            putJsonObject("thinking") { put("type", thinking.type) }
+        }
+        request.title?.let { title ->
+            putJsonObject("title") { put("enabled", title.enabled) }
+        }
     }.toString()
 
     private fun buildMessages(messages: List<ChatMessageDto>): JsonArray {
@@ -177,6 +238,9 @@ class AnthropicChatClient(
                 "assistant" -> {
                     role = "assistant"
                     blocks = buildList {
+                        message.protocolBlocks?.forEach { element ->
+                            (element as? JsonObject)?.let { add(it) }
+                        }
                         message.textContent().takeIf { it.isNotBlank() }?.let {
                             add(textBlock(it))
                         }
@@ -207,6 +271,10 @@ class AnthropicChatClient(
                         },
                     )
                 }
+                "latest_reminder" -> {
+                    role = "latest_reminder"
+                    blocks = listOf(textBlock(message.textContent()))
+                }
                 else -> {
                     role = "user"
                     blocks = userBlocks(message.content)
@@ -224,7 +292,11 @@ class AnthropicChatClient(
             merged.map { (role, blocks) ->
                 buildJsonObject {
                     put("role", role)
-                    put("content", JsonArray(blocks))
+                    if (role == "latest_reminder") {
+                        put("content", blocks.firstOrNull()?.wireText("text").orEmpty())
+                    } else {
+                        put("content", JsonArray(blocks))
+                    }
                 }
             },
         )
@@ -236,6 +308,15 @@ class AnthropicChatClient(
             when (part.type) {
                 "text" -> part.text?.takeIf { it.isNotBlank() }?.let(::textBlock)
                 "image_url" -> part.imageUrl?.url?.let(::imageBlock)
+                "file" -> part.fileId?.let { id ->
+                    buildJsonObject {
+                        put("type", "document")
+                        putJsonObject("source") {
+                            put("type", "file")
+                            put("file_id", id)
+                        }
+                    }
+                }
                 else -> null
             }
         }
@@ -263,15 +344,23 @@ class AnthropicChatClient(
         }
     }
 
+    private fun ChatCompletionRequest.hasFiles(): Boolean = messages.any { message ->
+        (message.content as? MessageContent.Parts)?.parts?.any { it.type == "file" } == true
+    }
+
     companion object {
         private const val DEFAULT_MAX_TOKENS = 4096
         private val IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/gif", "image/webp")
     }
 }
 
-private class AnthropicStreamDecoder {
+internal class AnthropicStreamDecoder {
     private var inputTokens = 0
     private var cachedTokens = 0
+    private var textCodePoints = 0
+    private val serverCalls = mutableMapOf<String, ServerToolCall>()
+    private val serverBlocks = mutableListOf<JsonObject>()
+    private val annotations = mutableListOf<JsonObject>()
 
     fun decode(root: JsonObject): List<ChatStreamEvent> {
         val events = mutableListOf<ChatStreamEvent>()
@@ -285,8 +374,13 @@ private class AnthropicStreamDecoder {
                 val index = root.wireInt("index") ?: 0
                 val block = root.wireObject("content_block") ?: return events
                 when (block.wireString("type")) {
-                    "text" -> block.wireText("text")?.let {
-                        events += ChatStreamEvent.Text(it)
+                    "text" -> {
+                        val text = block.wireText("text").orEmpty()
+                        if (text.isNotEmpty()) {
+                            textCodePoints += text.codePointCount(0, text.length)
+                            events += ChatStreamEvent.Text(text)
+                        }
+                        collectCitations(block, events)
                     }
                     "thinking" -> block.wireText("thinking")?.let {
                         events += ChatStreamEvent.Reasoning(it)
@@ -301,6 +395,65 @@ private class AnthropicStreamDecoder {
                                 ?.toString(),
                         )
                     }
+                    "server_tool_use" -> {
+                        val call = ServerToolCall(
+                            id = block.wireString("id").orEmpty(),
+                            name = block.wireString("name").orEmpty(),
+                            kind = block.wireString("kind").orEmpty(),
+                            action = block.wireObject("input"),
+                            status = "running",
+                        )
+                        serverCalls[call.id] = call
+                        serverBlocks += block
+                        events += ChatStreamEvent.ServerToolStarted(index, call)
+                    }
+                    "web_search_tool_result" -> {
+                        val id = block.wireString("tool_use_id").orEmpty()
+                        val content = block.wireArray("content")
+                        val sources = content.orEmpty()
+                            .mapNotNull { (it as? JsonObject)?.toServerToolSource() }
+                        val error = content.orEmpty()
+                            .firstOrNull {
+                                (it as? JsonObject)?.wireString("type") == "web_search_tool_result_error"
+                            }
+                            ?.let { (it as? JsonObject)?.wireString("error_code") }
+                        val started = serverCalls[id]
+                        val call = (started ?: ServerToolCall(id = id, name = "deepseek_web_search")).copy(
+                            status = if (error == null) "completed" else "failed",
+                            sources = sources,
+                            error = error,
+                        )
+                        serverCalls[id] = call
+                        serverBlocks += block
+                        events += ChatStreamEvent.ServerToolFinished(index, call)
+                        events += ChatStreamEvent.ServerToolCalls(JsonArray(serverBlocks.toList()))
+                    }
+                    "web_fetch_tool_result" -> {
+                        val id = block.wireString("tool_use_id").orEmpty()
+                        val content = block.wireObject("content")
+                        val result = content?.takeIf { it.wireString("type") == "web_fetch_result" }
+                        val error = content
+                            ?.takeIf { it.wireString("type") == "web_fetch_tool_result_error" }
+                            ?.wireString("error_code")
+                        val page = result?.let {
+                            ServerToolPage(
+                                url = it.wireString("url").orEmpty(),
+                                title = it.wireObject("content")?.wireString("title"),
+                                publishedAt = it.wireString("published_at"),
+                            )
+                        }
+                        val started = serverCalls[id]
+                        val call = (started ?: ServerToolCall(id = id, name = "deepseek_read_url")).copy(
+                            status = if (error == null) "completed" else "failed",
+                            page = page,
+                            error = error,
+                            signature = block.wireString("signature"),
+                        )
+                        serverCalls[id] = call
+                        serverBlocks += block
+                        events += ChatStreamEvent.ServerToolFinished(index, call)
+                        events += ChatStreamEvent.ServerToolCalls(JsonArray(serverBlocks.toList()))
+                    }
                 }
             }
             "content_block_delta" -> {
@@ -308,6 +461,7 @@ private class AnthropicStreamDecoder {
                 val delta = root.wireObject("delta") ?: return events
                 when (delta.wireString("type")) {
                     "text_delta" -> delta.wireText("text")?.let {
+                        textCodePoints += it.codePointCount(0, it.length)
                         events += ChatStreamEvent.Text(it)
                     }
                     "thinking_delta" -> delta.wireText("thinking")?.let {
@@ -315,6 +469,19 @@ private class AnthropicStreamDecoder {
                     }
                     "input_json_delta" -> delta.wireText("partial_json")?.let {
                         events += ChatStreamEvent.ToolDelta(index, null, null, it)
+                    }
+                    "citations_delta" -> {
+                        val citation = delta.wireObject("citation") ?: return events
+                        val url = citation.wireString("url") ?: return events
+                        annotations += buildJsonObject {
+                            put("type", "url_citation")
+                            putJsonObject("url_citation") {
+                                put("url", url)
+                                put("title", citation.wireString("title").orEmpty())
+                                put("end_index", textCodePoints)
+                            }
+                        }
+                        events += ChatStreamEvent.Annotations(JsonArray(annotations.toList()))
                     }
                 }
             }
@@ -329,7 +496,14 @@ private class AnthropicStreamDecoder {
                         cached = cachedTokens,
                     )
                 }
-                val reason = root.wireObject("delta")?.wireString("stop_reason")
+                val delta = root.wireObject("delta")
+                delta?.wireString("title")?.let { events += ChatStreamEvent.Title(it) }
+                val reason = delta?.wireString("stop_reason")
+                if (reason == "refusal") {
+                    val explanation = delta.wireObject("stop_details")?.wireString("explanation")
+                        ?: root.wireObject("stop_details")?.wireString("explanation")
+                    events += ChatStreamEvent.Refused(explanation)
+                }
                 events += ChatStreamEvent.Finished(reason)
             }
             "error" -> {
@@ -340,5 +514,22 @@ private class AnthropicStreamDecoder {
             }
         }
         return events
+    }
+
+    private fun collectCitations(block: JsonObject, events: MutableList<ChatStreamEvent>) {
+        val citations = block.wireArray("citations")?.takeIf { it.isNotEmpty() } ?: return
+        citations.forEach { item ->
+            val citation = item as? JsonObject ?: return@forEach
+            val url = citation.wireString("url") ?: return@forEach
+            annotations += buildJsonObject {
+                put("type", "url_citation")
+                putJsonObject("url_citation") {
+                    put("url", url)
+                    put("title", citation.wireString("title").orEmpty())
+                    put("end_index", textCodePoints)
+                }
+            }
+        }
+        events += ChatStreamEvent.Annotations(JsonArray(annotations.toList()))
     }
 }

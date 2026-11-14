@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.R
@@ -73,6 +74,7 @@ private sealed interface MdBlock {
         val alignments: List<TextAlign>,
         val rows: List<List<String>>,
     ) : MdBlock
+    data class Formula(val latex: String) : MdBlock
     data object Divider : MdBlock
 }
 
@@ -250,6 +252,11 @@ private fun BlockContent(
             )
         }
         is MdBlock.Code -> CodeBlock(block = block, fade = fade)
+        is MdBlock.Formula -> MathView(
+            latex = block.latex,
+            color = color,
+            fontSize = bodyStyle.fontSize,
+        )
         is MdBlock.Table -> TableBlock(block = block, color = color, linkColor = linkColor, fade = fade)
         MdBlock.Divider -> HorizontalDivider(
             modifier = Modifier.padding(vertical = 2.dp),
@@ -503,6 +510,28 @@ private fun parseBlocks(text: String, preserveLineBreaks: Boolean): List<MdBlock
                 if (index < lines.size) index++
                 blocks += MdBlock.Code(language, code.toString().trimEnd())
             }
+            trimmed.startsWith("$$") || trimmed.startsWith("\\[") -> {
+                val open = if (trimmed.startsWith("$$")) "$$" else "\\["
+                val close = if (open == "$$") "$$" else "\\]"
+                val body = StringBuilder(trimmed.removePrefix(open))
+                index++
+                while (!body.contains(close) && index < lines.size) {
+                    body.append('\n').append(lines[index].trim())
+                    index++
+                }
+                val latex = body.toString().substringBefore(close).trim()
+                if (latex.isNotEmpty()) blocks += MdBlock.Formula(latex)
+            }
+            trimmed.startsWith("\\begin{") -> {
+                val env = trimmed.removePrefix("\\begin{").substringBefore("}")
+                val body = StringBuilder(trimmed)
+                index++
+                while (!body.contains("\\end{$env}") && index < lines.size) {
+                    body.append('\n').append(lines[index].trimEnd())
+                    index++
+                }
+                blocks += MdBlock.Formula(body.toString())
+            }
             dividerRegex.matches(trimmed) -> {
                 blocks += MdBlock.Divider
                 index++
@@ -573,6 +602,9 @@ private fun isBlockStart(lines: List<String>, index: Int): Boolean {
     val trimmed = lines[index].trim()
     if (trimmed.isEmpty()) return true
     return trimmed.startsWith("```") ||
+        trimmed.startsWith("$$") ||
+        trimmed.startsWith("\\[") ||
+        trimmed.startsWith("\\begin{") ||
         dividerRegex.matches(trimmed) ||
         headingRegex.matches(trimmed) ||
         trimmed.startsWith(">") ||
@@ -634,8 +666,9 @@ private fun splitTableRow(line: String): List<String> {
 
 private fun inline(text: String, color: Color, linkColor: Color): MarkdownInline {
     val codeSpans = mutableListOf<IntRange>()
-    val annotated = buildAnnotatedString { appendInline(text, color, linkColor, codeSpans) }
-    return MarkdownInline(annotated, codeSpans)
+    val formulas = mutableListOf<String>()
+    val annotated = buildAnnotatedString { appendInline(text, color, linkColor, codeSpans, formulas) }
+    return MarkdownInline(annotated, codeSpans, formulas)
 }
 
 private fun AnnotatedString.Builder.appendInline(
@@ -643,10 +676,37 @@ private fun AnnotatedString.Builder.appendInline(
     color: Color,
     linkColor: Color,
     codeSpans: MutableList<IntRange>,
+    formulas: MutableList<String>,
 ) {
     var index = 0
     while (index < text.length) {
         when {
+            text.startsWith("\\(", index) -> {
+                val end = text.indexOf("\\)", index + 2)
+                if (end > index) {
+                    appendFormula(text.substring(index + 2, end), formulas)
+                    index = end + 2
+                } else {
+                    append(text[index])
+                    index++
+                }
+            }
+            text[index] == '$' -> {
+                val end = text.indexOf('$', index + 1)
+                val body = if (end > index + 1) text.substring(index + 1, end) else ""
+                val valid = body.isNotEmpty() &&
+                    !body.first().isWhitespace() &&
+                    !body.last().isWhitespace() &&
+                    '\n' !in body &&
+                    !(end + 1 < text.length && text[end + 1].isDigit())
+                if (valid) {
+                    appendFormula(body, formulas)
+                    index = end + 1
+                } else {
+                    append(text[index])
+                    index++
+                }
+            }
             text[index] == '\\' && index + 1 < text.length -> {
                 append(text[index + 1])
                 index += 2
@@ -676,7 +736,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(marker, index + 3)
                 if (end > index) {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
-                        appendInline(text.substring(index + 3, end), color, linkColor, codeSpans)
+                        appendInline(text.substring(index + 3, end), color, linkColor, codeSpans, formulas)
                     }
                     index = end + 3
                 } else {
@@ -689,7 +749,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(marker, index + 2)
                 if (end > index) {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans)
+                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas)
                     }
                     index = end + 2
                 } else {
@@ -701,7 +761,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf("~~", index + 2)
                 if (end > index) {
                     withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
-                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans)
+                        appendInline(text.substring(index + 2, end), color, linkColor, codeSpans, formulas)
                     }
                     index = end + 2
                 } else {
@@ -720,7 +780,7 @@ private fun AnnotatedString.Builder.appendInline(
                 val end = text.indexOf(text[index], index + 1)
                 if (end > index) {
                     withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                        appendInline(text.substring(index + 1, end), color, linkColor, codeSpans)
+                        appendInline(text.substring(index + 1, end), color, linkColor, codeSpans, formulas)
                     }
                     index = end + 1
                 } else {
@@ -740,6 +800,7 @@ private fun AnnotatedString.Builder.appendInline(
                         color = color,
                         linkColor = linkColor,
                         codeSpans = codeSpans,
+                        formulas = formulas,
                     )
                     index = urlEnd + 1
                 } else {
@@ -757,6 +818,7 @@ private fun AnnotatedString.Builder.appendInline(
                         color = color,
                         linkColor = linkColor,
                         codeSpans = codeSpans,
+                        formulas = formulas,
                     )
                     index = end + 1
                 } else {
@@ -778,6 +840,7 @@ private fun AnnotatedString.Builder.appendLink(
     color: Color,
     linkColor: Color,
     codeSpans: MutableList<IntRange>,
+    formulas: MutableList<String>,
 ) {
     withLink(
         LinkAnnotation.Url(
@@ -787,8 +850,13 @@ private fun AnnotatedString.Builder.appendLink(
             ),
         ),
     ) {
-        appendInline(label, color, linkColor, codeSpans)
+        appendInline(label, color, linkColor, codeSpans, formulas)
     }
+}
+
+private fun AnnotatedString.Builder.appendFormula(latex: String, formulas: MutableList<String>) {
+    formulas += latex
+    appendInlineContent("math${formulas.size - 1}", latex)
 }
 
 private fun AnnotatedString.Builder.appendCode(code: String, codeSpans: MutableList<IntRange>) {

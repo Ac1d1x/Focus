@@ -1,5 +1,9 @@
 package fan.x0.focus.core.designsystem.components
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -13,15 +17,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.sp
 
 internal data class MarkdownInline(
     val text: AnnotatedString,
     val codeSpans: List<IntRange> = emptyList(),
+    val formulas: List<String> = emptyList(),
 )
 
 @Composable
@@ -33,12 +43,29 @@ internal fun MarkdownInlineText(
     textAlign: TextAlign? = null,
 ) {
     var codeRects by remember { mutableStateOf<List<Rect>>(emptyList()) }
+    val density = LocalDensity.current
+    val inline = HashMap<String, InlineTextContent>()
+    content.formulas.forEachIndexed { index, latex ->
+        val fontSize = if (style.fontSize.isSpecified) style.fontSize else 16.sp
+        val box = rememberMathBox(latex, false, color, fontSize)
+        if (box != null && box.w > 0f) {
+            val placeholder = Placeholder(
+                width = with(density) { box.w.toSp() },
+                height = with(density) { box.h.toSp() },
+                placeholderVerticalAlign = PlaceholderVerticalAlign.Center,
+            )
+            inline["math$index"] = InlineTextContent(placeholder) {
+                Canvas(Modifier.fillMaxSize()) { box.paint(this, 0f, box.asc) }
+            }
+        }
+    }
     val background = color.copy(alpha = InlineCodeBackgroundAlpha)
     Text(
         text = content.text,
         style = style,
         color = color,
         textAlign = textAlign,
+        inlineContent = inline,
         modifier = modifier.drawBehind {
             if (codeRects.isEmpty()) return@drawBehind
             val corner = CornerRadius(InlineCodeCornerRadius.toPx())

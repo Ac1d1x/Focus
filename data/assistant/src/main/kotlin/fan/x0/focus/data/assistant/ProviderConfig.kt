@@ -4,6 +4,7 @@ import fan.x0.focus.core.network.ProviderAuth
 import fan.x0.focus.core.network.ProviderHeader
 import fan.x0.focus.core.network.ProviderRequestConfig
 import fan.x0.focus.core.network.openai.ChatProtocol
+import java.net.URI
 import kotlinx.serialization.Serializable
 
 const val LEGACY_PROVIDER_ID = "default"
@@ -45,6 +46,29 @@ fun ProviderConfig.requestConfig(apiKey: String): ProviderRequestConfig = Provid
     userAgent = userAgent,
     headers = headers,
 )
+
+val ProviderConfig.isDeepSeek: Boolean
+    get() {
+        if (id == "deepseek") return true
+        val host = runCatching { URI(baseUrl.trim()).host }.getOrNull().orEmpty().lowercase()
+        return host == "deepseek.com" || host.endsWith(".deepseek.com")
+    }
+
+fun ProviderConfig.deepSeekToolUrl(tool: String): String {
+    val raw = baseUrl.trim().trimEnd('/')
+    if (raw.isBlank()) return ""
+    val host = runCatching { URI(raw).host }.getOrNull().orEmpty().lowercase()
+    val name = tool.trimStart('/')
+    if (host == "deepseek.com" || host.endsWith(".deepseek.com")) {
+        return "https://api.deepseek.com/v1/tools/$name"
+    }
+    val root = when {
+        raw.endsWith("/anthropic/v1") -> raw.removeSuffix("/anthropic/v1") + "/v1"
+        raw.endsWith("/v1") -> raw
+        else -> "$raw/v1"
+    }
+    return "$root/tools/$name"
+}
 
 object ProviderCatalog {
     val presets = listOf(

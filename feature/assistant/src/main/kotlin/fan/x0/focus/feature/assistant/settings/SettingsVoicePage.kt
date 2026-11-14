@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,14 +27,19 @@ import fan.x0.focus.core.designsystem.kit.ExField
 import fan.x0.focus.core.designsystem.kit.ExGroup
 import fan.x0.focus.core.designsystem.kit.ExPage
 import fan.x0.focus.core.designsystem.kit.ExRow
+import fan.x0.focus.core.designsystem.kit.ExSwitchRow
 import fan.x0.focus.core.designsystem.kit.Ic
 import fan.x0.focus.core.designsystem.kit.group
 import fan.x0.focus.data.voice.LocalModelState
+import fan.x0.focus.data.voice.SpeechSynthesisController
+import fan.x0.focus.data.voice.TtsEngine
+import fan.x0.focus.data.voice.TtsVoice
 import fan.x0.focus.data.voice.VoiceEngine
 import fan.x0.focus.feature.assistant.R
 import fan.x0.focus.feature.assistant.VoiceSettingsAction
 import fan.x0.focus.feature.assistant.VoiceSettingsUiState
 import fan.x0.focus.feature.assistant.VoiceSettingsViewModel
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -62,6 +68,18 @@ internal fun SettingsVoicePage(
     val cloud = stringResource(R.string.settings_voice_engine_cloud)
     val localTitle = stringResource(R.string.settings_voice_local)
     val cloudTitle = stringResource(R.string.settings_voice_cloud)
+    val ttsTitle = stringResource(R.string.settings_voice_tts)
+    val systemTts = stringResource(R.string.settings_voice_tts_system)
+    val deepSeekTts = stringResource(R.string.settings_voice_tts_deepseek)
+    val stella = stringResource(R.string.settings_voice_tts_voice_stella)
+    val tide = stringResource(R.string.settings_voice_tts_voice_tide)
+    val tts: SpeechSynthesisController = koinInject()
+    val sample = stringResource(R.string.settings_voice_tts_sample)
+    val cloudProviderId = state.config.cloudProviderId.ifBlank { state.activeProviderId }
+    val deepSeekAsr = state.providers.firstOrNull { it.id == cloudProviderId }?.deepSeek == true
+    DisposableEffect(tts) {
+        onDispose { tts.stop() }
+    }
     ExPage(
         title = stringResource(R.string.settings_voice_title),
         subtitle = stringResource(R.string.settings_voice_body),
@@ -107,30 +125,99 @@ internal fun SettingsVoicePage(
                     ExChoiceRow(
                         title = stringResource(R.string.settings_voice_cloud_provider),
                         options = providers.map { it.id },
-                        selected = state.config.cloudProviderId,
+                        selected = cloudProviderId,
                         onSelect = { onAction(VoiceSettingsAction.SetCloudProvider(it)) },
                         icon = Ic.Cloud,
                     ) { labels[it].orEmpty() }
                 }
-                ExRow(
-                    title = stringResource(R.string.settings_voice_cloud_model),
-                    icon = Ic.Wave,
-                    below = {
-                        ExField(
-                            value = state.config.cloudModel,
-                            onChange = { onAction(VoiceSettingsAction.SetCloudModel(it)) },
-                            label = stringResource(R.string.settings_voice_cloud_model),
-                            mono = true,
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_voice_cloud_note),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    },
-                )
+                if (deepSeekAsr) {
+                    ExRow(
+                        title = stringResource(R.string.settings_voice_cloud_deepseek),
+                        subtitle = stringResource(R.string.settings_voice_cloud_deepseek_note),
+                        icon = Ic.Cloud,
+                    )
+                } else {
+                    ExRow(
+                        title = stringResource(R.string.settings_voice_cloud_model),
+                        icon = Ic.Wave,
+                        below = {
+                            ExField(
+                                value = state.config.cloudModel,
+                                onChange = { onAction(VoiceSettingsAction.SetCloudModel(it)) },
+                                label = stringResource(R.string.settings_voice_cloud_model),
+                                mono = true,
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_voice_cloud_note),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        },
+                    )
+                }
             }
+        }
+        group(ttsTitle) {
+            ExChoiceRow(
+                title = stringResource(R.string.settings_voice_tts_engine),
+                options = TtsEngine.entries,
+                selected = state.tts.engine,
+                onSelect = { onAction(VoiceSettingsAction.SetTtsEngine(it)) },
+                icon = Ic.Volume,
+            ) {
+                when (it) {
+                    TtsEngine.System -> systemTts
+                    TtsEngine.DeepSeek -> deepSeekTts
+                }
+            }
+            if (state.tts.engine == TtsEngine.DeepSeek) {
+                val deepSeekProviders = state.providers.filter { it.deepSeek }
+                if (deepSeekProviders.isEmpty()) {
+                    ExRow(
+                        title = stringResource(R.string.settings_voice_tts_no_provider),
+                        icon = Ic.Volume,
+                    )
+                } else {
+                    val ids = deepSeekProviders.map { it.id }
+                    val labels = deepSeekProviders.associate { it.id to it.name }
+                    val selected = state.tts.providerId.takeIf { it in ids } ?: ids.first()
+                    ExChoiceRow(
+                        title = stringResource(R.string.settings_voice_tts_provider),
+                        options = ids,
+                        selected = selected,
+                        onSelect = { onAction(VoiceSettingsAction.SetTtsProvider(it)) },
+                        icon = Ic.Cloud,
+                    ) { labels[it].orEmpty() }
+                    ExChoiceRow(
+                        title = stringResource(R.string.settings_voice_tts_voice),
+                        options = TtsVoice.entries,
+                        selected = state.tts.voice,
+                        onSelect = { onAction(VoiceSettingsAction.SetTtsVoice(it)) },
+                        icon = Ic.Volume,
+                    ) {
+                        when (it) {
+                            TtsVoice.Stella -> stella
+                            TtsVoice.Tide -> tide
+                        }
+                    }
+                    ExRow(
+                        title = stringResource(R.string.settings_voice_tts_try),
+                        icon = Ic.Play,
+                        onClick = { tts.speak("tts-test", sample) },
+                    )
+                }
+            }
+            ExSwitchRow(
+                title = stringResource(R.string.settings_voice_tts_auto),
+                checked = state.tts.autoRead,
+                onChange = { onAction(VoiceSettingsAction.SetTtsAutoRead(it)) },
+                icon = Ic.Volume,
+            )
+            ExRow(
+                title = stringResource(R.string.settings_voice_tts_note),
+                icon = Ic.Info,
+            )
         }
     }
 }

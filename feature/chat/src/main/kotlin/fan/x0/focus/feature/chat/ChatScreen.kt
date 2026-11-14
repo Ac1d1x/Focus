@@ -101,6 +101,7 @@ import fan.x0.focus.core.designsystem.components.FocusJumpToLatest
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlock
 import fan.x0.focus.core.designsystem.components.FocusMarkdown
+import fan.x0.focus.core.designsystem.components.FocusReadAloudBar
 import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.designsystem.components.FocusTimelineStep
@@ -114,7 +115,10 @@ import fan.x0.focus.core.designsystem.components.pressScale
 import fan.x0.focus.core.designsystem.components.shimmer
 import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
+import fan.x0.focus.core.designsystem.error.message
+import fan.x0.focus.core.designsystem.kit.plainText
 import fan.x0.focus.data.assistant.AssistantReplyStyle
+import fan.x0.focus.data.voice.rememberReadAloud
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
@@ -216,6 +220,7 @@ fun ChatScreen(
     val signal = LocalFocusSignal.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val readAloud = rememberReadAloud()
     val copied = stringResource(R.string.chat_copied)
     val copyText: (String) -> Unit = { text ->
         onAction(ChatAction.CloseMessageMenu)
@@ -223,6 +228,16 @@ fun ChatScreen(
             clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(null, text)))
             signal.show(copied, tone = FocusSignalTone.Success)
         }
+    }
+    val speakText: (ChatMenuUi) -> Unit = { menu ->
+        onAction(ChatAction.CloseMessageMenu)
+        readAloud.speak(menu.key, plainText(menu.text))
+    }
+    val readAloudError = readAloud.error?.message()
+    LaunchedEffect(readAloud.error, readAloudError) {
+        val text = readAloudError ?: return@LaunchedEffect
+        signal.show(text, tone = FocusSignalTone.Error, durationMs = 4_200L)
+        readAloud.clearError()
     }
     BackHandler(enabled = state.selectionKey != null) {
         onAction(ChatAction.ClearSelection)
@@ -239,12 +254,25 @@ fun ChatScreen(
         onAction(ChatAction.ConsumeMessage)
     }
     var celebrate by remember { mutableStateOf(false) }
-    var wasSending by remember { mutableStateOf(false) }
-    LaunchedEffect(state.sending) {
+    var wasSending by remember(state.conversationId) { mutableStateOf(false) }
+    LaunchedEffect(state.sending, state.conversationId) {
         if (wasSending && !state.sending) {
             celebrate = true
+            if (readAloud.autoRead) {
+                delay(120)
+                val answer = state.history.lastOrNull() as? ChatEntry.Assistant
+                val text = answer?.text.orEmpty()
+                if (text.isNotBlank()) {
+                    readAloud.speak(
+                        "auto-${state.conversationId}-${state.turn}",
+                        plainText(text),
+                    )
+                }
+            }
             delay(1600)
             celebrate = false
+        } else if (state.sending) {
+            readAloud.stop()
         }
         wasSending = state.sending
     }
@@ -388,6 +416,7 @@ fun ChatScreen(
                                     state = conversation,
                                     onAction = onAction,
                                     onCopy = copyText,
+                                    onSpeak = speakText,
                                     bottomPadding = composerPadding,
                                     working = working,
                                     onMascotDock = { mascotBottom = it },
@@ -435,6 +464,28 @@ fun ChatScreen(
                         fadeOut(motion.effectsFast()),
                 ) {
                     SelectionModeBar(onDone = { onAction(ChatAction.ClearSelection) })
+                }
+                AnimatedVisibility(
+                    visible = readAloud.playingKey != null && !state.slash.visible &&
+                        !state.mention.visible && state.selectionKey == null,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 12.dp, end = 12.dp, bottom = composerOffset),
+                    enter = slideInVertically(motion.spatialDefault()) { it } +
+                        fadeIn(motion.effectsDefault()),
+                    exit = slideOutVertically(motion.spatialDefault()) { it } +
+                        fadeOut(motion.effectsFast()),
+                ) {
+                    FocusReadAloudBar(
+                        text = stringResource(
+                            if (readAloud.loading) {
+                                R.string.chat_speak_preparing
+                            } else {
+                                R.string.chat_speak_playing
+                            },
+                        ),
+                        onStop = readAloud.stop,
+                    )
                 }
                 Composer(
                     state = state,
@@ -615,6 +666,7 @@ private fun ChatThread(
     state: ChatUiState,
     onAction: (ChatAction) -> Unit,
     onCopy: (String) -> Unit,
+    onSpeak: (ChatMenuUi) -> Unit,
     bottomPadding: Dp = 0.dp,
     working: Boolean = false,
     onMascotDock: (Offset?) -> Unit = {},
@@ -734,6 +786,7 @@ private fun ChatThread(
                                     state = state,
                                     onAction = onAction,
                                     onCopy = onCopy,
+                                    onSpeak = onSpeak,
                                 )
                             } else if (entry.reactions.isNotEmpty()) {
                                 Row(
@@ -756,6 +809,7 @@ private fun ChatThread(
                                 state = state,
                                 onAction = onAction,
                                 onCopy = onCopy,
+                                onSpeak = onSpeak,
                                 streaming = entry.live,
                                 showAssistantHeader = state.replyStyle == AssistantReplyStyle.Flat &&
                                     (index == 0 || entries[index - 1] !is ChatEntry.Assistant),

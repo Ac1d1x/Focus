@@ -120,6 +120,7 @@
     <string name="chat_mode_section">模式</string>
     <string name="chat_menu_reply">回复</string>
     <string name="chat_menu_copy">复制</string>
+    <string name="chat_menu_speak">朗读</string>
     <string name="chat_menu_edit">编辑</string>
     <string name="chat_menu_delete">删除</string>
     <string name="chat_menu_select">选择文本</string>
@@ -137,6 +138,8 @@
     <string name="chat_delete_confirm">删除</string>
     <string name="chat_delete_cancel">取消</string>
     <string name="chat_copied">已复制</string>
+    <string name="chat_speak_playing">正在朗读</string>
+    <string name="chat_speak_preparing">正在准备朗读</string>
     <string name="chat_deleted">消息已删除</string>
     <string name="chat_edit_saved">消息已更新</string>
     <string name="chat_selection_mode">选择文本后复制。</string>

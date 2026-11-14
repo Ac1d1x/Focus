@@ -5,6 +5,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.Reply
 import androidx.compose.material.icons.automirrored.rounded.Send
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.AutoStories
@@ -102,6 +103,7 @@ object FocusIcons {
     val Archive: ImageVector = Icons.Rounded.Archive
     val Unarchive: ImageVector = Icons.Rounded.Unarchive
     val Play: ImageVector = Icons.Rounded.PlayArrow
+    val Speak: ImageVector = Icons.AutoMirrored.Rounded.VolumeUp
     val Copy: ImageVector = Icons.Rounded.ContentCopy
     val Notification: ImageVector = Icons.Rounded.Notifications
     val Language: ImageVector = Icons.Rounded.Language

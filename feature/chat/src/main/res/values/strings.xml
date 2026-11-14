@@ -121,6 +121,7 @@
     <string name="chat_mode_section">Mode</string>
     <string name="chat_menu_reply">Reply</string>
     <string name="chat_menu_copy">Copy</string>
+    <string name="chat_menu_speak">Read aloud</string>
     <string name="chat_menu_edit">Edit</string>
     <string name="chat_menu_delete">Delete</string>
     <string name="chat_menu_select">Select text</string>
@@ -138,6 +139,8 @@
     <string name="chat_delete_confirm">Delete</string>
     <string name="chat_delete_cancel">Cancel</string>
     <string name="chat_copied">Copied</string>
+    <string name="chat_speak_playing">Reading aloud</string>
+    <string name="chat_speak_preparing">Preparing audio</string>
     <string name="chat_deleted">Message deleted</string>
     <string name="chat_edit_saved">Message updated</string>
     <string name="chat_selection_mode">Select text, then copy.</string>

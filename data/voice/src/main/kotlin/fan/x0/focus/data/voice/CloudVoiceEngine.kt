@@ -9,10 +9,13 @@ import fan.x0.focus.core.error.AppError
 import fan.x0.focus.core.error.AppErrorType
 import fan.x0.focus.core.error.NetworkException
 import fan.x0.focus.core.error.toAppError
+import fan.x0.focus.core.network.allowLongStream
 import fan.x0.focus.core.network.applyProvider
 import fan.x0.focus.core.network.openai.ChatProtocol
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.SecretStore
+import fan.x0.focus.data.assistant.deepSeekToolUrl
+import fan.x0.focus.data.assistant.isDeepSeek
 import fan.x0.focus.data.assistant.requestConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.forms.formData
@@ -51,10 +54,15 @@ internal class CloudVoiceEngine(
     private var config: VoiceConfig? = null
     @Volatile private var active = false
     private var lastLevelAt = 0L
+    private var maxBytes = MAX_BYTES
 
     override suspend fun start(config: VoiceConfig, onEvent: (EngineEvent) -> Unit) = mutex.withLock {
         this.config = config
         listener = onEvent
+        val assistantConfig = assistant.configOnce()
+        val provider = assistantConfig.providers.firstOrNull { it.id == config.cloudProviderId }
+            ?: assistantConfig.activeProvider
+        maxBytes = if (provider?.isDeepSeek == true) DEEPSEEK_MAX_BYTES else MAX_BYTES
         val audio = createRecord()
         if (audio == null) {
             onEvent(EngineEvent.Failure(error(R.string.voice_error_recording)))
@@ -118,7 +126,7 @@ internal class CloudVoiceEngine(
                 bytes[index * 2 + 1] = ((value shr 8) and 0xFF).toByte()
             }
             pcm.write(bytes)
-            if (pcm.size() >= MAX_BYTES) {
+            if (pcm.size() >= maxBytes) {
                 active = false
                 break
             }
@@ -144,11 +152,21 @@ internal class CloudVoiceEngine(
         }
         val model = config.cloudModel.ifBlank { VoiceSettingsStore.DEFAULT_CLOUD_MODEL }
         val wav = withContext(Dispatchers.IO) { wav(pcm) }
+        val url = if (provider.isDeepSeek) {
+            provider.deepSeekToolUrl("asr")
+        } else {
+            "${provider.baseUrl.trimEnd('/')}/audio/transcriptions"
+        }
+        if (url.isBlank()) {
+            throw VoiceFailure(error(R.string.voice_error_cloud_provider))
+        }
         val response = http.submitFormWithBinaryData(
-            url = "${provider.baseUrl.trimEnd('/')}/audio/transcriptions",
+            url = url,
             formData = formData {
-                append("model", model)
-                append("response_format", "json")
+                if (!provider.isDeepSeek) {
+                    append("model", model)
+                    append("response_format", "json")
+                }
                 append(
                     "file",
                     wav,
@@ -159,6 +177,7 @@ internal class CloudVoiceEngine(
                 )
             },
         ) {
+            allowLongStream()
             applyProvider(provider.requestConfig(apiKey), ChatProtocol.ChatCompletions)
         }
         val body = response.bodyAsText()
@@ -260,5 +279,6 @@ internal class CloudVoiceEngine(
         const val BUFFER_SIZE = 3200
         const val LEVEL_INTERVAL_MS = 100L
         const val MAX_BYTES = SAMPLE_RATE * 2 * 60 * 5
+        const val DEEPSEEK_MAX_BYTES = SAMPLE_RATE * 2 * 115
     }
 }

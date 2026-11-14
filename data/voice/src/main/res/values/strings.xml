@@ -10,4 +10,8 @@
     <string name="voice_error_local_load">Cannot load the local model</string>
     <string name="voice_error_cloud_provider">No provider for cloud transcription</string>
     <string name="voice_error_cloud_key">Cloud provider has no API key</string>
+    <string name="voice_error_tts_provider">No provider for read aloud</string>
+    <string name="voice_error_tts_key">Read aloud provider has no API key</string>
+    <string name="voice_error_tts_engine">Cannot start the speech engine</string>
+    <string name="voice_error_tts_audio">Cannot play the audio</string>
 </resources>

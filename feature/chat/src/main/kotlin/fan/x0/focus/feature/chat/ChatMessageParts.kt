@@ -50,6 +50,7 @@ internal fun ChatMessageBubble(
     state: ChatUiState,
     onAction: (ChatAction) -> Unit,
     onCopy: (String) -> Unit,
+    onSpeak: (ChatMenuUi) -> Unit,
     streaming: Boolean = false,
     showAssistantHeader: Boolean = false,
 ) {
@@ -107,7 +108,12 @@ internal fun ChatMessageBubble(
         menu = {
             val menu = state.menu
             if (menu?.key == key) {
-                MessageActionPopup(menu = menu, onAction = onAction, onCopy = onCopy)
+                MessageActionPopup(
+                    menu = menu,
+                    onAction = onAction,
+                    onCopy = onCopy,
+                    onSpeak = onSpeak,
+                )
             }
         },
     )

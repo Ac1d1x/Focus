@@ -24,6 +24,7 @@ internal fun MessageActionPopup(
     menu: ChatMenuUi,
     onAction: (ChatAction) -> Unit,
     onCopy: (String) -> Unit,
+    onSpeak: (ChatMenuUi) -> Unit,
 ) {
     val actions = listOf(
         FocusMenuAction(
@@ -36,6 +37,12 @@ internal fun MessageActionPopup(
             label = stringResource(R.string.chat_menu_copy),
             enabled = menu.text.isNotBlank(),
             onClick = { onCopy(menu.text) },
+        ),
+        FocusMenuAction(
+            icon = FocusIcons.Speak,
+            label = stringResource(R.string.chat_menu_speak),
+            enabled = !menu.fromUser && menu.text.isNotBlank(),
+            onClick = { onSpeak(menu) },
         ),
         FocusMenuAction(
             icon = FocusIcons.SelectAll,

@@ -6,8 +6,12 @@ import fan.x0.focus.core.mvi.UiAction
 import fan.x0.focus.core.mvi.UiEffect
 import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.data.assistant.AssistantSettings
+import fan.x0.focus.data.assistant.isDeepSeek
 import fan.x0.focus.data.voice.LocalModelState
 import fan.x0.focus.data.voice.LocalVoiceModelRepository
+import fan.x0.focus.data.voice.TtsConfig
+import fan.x0.focus.data.voice.TtsEngine
+import fan.x0.focus.data.voice.TtsVoice
 import fan.x0.focus.data.voice.VoiceConfig
 import fan.x0.focus.data.voice.VoiceEngine
 import fan.x0.focus.data.voice.VoiceInputController
@@ -18,11 +22,14 @@ import org.koin.core.annotation.KoinViewModel
 data class VoiceProviderOption(
     val id: String,
     val name: String,
+    val deepSeek: Boolean,
 )
 
 data class VoiceSettingsUiState(
     val loading: Boolean = true,
     val config: VoiceConfig = VoiceConfig(),
+    val tts: TtsConfig = TtsConfig(),
+    val activeProviderId: String = "",
     val providers: List<VoiceProviderOption> = emptyList(),
     val model: LocalModelState = LocalModelState.Missing,
 ) : UiState
@@ -31,6 +38,10 @@ sealed interface VoiceSettingsAction : UiAction {
     data class SetEngine(val engine: VoiceEngine) : VoiceSettingsAction
     data class SetCloudProvider(val providerId: String) : VoiceSettingsAction
     data class SetCloudModel(val model: String) : VoiceSettingsAction
+    data class SetTtsEngine(val engine: TtsEngine) : VoiceSettingsAction
+    data class SetTtsProvider(val providerId: String) : VoiceSettingsAction
+    data class SetTtsVoice(val voice: TtsVoice) : VoiceSettingsAction
+    data class SetTtsAutoRead(val enabled: Boolean) : VoiceSettingsAction
     data object DownloadModel : VoiceSettingsAction
     data object DeleteModel : VoiceSettingsAction
     data object RefreshModel : VoiceSettingsAction
@@ -54,13 +65,20 @@ class VoiceSettingsViewModel(
             }
         }
         viewModelScope.launch {
+            settings.ttsConfig.collect { config ->
+                updateState { copy(tts = config) }
+            }
+        }
+        viewModelScope.launch {
             assistant.config.collect { config ->
                 updateState {
                     copy(
+                        activeProviderId = config.activeProviderId,
                         providers = config.providers.map { provider ->
                             VoiceProviderOption(
                                 id = provider.id,
                                 name = provider.name.ifBlank { provider.id },
+                                deepSeek = provider.isDeepSeek,
                             )
                         },
                     )
@@ -84,6 +102,22 @@ class VoiceSettingsViewModel(
             }
             is VoiceSettingsAction.SetCloudModel -> viewModelScope.launch {
                 settings.setCloudModel(action.model)
+            }
+            is VoiceSettingsAction.SetTtsEngine -> viewModelScope.launch {
+                settings.setTtsEngine(action.engine)
+                if (action.engine == TtsEngine.DeepSeek && currentState.tts.providerId.isBlank()) {
+                    val fallback = currentState.providers.firstOrNull { it.deepSeek }?.id
+                    if (!fallback.isNullOrBlank()) settings.setTtsProvider(fallback)
+                }
+            }
+            is VoiceSettingsAction.SetTtsProvider -> viewModelScope.launch {
+                settings.setTtsProvider(action.providerId)
+            }
+            is VoiceSettingsAction.SetTtsVoice -> viewModelScope.launch {
+                settings.setTtsVoice(action.voice)
+            }
+            is VoiceSettingsAction.SetTtsAutoRead -> viewModelScope.launch {
+                settings.setTtsAutoRead(action.enabled)
             }
             VoiceSettingsAction.DownloadModel -> models.download()
             VoiceSettingsAction.DeleteModel -> {

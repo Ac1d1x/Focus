@@ -227,6 +227,9 @@
     <string name="settings_reset_confirm">Restart setup</string>
     <string name="settings_reset_done">Setup will restart</string>
 
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_empty">No matching settings</string>
     <string name="settings_home_title">Settings</string>
     <string name="settings_back">Back</string>
     <string name="settings_section_assistant">Assistant</string>
@@ -417,8 +420,6 @@
     <string name="settings_skills_nothing_found">No skills found in this source.</string>
     <string name="settings_skills_import_empty">Nothing imported. The skill may already exist or be invalid.</string>
     <string name="settings_skills_export_failed">No app can receive the archive</string>
-
-    <string name="settings_home_intro">Set up models, tools, and how chat looks. Changes save as you make them.</string>
     <string name="settings_key_saved">Key saved in the system keystore</string>
     <string name="settings_key_hide">Hide key</string>
     <string name="settings_key_show">Show key</string>

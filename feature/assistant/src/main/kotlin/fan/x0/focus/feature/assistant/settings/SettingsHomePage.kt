@@ -1,13 +1,18 @@
 package fan.x0.focus.feature.assistant.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -17,7 +22,22 @@ import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusCardGroupScope
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusReveal
+import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.feature.assistant.R
+
+private data class SettingsEntry(
+    val title: String,
+    val body: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+)
+
+private data class SettingsSection(
+    val key: String,
+    val title: String?,
+    val entries: List<SettingsEntry>,
+)
 
 @Composable
 internal fun SettingsHomePage(
@@ -60,154 +80,154 @@ internal fun SettingsHomePage(
     val aboutTitle = stringResource(R.string.settings_page_about)
     val aboutBody = stringResource(R.string.settings_page_about_body)
 
+    val sections = listOf(
+        SettingsSection(
+            key = "assistant",
+            title = stringResource(R.string.settings_section_assistant),
+            entries = listOf(
+                SettingsEntry(accountTitle, accountBody, FocusIcons.Provider) {
+                    onOpen(SettingsDestination.Account)
+                },
+                SettingsEntry(modelsTitle, modelsBody, FocusIcons.Groups) {
+                    onOpen(SettingsDestination.Models)
+                },
+                SettingsEntry(chatTitle, chatBody, FocusIcons.Bolt) {
+                    onOpen(SettingsDestination.ChatAgent)
+                },
+                SettingsEntry(detailTitle, detailBody, FocusIcons.Chat) {
+                    onOpen(SettingsDestination.ChatDetail)
+                },
+            ),
+        ),
+        SettingsSection(
+            key = "capabilities",
+            title = stringResource(R.string.settings_section_capabilities),
+            entries = listOfNotNull(
+                SettingsEntry(toolsTitle, toolsBody, FocusIcons.Tool) {
+                    onOpen(SettingsDestination.Tools)
+                },
+                SettingsEntry(automationTitle, automationBody, FocusIcons.Bolt) {
+                    onOpen(SettingsDestination.Automation)
+                },
+                SettingsEntry(pluginsTitle, pluginsBody, FocusIcons.Tool) {
+                    onOpen(SettingsDestination.Plugins)
+                },
+                onOpenBridge?.let { open ->
+                    SettingsEntry(bridgeTitle, bridgeBody, FocusIcons.Terminal, open)
+                },
+                SettingsEntry(deviceTitle, deviceBody, FocusIcons.Device, onOpenDevice),
+            ),
+        ),
+        SettingsSection(
+            key = "connections",
+            title = stringResource(R.string.settings_section_connections),
+            entries = listOf(
+                SettingsEntry(imTitle, imBody, FocusIcons.Link) {
+                    onOpen(SettingsDestination.Im)
+                },
+                SettingsEntry(voiceTitle, voiceBody, FocusIcons.Chat) {
+                    onOpen(SettingsDestination.Voice)
+                },
+                SettingsEntry(overlayTitle, overlayBody, FocusIcons.Assistant) {
+                    onOpen(SettingsDestination.Overlay)
+                },
+            ),
+        ),
+        SettingsSection(
+            key = "app",
+            title = stringResource(R.string.settings_section_app),
+            entries = listOf(
+                SettingsEntry(appearanceTitle, appearanceBody, FocusIcons.Language) {
+                    onOpen(SettingsDestination.Appearance)
+                },
+                SettingsEntry(notificationsTitle, notificationsBody, FocusIcons.Notification) {
+                    onOpen(SettingsDestination.Notifications)
+                },
+                SettingsEntry(dataTitle, dataBody, FocusIcons.Folder) {
+                    onOpen(SettingsDestination.Data)
+                },
+                SettingsEntry(crashTitle, crashBody, FocusIcons.Warning) {
+                    onOpen(SettingsDestination.CrashLogs)
+                },
+            ),
+        ),
+        SettingsSection(
+            key = "about",
+            title = null,
+            entries = listOf(
+                SettingsEntry(aboutTitle, aboutBody, FocusIcons.Info) {
+                    onOpen(SettingsDestination.About)
+                },
+            ),
+        ),
+    )
+
+    var query by rememberSaveable { mutableStateOf("") }
+    val filtered = if (query.isBlank()) {
+        sections
+    } else {
+        sections.mapNotNull { section ->
+            if (section.title?.contains(query, ignoreCase = true) == true) {
+                section
+            } else {
+                val entries = section.entries.filter {
+                    it.title.contains(query, ignoreCase = true) || it.body.contains(query, ignoreCase = true)
+                }
+                if (entries.isEmpty()) null else section.copy(entries = entries)
+            }
+        }
+    }
+
     SettingsPageScaffold(title = stringResource(R.string.settings_home_title)) {
-        item(key = "intro") {
-            FocusReveal {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.settings_home_intro),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-        item(key = "assistant") {
-            FocusReveal(index = 1) {
-                FocusCardGroup(title = stringResource(R.string.settings_section_assistant)) {
-                    pageItem(
-                        title = accountTitle,
-                        body = accountBody,
-                        icon = FocusIcons.Provider,
-                        onClick = { onOpen(SettingsDestination.Account) },
-                    )
-                    pageItem(
-                        title = modelsTitle,
-                        body = modelsBody,
-                        icon = FocusIcons.Groups,
-                        onClick = { onOpen(SettingsDestination.Models) },
-                    )
-                    pageItem(
-                        title = chatTitle,
-                        body = chatBody,
-                        icon = FocusIcons.Bolt,
-                        onClick = { onOpen(SettingsDestination.ChatAgent) },
-                    )
-                    pageItem(
-                        title = detailTitle,
-                        body = detailBody,
-                        icon = FocusIcons.Chat,
-                        onClick = { onOpen(SettingsDestination.ChatDetail) },
-                    )
-                }
-            }
-        }
-        item(key = "capabilities") {
-            FocusReveal(index = 2) {
-                FocusCardGroup(title = stringResource(R.string.settings_section_capabilities)) {
-                    pageItem(
-                        title = toolsTitle,
-                        body = toolsBody,
-                        icon = FocusIcons.Tool,
-                        onClick = { onOpen(SettingsDestination.Tools) },
-                    )
-                    pageItem(
-                        title = automationTitle,
-                        body = automationBody,
-                        icon = FocusIcons.Bolt,
-                        onClick = { onOpen(SettingsDestination.Automation) },
-                    )
-                    pageItem(
-                        title = pluginsTitle,
-                        body = pluginsBody,
-                        icon = FocusIcons.Tool,
-                        onClick = { onOpen(SettingsDestination.Plugins) },
-                    )
-                    if (onOpenBridge != null) {
-                        pageItem(
-                            title = bridgeTitle,
-                            body = bridgeBody,
-                            icon = FocusIcons.Terminal,
-                            onClick = onOpenBridge,
-                        )
+        item(key = "search") {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                leadingIcon = {
+                    Icon(FocusIcons.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = if (query.isBlank()) {
+                    null
+                } else {
+                    {
+                        IconButton(onClick = hapticTap { query = "" }) {
+                            Icon(
+                                imageVector = FocusIcons.Close,
+                                contentDescription = stringResource(R.string.settings_search_clear),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
-                    pageItem(
-                        title = deviceTitle,
-                        body = deviceBody,
-                        icon = FocusIcons.Device,
-                        onClick = onOpenDevice,
-                    )
-                }
+                },
+                singleLine = true,
+                shape = FocusShapeTokens.input,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (filtered.isEmpty()) {
+            item(key = "empty") {
+                Text(
+                    text = stringResource(R.string.settings_search_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                )
             }
         }
-        item(key = "connections") {
-            FocusReveal(index = 3) {
-                FocusCardGroup(title = stringResource(R.string.settings_section_connections)) {
-                    pageItem(
-                        title = imTitle,
-                        body = imBody,
-                        icon = FocusIcons.Link,
-                        onClick = { onOpen(SettingsDestination.Im) },
-                    )
-                    pageItem(
-                        title = voiceTitle,
-                        body = voiceBody,
-                        icon = FocusIcons.Chat,
-                        onClick = { onOpen(SettingsDestination.Voice) },
-                    )
-                    pageItem(
-                        title = overlayTitle,
-                        body = overlayBody,
-                        icon = FocusIcons.Assistant,
-                        onClick = { onOpen(SettingsDestination.Overlay) },
-                    )
-                }
-            }
-        }
-        item(key = "app") {
-            FocusReveal(index = 4) {
-                FocusCardGroup(title = stringResource(R.string.settings_section_app)) {
-                    pageItem(
-                        title = appearanceTitle,
-                        body = appearanceBody,
-                        icon = FocusIcons.Language,
-                        onClick = { onOpen(SettingsDestination.Appearance) },
-                    )
-                    pageItem(
-                        title = notificationsTitle,
-                        body = notificationsBody,
-                        icon = FocusIcons.Notification,
-                        onClick = { onOpen(SettingsDestination.Notifications) },
-                    )
-                    pageItem(
-                        title = dataTitle,
-                        body = dataBody,
-                        icon = FocusIcons.Folder,
-                        onClick = { onOpen(SettingsDestination.Data) },
-                    )
-                    pageItem(
-                        title = crashTitle,
-                        body = crashBody,
-                        icon = FocusIcons.Warning,
-                        onClick = { onOpen(SettingsDestination.CrashLogs) },
-                    )
-                }
-            }
-        }
-        item(key = "about") {
-            FocusReveal(index = 5) {
-                FocusCardGroup {
-                    pageItem(
-                        title = aboutTitle,
-                        body = aboutBody,
-                        icon = FocusIcons.Info,
-                        onClick = { onOpen(SettingsDestination.About) },
-                    )
+        filtered.forEachIndexed { index, section ->
+            item(key = "section_${section.key}") {
+                FocusReveal(index = index) {
+                    FocusCardGroup(title = section.title) {
+                        section.entries.forEach { entry ->
+                            pageItem(
+                                title = entry.title,
+                                body = entry.body,
+                                icon = entry.icon,
+                                onClick = entry.onClick,
+                            )
+                        }
+                    }
                 }
             }
         }

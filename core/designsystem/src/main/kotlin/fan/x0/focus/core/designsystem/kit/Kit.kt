@@ -273,7 +273,7 @@ fun ExPage(
     }
     Scaffold(
         modifier = modifier.nestedScroll(behavior.nestedScrollConnection),
-        containerColor = scheme.surface,
+        containerColor = Color.Transparent,
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -284,7 +284,10 @@ fun ExPage(
                 },
                 actions = actions,
                 scrollBehavior = behavior,
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = scheme.surface, scrolledContainerColor = scheme.surfaceContainer),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = scheme.surfaceContainer,
+                ),
             )
         },
         floatingActionButton = fab,

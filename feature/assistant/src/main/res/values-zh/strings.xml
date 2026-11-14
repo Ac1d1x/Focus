@@ -371,8 +371,8 @@
     <string name="settings_mcp_edit">编辑</string>
     <string name="settings_mcp_saved">服务器已保存</string>
     <string name="settings_mcp_deleted">服务器已删除</string>
-    <string name="settings_mcp_transport_http">Streamable HTTP</string>
-    <string name="settings_mcp_transport_sse">HTTP 加 SSE</string>
+    <string name="settings_mcp_transport_http">HTTP</string>
+    <string name="settings_mcp_transport_sse">SSE</string>
     <string name="settings_mcp_transport_stdio">stdio</string>
     <string name="settings_web_use_default">设为默认</string>
 

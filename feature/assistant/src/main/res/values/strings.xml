@@ -371,8 +371,8 @@
     <string name="settings_mcp_edit">Edit</string>
     <string name="settings_mcp_saved">Server saved</string>
     <string name="settings_mcp_deleted">Server deleted</string>
-    <string name="settings_mcp_transport_http">Streamable HTTP</string>
-    <string name="settings_mcp_transport_sse">HTTP and SSE</string>
+    <string name="settings_mcp_transport_http">HTTP</string>
+    <string name="settings_mcp_transport_sse">SSE</string>
     <string name="settings_mcp_transport_stdio">stdio</string>
     <string name="settings_web_use_default">Use as default</string>
 

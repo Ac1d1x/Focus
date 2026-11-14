@@ -90,7 +90,7 @@ fun FocusReasoningCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,7 +108,7 @@ fun FocusReasoningCard(
                     .heightIn(min = 40.dp)
                     .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(
                     imageVector = FocusIcons.Idea,

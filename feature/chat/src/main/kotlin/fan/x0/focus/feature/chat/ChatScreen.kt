@@ -38,7 +38,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -114,6 +114,7 @@ import fan.x0.focus.core.designsystem.components.pressScale
 import fan.x0.focus.core.designsystem.components.shimmer
 import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
@@ -692,11 +693,11 @@ private fun ChatThread(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(
+            itemsIndexed(
                 items = entries,
-                key = { it.key },
-                contentType = {
-                    when (it) {
+                key = { _, entry -> entry.key },
+                contentType = { _, entry ->
+                    when (entry) {
                         is ChatEntry.User -> "user"
                         is ChatEntry.Assistant -> "assistant"
                         is ChatEntry.Trace -> "trace"
@@ -710,7 +711,7 @@ private fun ChatThread(
                         is ChatEntry.Compaction -> "compaction"
                     }
                 },
-            ) { entry ->
+            ) { index, entry ->
                 val play = entry.isFresh() && entry.key !in played
                 ChatBubbleEnter(
                     play = play,
@@ -756,6 +757,8 @@ private fun ChatThread(
                                 onAction = onAction,
                                 onCopy = onCopy,
                                 streaming = entry.live,
+                                showAssistantHeader = state.replyStyle == AssistantReplyStyle.Flat &&
+                                    (index == 0 || entries[index - 1] !is ChatEntry.Assistant),
                             )
                         }
                         is ChatEntry.Trace -> FocusTraceCard(

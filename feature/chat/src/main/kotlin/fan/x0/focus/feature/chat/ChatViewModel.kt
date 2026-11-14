@@ -10,6 +10,7 @@ import fan.x0.focus.data.assistant.AskKind
 import fan.x0.focus.data.assistant.AttachmentKind
 import fan.x0.focus.data.assistant.AttachmentLoader
 import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.AssistantSettings
 import fan.x0.focus.data.assistant.BtwRunner
 import fan.x0.focus.data.assistant.ChatAppearanceSettings
@@ -105,6 +106,7 @@ class ChatViewModel(
     private val imChats: ImChatStore,
     private val sideChats: SideChatManager,
     private val mainSession: MainSessionStore,
+    private val profiles: AssistantProfileStore,
 ) : BaseViewModel<ChatAction, ChatUiState, ChatEffect>(ChatUiState()) {
 
     private var loadJob: Job? = null
@@ -1447,6 +1449,7 @@ class ChatViewModel(
         val assistantId = conversation?.assistantId ?: AssistantProfile.DEFAULT_ID
         val name = workspace.userName(assistantId)
         val assistantName = workspace.assistantName(assistantId)
+        val assistantProfile = profiles.profilesOnce().firstOrNull { it.id == assistantId }
         val config = settings.configOnce()
         val providerId = conversation?.providerId?.takeIf { id ->
             config.providers.any { it.id == id }
@@ -1487,6 +1490,8 @@ class ChatViewModel(
                 name = name,
                 assistantName = assistantName,
                 assistantId = assistantId,
+                assistantEmoji = assistantProfile?.emoji.orEmpty(),
+                assistantAvatar = assistantProfile?.avatar.orEmpty(),
                 history = entries,
                 live = emptyList(),
                 suggestions = emptyList(),

@@ -300,6 +300,8 @@ data class ChatUiState(
     val sidePanel: SidePanelUi = SidePanelUi(),
     val assistantName: String = "",
     val assistantId: String = AssistantProfile.DEFAULT_ID,
+    val assistantEmoji: String = "",
+    val assistantAvatar: String = "",
     val workingText: String = "",
     val name: String? = null,
     val history: List<ChatEntry> = emptyList(),

@@ -1,5 +1,8 @@
 package fan.x0.focus.feature.chat
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -8,24 +11,37 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import fan.x0.focus.core.designsystem.components.AvatarStyle
+import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusChatBubble
+import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusChatBubbleStyle
 import fan.x0.focus.core.designsystem.components.FocusSelectionBar
 import fan.x0.focus.core.designsystem.components.hapticTap
+import fan.x0.focus.data.assistant.AssistantAvatarStore
 import fan.x0.focus.data.assistant.AssistantReplyStyle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.koin.compose.koinInject
 
 @Composable
 internal fun ChatMessageBubble(
@@ -35,6 +51,7 @@ internal fun ChatMessageBubble(
     onAction: (ChatAction) -> Unit,
     onCopy: (String) -> Unit,
     streaming: Boolean = false,
+    showAssistantHeader: Boolean = false,
 ) {
     val text = when (entry) {
         is ChatEntry.User -> entry.text
@@ -52,13 +69,26 @@ internal fun ChatMessageBubble(
     val key = entry.key
     val selecting = state.selectionKey == key
     val canMenu = entry.messageId != null
-    val header: (@Composable () -> Unit)? = quote?.let {
+    val header: (@Composable () -> Unit)? = if (quote != null || showAssistantHeader) {
         {
-            MessageQuote(
-                quote = it,
-                onClick = { onAction(ChatAction.JumpToMessage("m${it.id}")) },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (showAssistantHeader) {
+                    AssistantMessageHeader(
+                        name = state.assistantName.ifBlank { stringResource(R.string.chat_title) },
+                        emoji = state.assistantEmoji,
+                        avatar = state.assistantAvatar,
+                    )
+                }
+                quote?.let {
+                    MessageQuote(
+                        quote = it,
+                        onClick = { onAction(ChatAction.JumpToMessage("m${it.id}")) },
+                    )
+                }
+            }
         }
+    } else {
+        null
     }
     FocusChatBubble(
         text = text,
@@ -81,6 +111,66 @@ internal fun ChatMessageBubble(
             }
         },
     )
+}
+
+@Composable
+private fun AssistantMessageHeader(
+    name: String,
+    emoji: String,
+    avatar: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AssistantHeaderAvatar(name = name, emoji = emoji, avatar = avatar)
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun AssistantHeaderAvatar(name: String, emoji: String, avatar: String) {
+    val store: AssistantAvatarStore = koinInject()
+    val bitmap by produceState<Bitmap?>(initialValue = null, avatar) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                store.path(avatar)?.let { BitmapFactory.decodeFile(it) }
+            }.getOrNull()
+        }
+    }
+    val image = bitmap
+    when {
+        image != null -> Image(
+            bitmap = image.asImageBitmap(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape),
+        )
+        emoji.isNotBlank() -> Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = emoji, style = MaterialTheme.typography.labelMedium)
+        }
+        else -> {
+            val hash = name.hashCode()
+            FocusAvatar(
+                style = AvatarStyle(preset = hash, palette = hash ushr 8),
+                size = 28.dp,
+            )
+        }
+    }
 }
 
 @Composable

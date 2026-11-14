@@ -20,16 +20,19 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -498,6 +501,7 @@ fun ChatScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ChatHome(
     state: ChatUiState,
@@ -521,6 +525,8 @@ private fun ChatHome(
     } else {
         generated.map { Suggestion(it.text) }
     }
+    val motion = LocalFocusMotion.current
+    val imeVisible = WindowInsets.isImeVisible
 
     Column(
         modifier = Modifier
@@ -548,14 +554,24 @@ private fun ChatHome(
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            suggestions.forEachIndexed { index, suggestion ->
-                FocusReveal(index = index) {
-                    SuggestionButton(
-                        text = suggestion.text,
-                        onClick = { onAction(ChatAction.Suggest(suggestion.text)) },
-                    )
+        AnimatedVisibility(
+            visible = !imeVisible,
+            enter = fadeIn(motion.effectsDefault()) +
+                expandVertically(motion.spatialDefault(), expandFrom = Alignment.Bottom),
+            exit = fadeOut(motion.effectsFast()) +
+                shrinkVertically(motion.spatialFast(), shrinkTowards = Alignment.Bottom),
+        ) {
+            Column {
+                Spacer(Modifier.height(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    suggestions.forEachIndexed { index, suggestion ->
+                        FocusReveal(index = index) {
+                            SuggestionButton(
+                                text = suggestion.text,
+                                onClick = { onAction(ChatAction.Suggest(suggestion.text)) },
+                            )
+                        }
+                    }
                 }
             }
         }

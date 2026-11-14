@@ -94,7 +94,7 @@ data class PlanStep(
     val arguments: String = "",
 )
 
-enum class AttachmentKind { Text, Image }
+enum class AttachmentKind { Text, Image, Document }
 
 @Serializable
 data class ChatAttachment(
@@ -105,6 +105,7 @@ data class ChatAttachment(
     val text: String? = null,
     val base64: String? = null,
     val fileId: String? = null,
+    val providerId: String? = null,
 ) {
     val dataUrl: String?
         get() = base64?.let { "data:$mime;base64,$it" }

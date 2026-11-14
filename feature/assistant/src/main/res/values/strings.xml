@@ -332,6 +332,10 @@
     <string name="settings_deepseek_auto_title_body">Generate a title after the first reply.</string>
     <string name="settings_deepseek_user_meta">User metadata</string>
     <string name="settings_deepseek_user_meta_body">Tell the model the date, weekday, location, and language.</string>
+    <string name="settings_deepseek_files">File parsing</string>
+    <string name="settings_deepseek_files_body">Upload PDF, Word, PowerPoint, spreadsheets, and ebooks.</string>
+    <string name="settings_deepseek_rich">Parse images in documents</string>
+    <string name="settings_deepseek_rich_body">Use this for charts and diagrams. It uses more input tokens.</string>
     <string name="settings_deepseek_meta">User metadata</string>
     <string name="settings_deepseek_location">Location</string>
     <string name="settings_deepseek_location_hint">For example, Shanghai</string>

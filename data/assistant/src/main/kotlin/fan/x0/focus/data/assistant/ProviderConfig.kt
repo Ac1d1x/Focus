@@ -70,6 +70,21 @@ fun ProviderConfig.deepSeekToolUrl(tool: String): String {
     return "$root/tools/$name"
 }
 
+fun ProviderConfig.deepSeekFilesUrl(): String {
+    val raw = baseUrl.trim().trimEnd('/')
+    if (raw.isBlank()) return ""
+    val host = runCatching { URI(raw).host }.getOrNull().orEmpty().lowercase()
+    if (host == "deepseek.com" || host.endsWith(".deepseek.com")) {
+        return "https://api.deepseek.com/files"
+    }
+    val root = when {
+        raw.endsWith("/anthropic/v1") -> raw.removeSuffix("/anthropic/v1")
+        raw.endsWith("/v1") -> raw.removeSuffix("/v1")
+        else -> raw
+    }
+    return "$root/files"
+}
+
 object ProviderCatalog {
     val presets = listOf(
         ProviderConfig(id = "openai", name = "OpenAI", baseUrl = "https://api.openai.com/v1"),

@@ -58,6 +58,7 @@ class ImMediaMapper(private val loader: AttachmentLoader) {
                 bytes = text.toByteArray(Charsets.UTF_8),
             )
         }
+        AttachmentKind.Document -> null
     }
 
     private fun textContent(name: String, mime: String, bytes: ByteArray): String? {

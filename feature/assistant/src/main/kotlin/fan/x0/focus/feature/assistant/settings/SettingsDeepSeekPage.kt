@@ -117,6 +117,22 @@ internal fun SettingsDeepSeekPage(
                 onChange = { onAction(DeepSeekSettingsAction.SetUserMeta(it)) },
                 icon = Ic.Person,
             )
+            ExSwitchRow(
+                title = stringResource(R.string.settings_deepseek_files),
+                subtitle = stringResource(R.string.settings_deepseek_files_body),
+                checked = state.config.files,
+                enabled = state.config.enabled,
+                onChange = { onAction(DeepSeekSettingsAction.SetFiles(it)) },
+                icon = Ic.File,
+            )
+            ExSwitchRow(
+                title = stringResource(R.string.settings_deepseek_rich),
+                subtitle = stringResource(R.string.settings_deepseek_rich_body),
+                checked = state.config.richLayout,
+                enabled = state.config.enabled && state.config.files,
+                onChange = { onAction(DeepSeekSettingsAction.SetRichLayout(it)) },
+                icon = Ic.Image,
+            )
         }
         if (state.config.userMeta) {
             group(metaTitle) {

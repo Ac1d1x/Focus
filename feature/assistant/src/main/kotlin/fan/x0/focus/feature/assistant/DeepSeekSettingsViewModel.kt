@@ -30,6 +30,8 @@ sealed interface DeepSeekSettingsAction : UiAction {
     data class SetAutoTitle(val value: Boolean) : DeepSeekSettingsAction
     data class SetUserMeta(val value: Boolean) : DeepSeekSettingsAction
     data class SetLocation(val value: String) : DeepSeekSettingsAction
+    data class SetFiles(val value: Boolean) : DeepSeekSettingsAction
+    data class SetRichLayout(val value: Boolean) : DeepSeekSettingsAction
 }
 
 sealed interface DeepSeekSettingsEffect : UiEffect
@@ -74,6 +76,8 @@ class DeepSeekSettingsViewModel(
             is DeepSeekSettingsAction.SetAutoTitle -> update { it.copy(title = action.value) }
             is DeepSeekSettingsAction.SetUserMeta -> update { it.copy(userMeta = action.value) }
             is DeepSeekSettingsAction.SetLocation -> update { it.copy(location = action.value) }
+            is DeepSeekSettingsAction.SetFiles -> update { it.copy(files = action.value) }
+            is DeepSeekSettingsAction.SetRichLayout -> update { it.copy(richLayout = action.value) }
         }
     }
 

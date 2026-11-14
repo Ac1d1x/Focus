@@ -520,7 +520,7 @@ internal fun CrewAttachmentStrip(attachments: List<ChatAttachment>) {
                         }
                     },
                 )
-                AttachmentKind.Text -> Surface(
+                AttachmentKind.Text, AttachmentKind.Document -> Surface(
                     shape = MaterialTheme.shapes.medium,
                     color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ) {

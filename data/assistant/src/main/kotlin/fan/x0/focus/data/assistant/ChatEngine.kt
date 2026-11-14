@@ -247,7 +247,7 @@ class ChatEngine(
                 }.withSummary(context.summary)
                 val messages = buildList {
                     add(ChatMessageDto(role = "system", content = system))
-                    addAll(context.messages.toDtos(deepSeekEnabled))
+                    addAll(context.messages.toDtos(deepSeekEnabled, providerId))
                     val media = pendingMedia.mapNotNull { it.dataUrl }
                     pendingMedia = emptyList()
                     if (media.isNotEmpty()) {
@@ -798,13 +798,16 @@ class ChatEngine(
         }
     }
 
-    private suspend fun List<ChatMessage>.toDtos(deepSeekChat: Boolean): List<ChatMessageDto> {
+    private suspend fun List<ChatMessage>.toDtos(
+        deepSeekChat: Boolean,
+        providerId: String,
+    ): List<ChatMessageDto> {
         val quotes = chats.messagesByIds(mapNotNull { it.replyToId }.toSet())
         return withoutDanglingToolCalls().mapNotNull { message ->
             when (message.role) {
                 ChatRole.User -> ChatMessageDto(
                     role = "user",
-                    content = message.toUserContent(quotes[message.replyToId]),
+                    content = message.toUserContent(quotes[message.replyToId], deepSeekChat, providerId),
                 )
                 ChatRole.Assistant -> ChatMessageDto(
                     role = "assistant",
@@ -870,8 +873,20 @@ class ChatEngine(
         return kept
     }
 
-    private fun ChatMessage.toUserContent(quoted: ChatMessage?): MessageContent {
+    private fun ChatMessage.toUserContent(
+        quoted: ChatMessage?,
+        deepSeekChat: Boolean,
+        providerId: String,
+    ): MessageContent {
         val images = attachments.filter { it.kind == AttachmentKind.Image }.mapNotNull { it.dataUrl }
+        val files = if (deepSeekChat) {
+            attachments
+                .filter { it.kind == AttachmentKind.Document }
+                .filter { it.providerId.isNullOrBlank() || it.providerId == providerId }
+                .mapNotNull { it.fileId?.takeIf { id -> id.isNotBlank() } }
+        } else {
+            emptyList()
+        }
         val text = buildString {
             if (quoted != null) {
                 val author = if (quoted.role == ChatRole.User) "the user" else "you"
@@ -889,7 +904,7 @@ class ChatEngine(
                 append("\n<<end file>>")
             }
         }
-        return MessageContent.of(text.trim(), images)
+        return MessageContent.of(text.trim(), images, files)
     }
 
     private fun latestReminder(location: String): String {

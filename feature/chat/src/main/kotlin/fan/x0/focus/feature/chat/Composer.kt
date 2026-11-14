@@ -51,6 +51,7 @@ import fan.x0.focus.core.designsystem.components.FocusComposer
 import fan.x0.focus.core.designsystem.components.FocusComposerPill
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusImageLightbox
+import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusVoiceUi
 import fan.x0.focus.core.modelpicker.ModelPickerGroup
 import fan.x0.focus.core.modelpicker.ModelPickerModel
@@ -184,9 +185,10 @@ internal fun Composer(
                             onCancel = { onAction(ChatAction.CancelReply) },
                         )
                     }
-                    if (state.attachments.isNotEmpty()) {
+                    if (state.attachments.isNotEmpty() || state.attaching) {
                         AttachmentRow(
                             attachments = state.attachments,
+                            attaching = state.attaching,
                             onRemove = { onAction(ChatAction.RemoveAttachment(it)) },
                         )
                     }
@@ -355,6 +357,7 @@ private fun ReplyPreview(
 @Composable
 private fun AttachmentRow(
     attachments: List<AttachmentUi>,
+    attaching: Boolean,
     onRemove: (String) -> Unit,
 ) {
     Row(
@@ -364,6 +367,28 @@ private fun AttachmentRow(
             .padding(horizontal = 2.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (attaching) {
+            Surface(
+                shape = FocusShapeTokens.rounded(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                tonalElevation = 1.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+            ) {
+                Row(
+                    modifier = Modifier.height(44.dp).padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FocusLoadingBlob(size = 18.dp)
+                    Text(
+                        text = stringResource(R.string.chat_attaching),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
         attachments.forEach { attachment ->
             AttachmentChip(attachment = attachment, onRemove = { onRemove(attachment.id) })
         }

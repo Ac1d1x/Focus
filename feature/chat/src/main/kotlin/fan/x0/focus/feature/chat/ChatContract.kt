@@ -123,6 +123,8 @@ data class AttachmentUi(
     val mime: String,
     val text: String? = null,
     val base64: String? = null,
+    val fileId: String? = null,
+    val providerId: String? = null,
 ) {
     val dataUrl: String?
         get() = base64?.let { "data:$mime;base64,$it" }
@@ -320,6 +322,7 @@ data class ChatUiState(
     val mentionNames: List<String> = emptyList(),
     val fileMentionTokens: List<String> = emptyList(),
     val sending: Boolean = false,
+    val attaching: Boolean = false,
     val compacting: Boolean = false,
     val turn: Int = 0,
     val providers: List<ProviderOption> = emptyList(),
@@ -400,7 +403,7 @@ data class ChatUiState(
     val providerName: String
         get() = providers.firstOrNull { it.id == providerId }?.name ?: providerId
 
-    val canSend: Boolean get() = (input.isNotBlank() || attachments.isNotEmpty()) && !sending
+    val canSend: Boolean get() = !attaching && (input.isNotBlank() || attachments.isNotEmpty()) && !sending
     val isEmpty: Boolean get() = history.isEmpty() && !sending && streaming.isBlank() && reasoning.isBlank()
     val isMain: Boolean get() = kind == ConversationKind.Main && conversationId.isNotBlank()
     val isSide: Boolean get() = kind == ConversationKind.Side && conversationId.isNotBlank()

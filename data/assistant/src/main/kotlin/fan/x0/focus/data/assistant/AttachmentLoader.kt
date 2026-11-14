@@ -8,18 +8,43 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
 import androidx.exifinterface.media.ExifInterface
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.koin.core.annotation.Provided
-import org.koin.core.annotation.Single
+import fan.x0.focus.core.error.NetworkException
+import fan.x0.focus.core.error.toAppError
+import fan.x0.focus.core.network.allowLongStream
+import fan.x0.focus.core.network.applyProvider
+import fan.x0.focus.core.network.openai.ChatProtocol
+import io.ktor.client.HttpClient
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import org.koin.core.annotation.Provided
+import org.koin.core.annotation.Single
+
+class AttachmentException(message: String) : Exception(message)
 
 @Single
-class AttachmentLoader(@Provided private val context: Context) {
+class AttachmentLoader(
+    @Provided private val context: Context,
+    private val assistant: AssistantSettings,
+    private val secrets: SecretStore,
+    private val deepSeek: DeepSeekSettings,
+    private val http: HttpClient,
+) {
+    private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun load(uriValue: String): ChatAttachment? = withContext(Dispatchers.IO) {
+    suspend fun load(uriValue: String, providerId: String = ""): ChatAttachment? = withContext(Dispatchers.IO) {
         val uri = runCatching { Uri.parse(uriValue) }.getOrNull() ?: return@withContext null
         val name = displayName(uri) ?: uri.lastPathSegment?.substringAfterLast('/') ?: "file"
         val mime = context.contentResolver.getType(uri).orEmpty()
@@ -33,21 +58,140 @@ class AttachmentLoader(@Provided private val context: Context) {
                 base64 = compressed.second,
             )
         } else {
-            val text = readText(uri) ?: return@withContext null
-            ChatAttachment(
-                id = UUID.randomUUID().toString(),
-                kind = AttachmentKind.Text,
-                name = name,
-                mime = mime.ifBlank { "text/plain" },
-                text = text,
-            )
+            val text = readText(uri)
+            if (text != null) {
+                ChatAttachment(
+                    id = UUID.randomUUID().toString(),
+                    kind = AttachmentKind.Text,
+                    name = name,
+                    mime = mime.ifBlank { "text/plain" },
+                    text = text,
+                )
+            } else {
+                uploadDocument(uri, name, mime, providerId)
+            }
         }
     }
 
+    private suspend fun uploadDocument(
+        uri: Uri,
+        name: String,
+        mime: String,
+        providerId: String,
+    ): ChatAttachment? {
+        val assistantConfig = assistant.configOnce()
+        val provider = assistantConfig.providers.firstOrNull { it.id == providerId }
+            ?: assistantConfig.activeProvider
+            ?: return null
+        if (!provider.isDeepSeek) return null
+        if (!provider.model.startsWith("deepseek-flash")) {
+            throw AttachmentException("DeepSeek file parsing requires the deepseek-flash model.")
+        }
+        val config = deepSeek.configOnce()
+        if (!config.enabled || !config.files) return null
+        val purpose = purposeFor(name, mime, config) ?: return null
+        val url = provider.deepSeekFilesUrl()
+        if (url.isBlank()) throw AttachmentException("The provider has no files endpoint.")
+        val apiKey = secrets.apiKey(provider.id).orEmpty()
+        if (provider.requiresKey && apiKey.isBlank()) {
+            throw AttachmentException("The provider has no API key.")
+        }
+        val bytes = readBytes(uri) ?: throw AttachmentException("Cannot read the file.")
+        if (bytes.size > MAX_UPLOAD_BYTES) {
+            throw AttachmentException("The file is too large.")
+        }
+        val resolvedMime = mime.ifBlank { mimeFor(name) }
+        val response = http.submitFormWithBinaryData(
+            url = url,
+            formData = formData {
+                append("purpose", purpose)
+                append(
+                    "file",
+                    bytes,
+                    Headers.build {
+                        append(HttpHeaders.ContentType, resolvedMime)
+                        append(
+                            HttpHeaders.ContentDisposition,
+                            "form-data; name=\"file\"; filename=\"${safeName(name)}\"",
+                        )
+                    },
+                )
+            },
+        ) {
+            allowLongStream()
+            applyProvider(provider.requestConfig(apiKey), ChatProtocol.ChatCompletions)
+        }
+        val body = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            val appError = NetworkException.Http(
+                statusCode = response.status.value,
+                error = null,
+                bodySnippet = body,
+            ).toAppError()
+            throw AttachmentException(appError.serverMessage ?: "File upload failed.")
+        }
+        val id = runCatching {
+            ((json.parseToJsonElement(body) as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull
+        }.getOrNull()
+        if (id.isNullOrBlank()) throw AttachmentException("The file parser did not return an id.")
+        return ChatAttachment(
+            id = UUID.randomUUID().toString(),
+            kind = AttachmentKind.Document,
+            name = name,
+            mime = resolvedMime,
+            fileId = id,
+            providerId = provider.id,
+        )
+    }
+
+    private fun purposeFor(name: String, mime: String, config: DeepSeekConfig): String? {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        val office = ext in OFFICE_EXTENSIONS ||
+            mime == "application/pdf" ||
+            mime.startsWith("application/msword") ||
+            mime.startsWith("application/vnd.openxmlformats-officedocument.wordprocessingml") ||
+            mime.startsWith("application/vnd.ms-powerpoint") ||
+            mime.startsWith("application/vnd.openxmlformats-officedocument.presentationml")
+        if (office) {
+            return if (config.richLayout) "rich_layout_recognition" else "text_recognition"
+        }
+        val data = ext in DATA_EXTENSIONS ||
+            mime.startsWith("text/") ||
+            mime in DATA_MIME_TYPES
+        return if (data) "user_data" else null
+    }
+
+    private fun mimeFor(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "pdf" -> "application/pdf"
+        "doc" -> "application/msword"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "ppt" -> "application/vnd.ms-powerpoint"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "xls" -> "application/vnd.ms-excel"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "epub" -> "application/epub+zip"
+        "mobi" -> "application/x-mobipocket-ebook"
+        else -> "application/octet-stream"
+    }
+
+    private fun safeName(name: String): String =
+        name.replace("\"", "").ifBlank { "file" }
+
+    private fun readBytes(uri: Uri): ByteArray? = runCatching {
+        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+    }.getOrNull()
+
     private fun readText(uri: Uri): String? = runCatching {
         context.contentResolver.openInputStream(uri)?.use { stream ->
-            val bytes = stream.readBytes()
-            if (bytes.size > MAX_TEXT_BYTES) return@use null
+            val buffer = ByteArray(MAX_TEXT_BYTES + 1)
+            var total = 0
+            while (total < buffer.size) {
+                val read = stream.read(buffer, total, buffer.size - total)
+                if (read <= 0) break
+                total += read
+            }
+            if (total > MAX_TEXT_BYTES) return@use null
+            val bytes = buffer.copyOf(total)
             if (!isProbablyText(bytes)) return@use null
             String(bytes, Charsets.UTF_8)
         }
@@ -193,5 +337,18 @@ class AttachmentLoader(@Provided private val context: Context) {
         private const val MAX_EDGE = 1024
         private const val JPEG_QUALITY = 80
         private const val MAX_TEXT_BYTES = 512 * 1024
+        private const val MAX_UPLOAD_BYTES = 32 * 1024 * 1024
+        private val OFFICE_EXTENSIONS = setOf("pdf", "doc", "docx", "ppt", "pptx")
+        private val DATA_EXTENSIONS = setOf(
+            "xls", "xlsx", "epub", "mobi",
+            "txt", "md", "csv", "json", "xml", "yaml", "yml", "html", "css",
+            "js", "ts", "kt", "java", "py", "rs", "c", "cpp", "h", "sh",
+        )
+        private val DATA_MIME_TYPES = setOf(
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/epub+zip",
+            "application/x-mobipocket-ebook",
+        )
     }
 }

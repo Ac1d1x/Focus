@@ -8,6 +8,7 @@ import fan.x0.focus.data.assistant.AgentMode
 import fan.x0.focus.data.assistant.AskAnswer
 import fan.x0.focus.data.assistant.AskKind
 import fan.x0.focus.data.assistant.AttachmentKind
+import fan.x0.focus.data.assistant.AttachmentException
 import fan.x0.focus.data.assistant.AttachmentLoader
 import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
@@ -1300,12 +1301,32 @@ class ChatViewModel(
     private fun attach(uris: List<String>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            val loaded = uris.mapNotNull { loader.load(it) }.map { it.toUi() }
-            if (loaded.isEmpty()) {
-                emitError(AppError(AppErrorType.Generic, serverMessage = "Could not read the selected file."))
-                return@launch
+            updateState { copy(attaching = true) }
+            try {
+                val providerId = currentState.providerId
+                val loaded = mutableListOf<AttachmentUi>()
+                var failure: String? = null
+                uris.forEach { uri ->
+                    try {
+                        loader.load(uri, providerId)?.let { loaded += it.toUi() }
+                    } catch (e: AttachmentException) {
+                        failure = e.message ?: "Could not read the selected file."
+                    }
+                }
+                if (loaded.isNotEmpty()) {
+                    updateState { copy(attachments = attachments + loaded) }
+                }
+                when {
+                    failure != null -> emitError(
+                        AppError(AppErrorType.Generic, serverMessage = failure),
+                    )
+                    loaded.isEmpty() -> emitError(
+                        AppError(AppErrorType.Generic, serverMessage = "Could not read the selected file."),
+                    )
+                }
+            } finally {
+                updateState { copy(attaching = false) }
             }
-            updateState { copy(attachments = attachments + loaded) }
         }
     }
 
@@ -2059,6 +2080,8 @@ class ChatViewModel(
         mime = mime,
         text = text,
         base64 = base64,
+        fileId = fileId,
+        providerId = providerId,
     )
 
     private fun AttachmentUi.toModel(): ChatAttachment = ChatAttachment(
@@ -2068,6 +2091,8 @@ class ChatViewModel(
         mime = mime,
         text = text,
         base64 = base64,
+        fileId = fileId,
+        providerId = providerId,
     )
 
     private fun List<ChatEntry>.resolvePlan(card: ApprovalUi): List<ChatEntry> = map { entry ->

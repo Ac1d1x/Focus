@@ -63,11 +63,13 @@ data class ContentPartDto(
     val type: String,
     val text: String? = null,
     @SerialName("image_url") val imageUrl: ImageUrlDto? = null,
+    @SerialName("file_id") val fileId: String? = null,
 ) {
     companion object {
         fun text(value: String) = ContentPartDto(type = "text", text = value)
         fun image(url: String, detail: String? = null) =
             ContentPartDto(type = "image_url", imageUrl = ImageUrlDto(url, detail))
+        fun file(id: String) = ContentPartDto(type = "file", fileId = id)
     }
 }
 
@@ -77,12 +79,17 @@ sealed interface MessageContent {
     data class Parts(val parts: List<ContentPartDto>) : MessageContent
 
     companion object {
-        fun of(text: String, images: List<String> = emptyList()): MessageContent {
-            if (images.isEmpty()) return Text(text)
+        fun of(
+            text: String,
+            images: List<String> = emptyList(),
+            files: List<String> = emptyList(),
+        ): MessageContent {
+            if (images.isEmpty() && files.isEmpty()) return Text(text)
             return Parts(
                 buildList {
                     if (text.isNotBlank()) add(ContentPartDto.text(text))
                     images.forEach { add(ContentPartDto.image(it)) }
+                    files.forEach { add(ContentPartDto.file(it)) }
                 },
             )
         }
@@ -109,6 +116,7 @@ object MessageContentSerializer : KSerializer<MessageContent> {
                                         image.detail?.let { put("detail", it) }
                                     }
                                 }
+                                part.fileId?.let { put("file_id", it) }
                             },
                         )
                     }
@@ -137,6 +145,7 @@ object MessageContentSerializer : KSerializer<MessageContent> {
                                 detail = image["detail"]?.jsonPrimitive?.contentOrNull,
                             )
                         }
+                        "file" -> obj["file_id"]?.jsonPrimitive?.contentOrNull?.let(ContentPartDto::file)
                         else -> null
                     }
                 },

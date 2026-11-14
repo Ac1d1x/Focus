@@ -138,6 +138,7 @@
     <string name="chat_delete_confirm">删除</string>
     <string name="chat_delete_cancel">取消</string>
     <string name="chat_copied">已复制</string>
+    <string name="chat_attaching">正在处理附件</string>
     <string name="chat_speak_playing">正在朗读</string>
     <string name="chat_speak_preparing">正在准备朗读</string>
     <string name="chat_sources">来源</string>

@@ -332,6 +332,10 @@
     <string name="settings_deepseek_auto_title_body">第一轮回答结束后自动生成标题。</string>
     <string name="settings_deepseek_user_meta">用户元信息</string>
     <string name="settings_deepseek_user_meta_body">把日期、星期、所在地和语言告诉模型。</string>
+    <string name="settings_deepseek_files">文件解析</string>
+    <string name="settings_deepseek_files_body">上传 PDF、Word、PowerPoint、表格和电子书。</string>
+    <string name="settings_deepseek_rich">解析文档里的图片</string>
+    <string name="settings_deepseek_rich_body">需要结合图表理解文档时打开，会增加输入 Token。</string>
     <string name="settings_deepseek_meta">用户元信息</string>
     <string name="settings_deepseek_location">所在地</string>
     <string name="settings_deepseek_location_hint">例如 上海</string>

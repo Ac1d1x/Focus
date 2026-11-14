@@ -173,7 +173,8 @@ class RoleplayStore(private val database: RoleplayDatabase) {
     suspend fun setLife(conversationId: String, life: List<RoleplayLifeEntry>): RoleplayState =
         withContext(Dispatchers.IO) {
             val current = state(conversationId)
-            val next = current.copy(life = life)
+            val cutoff = System.currentTimeMillis() - 7 * 86_400_000L
+            val next = current.copy(life = life.filter { it.end > cutoff }.takeLast(40))
             saveState(next)
             next
         }

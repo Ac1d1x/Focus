@@ -284,6 +284,7 @@ class ChatStore(
             parentId = parentId,
             taskStatus = TaskStatus.None,
             assistantId = assistantId,
+            resultSeen = true,
         )
     }
 
@@ -300,6 +301,7 @@ class ChatStore(
         model: String = "",
         reasoning: String = "",
         assistantId: String = AssistantProfile.DEFAULT_ID,
+        resultSeen: Boolean = kind != ConversationKind.Side,
     ): Conversation {
         val now = System.currentTimeMillis()
         val conversation = Conversation(
@@ -316,7 +318,7 @@ class ChatStore(
             origin = origin,
             taskStatus = taskStatus,
             taskNote = taskNote,
-            resultSeen = kind != ConversationKind.Side,
+            resultSeen = resultSeen,
             assistantId = assistantId,
         )
         val values = ContentValues().apply {

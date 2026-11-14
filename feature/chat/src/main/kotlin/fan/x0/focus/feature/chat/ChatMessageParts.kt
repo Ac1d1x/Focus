@@ -117,6 +117,14 @@ internal fun ChatMessageBubble(
                 }
             },
         )
+        if (!fromUser && (entry as? ChatEntry.Assistant)?.edited == true) {
+            Text(
+                text = stringResource(R.string.chat_edited),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp, top = 2.dp),
+            )
+        }
         if (!fromUser && citations.isNotEmpty()) {
             ChatCitationCard(
                 citations = citations,

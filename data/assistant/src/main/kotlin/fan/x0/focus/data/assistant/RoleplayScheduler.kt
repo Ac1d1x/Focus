@@ -30,6 +30,9 @@ class RoleplayTaskWorker(context: Context, params: WorkerParameters) : Coroutine
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
+            runCatching {
+                KoinPlatform.getKoin().get<RoleplayStore>().setTaskStatus(id, "pending", "retry")
+            }
             Result.retry()
         }
     }
@@ -174,11 +177,21 @@ class RoleplayScheduler(
             if (task.fireAt > now) {
                 scheduleWork(task)
             } else {
-                fire(task.id)
+                fireSafe(task.id)
             }
         }
-        store.dueTasks(now).forEach { task -> fire(task.id) }
+        store.dueTasks(now).forEach { task -> fireSafe(task.id) }
         store.trimTasks(now)
+    }
+
+    private suspend fun fireSafe(id: String) {
+        try {
+            fire(id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            store.setTaskStatus(id, "pending", "retry")
+        }
     }
 
     private fun scheduleWork(task: RoleplayTask) {

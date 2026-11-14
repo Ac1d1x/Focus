@@ -70,7 +70,9 @@ class RoleplayProactivePlanner(
         val silence = if (state.lastUserAt == 0L) Long.MAX_VALUE else now - state.lastUserAt
         val hasHistory = state.lastUserAt > 0 || state.aiMsgs > 1
         val day = java.time.LocalDate.now().toString()
-        if (hasHistory && silence > config.checkinSilenceMinutes * 60_000L && random.nextFloat() < will) {
+        val mainId = chats.ensureMainConversation(assistantId).id
+        val isMain = conversationId == mainId
+        if (isMain && hasHistory && silence > config.checkinSilenceMinutes * 60_000L && random.nextFloat() < will) {
             schedule(
                 conversationId = conversationId,
                 assistantId = assistantId,
@@ -82,7 +84,7 @@ class RoleplayProactivePlanner(
                 once = true,
             )
         }
-        if (hasHistory && silence > config.icebreakDays * 86_400_000L && random.nextFloat() < 0.5f) {
+        if (isMain && hasHistory && silence > config.icebreakDays * 86_400_000L && random.nextFloat() < 0.5f) {
             schedule(
                 conversationId = conversationId,
                 assistantId = assistantId,
@@ -109,10 +111,12 @@ class RoleplayProactivePlanner(
             store.markReminded(memory.id)
         }
         val hour = LocalTime.now().hour
-        if (hasHistory && silence > 30 * 60_000L && config.morningGreeting && hour in 7..9) {
+        val morningHour = (config.morningMinute / 60).coerceIn(0, 23)
+        val eveningHour = (config.eveningMinute / 60).coerceIn(0, 23)
+        if (isMain && hasHistory && silence > 30 * 60_000L && config.morningGreeting && hour == morningHour) {
             scheduleGreeting(conversationId, assistantId, "morning", "Say good morning in your own way. Keep it light.")
         }
-        if (hasHistory && silence > 30 * 60_000L && config.eveningGreeting && hour in 21..23) {
+        if (isMain && hasHistory && silence > 30 * 60_000L && config.eveningGreeting && hour == eveningHour) {
             scheduleGreeting(conversationId, assistantId, "evening", "Say good night in your own way. Keep it short.")
         }
     }

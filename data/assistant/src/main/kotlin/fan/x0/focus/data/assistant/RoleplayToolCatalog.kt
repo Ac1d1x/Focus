@@ -21,6 +21,7 @@ object RoleplayToolCatalog {
     const val SEND_STICKER = "send_sticker"
     const val SEND_TYPO = "send_typo"
     const val RECALL_MESSAGE = "recall_message"
+    const val SET_LIFE_SCHEDULE = "set_life_schedule"
 
     val specs: List<ToolSpec> = listOf(
         ToolSpec(
@@ -124,6 +125,17 @@ object RoleplayToolCatalog {
             kind = ToolKind.Write,
             parameters = schema(required = listOf("text")) {
                 put("text", string("The text including the wrong character"))
+            },
+        ),
+        ToolSpec(
+            name = SET_LIFE_SCHEDULE,
+            description = "Declare what you are busy with for a stretch of time. While it runs your status changes and you write less. Use the user's time zone.",
+            kind = ToolKind.Write,
+            parameters = schema(required = listOf("title", "start", "end")) {
+                put("title", string("What you are doing, for example 开会 or 午睡"))
+                put("start", string("Start time in ISO-8601"))
+                put("end", string("End time in ISO-8601"))
+                put("kind", string("busy, rest, or meeting. Default busy."))
             },
         ),
         ToolSpec(

@@ -53,6 +53,7 @@ class RoleplayPromptBuilder {
             if (input.toolsEnabled) {
                 builder.appendLine("Adjust these numbers with adjust_feeling when the conversation really changes how you feel. Do not mention the numbers.")
                 builder.appendLine("Call set_status when you leave, sleep, or decide not to answer. read_no_reply means you read the message and stay silent.")
+                builder.appendLine("Call set_life_schedule when you will be busy for a while, such as a meeting or a nap. You will come back when it ends.")
             } else {
                 builder.appendLine("Do not mention the numbers.")
             }

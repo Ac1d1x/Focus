@@ -442,12 +442,17 @@ class ChatTurnRunner(
                                 pushReply(finished, null, failed = false, silent = options.silentReply)
                             }
                             if (roleplayConfig != null && !manualCompact) {
-                                roleplayProactive.afterReply(
-                                    conversationId = conversationId,
-                                    assistantId = chats.assistantIdFor(conversationId),
-                                    proactive = options.proactive.isNotBlank(),
-                                    config = roleplayConfig,
-                                )
+                                try {
+                                    roleplayProactive.afterReply(
+                                        conversationId = conversationId,
+                                        assistantId = chats.assistantIdFor(conversationId),
+                                        proactive = options.proactive.isNotBlank(),
+                                        config = roleplayConfig,
+                                    )
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (_: Throwable) {
+                                }
                             }
                         }
                         is ChatEvent.Failed -> {

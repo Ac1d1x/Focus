@@ -45,8 +45,8 @@ object SillyTavernCodec {
         val prompt = listOf(description, personality, scenario)
             .filter { it.isNotBlank() }
             .joinToString("\n\n")
-        val greeting = data.string("first_mes").orEmpty()
         val alternates = data.stringList("alternate_greetings")
+        val greeting = data.string("first_mes").orEmpty().ifBlank { alternates.firstOrNull().orEmpty() }
         val examples = data.string("mes_example").orEmpty()
         val systemPrompt = data.string("system_prompt").orEmpty()
         val postHistory = data.string("post_history_instructions").orEmpty()

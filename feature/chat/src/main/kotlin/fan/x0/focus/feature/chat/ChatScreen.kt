@@ -347,7 +347,7 @@ fun ChatScreen(
                         null
                     },
                     actions = {
-                        if (!state.isEmpty) {
+                        if (!state.isEmpty && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
                             Box(
                                 modifier = Modifier
                                     .padding(end = 8.dp)
@@ -520,7 +520,9 @@ fun ChatScreen(
                 )
             }
         }
-        if (!state.isEmpty && !state.slash.visible && !state.mention.visible) {
+        if (!state.isEmpty && !state.slash.visible && !state.mention.visible &&
+            state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -781,9 +783,10 @@ private fun ChatThread(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val entries = remember(state.history, state.live) { state.entries.toActivities() }
+    val roleplay = state.assistantKind == fan.x0.focus.data.assistant.AssistantKind.Roleplay
     val retry = state.retry
-    val todos = state.todos
-    val stats = state.stats?.takeIf { it.hasStats(state.statsConfig) }
+    val todos = if (roleplay) emptyList() else state.todos
+    val stats = state.stats?.takeIf { !roleplay && it.hasStats(state.statsConfig) }
     var follow by remember { mutableStateOf(true) }
     val played = remember(state.conversationId) { mutableSetOf<String>() }
 

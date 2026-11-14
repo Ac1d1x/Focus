@@ -230,4 +230,5 @@
     <string name="chat_roleplay_home_tagline">Start a scene and say something.</string>
     <string name="chat_new_scene_title">Scene %1$d</string>
     <string name="chat_recalled_character">%1$s recalled a message</string>
+    <string name="chat_edited">Edited</string>
 </resources>

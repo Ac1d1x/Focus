@@ -2358,6 +2358,28 @@ class ToolExecutor(
                     recalledMessageId = target.id,
                 )
             }
+            RoleplayToolCatalog.SET_LIFE_SCHEDULE -> {
+                val title = args.text("title").orEmpty().trim()
+                val start = ToolTime.parse(args.text("start"))
+                val end = ToolTime.parse(args.text("end"))
+                if (title.isEmpty() || start == null || end == null || end <= start) {
+                    return fail("title, start and end are required, and end must be after start.")
+                }
+                val state = roleplay.state(conversationId)
+                val entry = fan.x0.focus.data.roleplay.RoleplayLifeEntry(
+                    id = "life_${java.util.UUID.randomUUID()}",
+                    title = title.take(80),
+                    start = start,
+                    end = end,
+                    kind = args.text("kind").orEmpty().ifBlank { "busy" },
+                )
+                roleplay.setLife(conversationId, state.life + entry)
+                ToolResult(
+                    ok = true,
+                    content = "Busy with $title until ${ToolTime.full(end)}.",
+                    summary = "Life scheduled",
+                )
+            }
             RoleplayToolCatalog.MODIFY_SCHEDULED -> {
                 val id = args.text("id").orEmpty().trim()
                 val task = roleplay.openTasks(conversationId).firstOrNull {

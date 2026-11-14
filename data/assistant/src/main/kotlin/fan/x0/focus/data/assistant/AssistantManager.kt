@@ -1,5 +1,6 @@
 package fan.x0.focus.data.assistant
 
+import fan.x0.focus.data.roleplay.RoleplaySettings
 import fan.x0.focus.data.roleplay.RoleplayStore
 import org.koin.core.annotation.Single
 
@@ -14,6 +15,7 @@ class AssistantManager(
     private val switcher: ChatSwitcher,
     private val avatars: AssistantAvatarStore,
     private val roleplayStore: RoleplayStore,
+    private val roleplaySettings: RoleplaySettings,
 ) {
     suspend fun create(
         name: String,
@@ -72,6 +74,7 @@ class AssistantManager(
             roleplayStore.clearConversation(id)
         }
         roleplayStore.clearAssistant(profile.id)
+        roleplaySettings.clearOverride(profile.id)
         profiles.delete(profile.id)
         if (profile.avatar.isNotBlank()) avatars.delete(profile.avatar)
         workspace.delete(profile.id)

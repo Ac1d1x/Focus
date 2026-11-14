@@ -132,7 +132,7 @@ class RoleplayWorldStore(private val database: RoleplayDatabase) {
             val candidates = entries(book.id)
                 .filter { it.enabled && it.content.isNotBlank() }
                 .filter { entry -> entry.constant || fires(entry, text) }
-                .filter { entry -> entry.probability >= 1.0 || random.nextDouble() < entry.probability }
+                .filter { entry -> entry.constant || entry.probability >= 1.0 || random.nextDouble() < entry.probability }
             hits += pickGroups(candidates).map { book to it }
         }
         val kept = mutableListOf<Pair<RoleplayWorldBook, RoleplayWorldEntry>>()

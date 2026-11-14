@@ -229,4 +229,5 @@
     <string name="chat_roleplay_home_tagline">开始一个场景，说点什么。</string>
     <string name="chat_new_scene_title">场景 %1$d</string>
     <string name="chat_recalled_character">%1$s 撤回了一条消息</string>
+    <string name="chat_edited">已编辑</string>
 </resources>

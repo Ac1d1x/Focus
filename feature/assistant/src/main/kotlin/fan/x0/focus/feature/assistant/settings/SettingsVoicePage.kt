@@ -68,6 +68,15 @@ internal fun SettingsVoicePage(
     val cloud = stringResource(R.string.settings_voice_engine_cloud)
     val localTitle = stringResource(R.string.settings_voice_local)
     val cloudTitle = stringResource(R.string.settings_voice_cloud)
+    val recordTitle = stringResource(R.string.settings_voice_record)
+    val autoStopTitle = stringResource(R.string.settings_voice_auto_stop)
+    val autoStopBody = stringResource(R.string.settings_voice_auto_stop_body)
+    val autoStopTime = stringResource(R.string.settings_voice_auto_stop_time)
+    val silenceOptions = listOf(2, 3, 4, 5, 8, 10)
+    val silenceLabels = silenceOptions.associateWith {
+        stringResource(R.string.settings_voice_auto_stop_seconds, it)
+    }
+    val silenceSelected = state.config.silenceSeconds.takeIf { it in silenceOptions } ?: 3
     val ttsTitle = stringResource(R.string.settings_voice_tts)
     val systemTts = stringResource(R.string.settings_voice_tts_system)
     val deepSeekTts = stringResource(R.string.settings_voice_tts_deepseek)
@@ -156,6 +165,24 @@ internal fun SettingsVoicePage(
                         },
                     )
                 }
+            }
+        }
+        group(recordTitle) {
+            ExSwitchRow(
+                title = autoStopTitle,
+                subtitle = autoStopBody,
+                checked = state.config.autoStop,
+                onChange = { onAction(VoiceSettingsAction.SetAutoStop(it)) },
+                icon = Ic.Timer,
+            )
+            if (state.config.autoStop) {
+                ExChoiceRow(
+                    title = autoStopTime,
+                    options = silenceOptions,
+                    selected = silenceSelected,
+                    onSelect = { onAction(VoiceSettingsAction.SetSilenceSeconds(it)) },
+                    icon = Ic.Timer,
+                ) { silenceLabels[it].orEmpty() }
             }
         }
         group(ttsTitle) {

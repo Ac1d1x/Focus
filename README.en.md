@@ -60,6 +60,7 @@ Side chats run alongside the main conversation with their own model, tools, and 
 - The overlay assistant can float above any app so you can ask without switching back and forth.
 - You can attach the current screen or draw a region and ask about it. This works well for reading images, translating, and extracting text, similar to Circle to Search.
 - Voice input supports a local offline model, cloud transcription, and DeepSeek speech recognition.
+- Recording can stop automatically after silence, with a configurable timer or off.
 - The message menu can read replies aloud with the system voice or a DeepSeek voice, and can read new replies automatically.
 - There is a Focus tile in Quick Settings.
 - A 4x2 home screen widget shows the latest reply and running state.

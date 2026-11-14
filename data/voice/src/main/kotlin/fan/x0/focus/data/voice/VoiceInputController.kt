@@ -62,6 +62,11 @@ class VoiceInputController(
     private var driver: VoiceEngineDriver? = null
     private var engine: VoiceEngine = VoiceEngine.Local
     private var session = 0
+    @Volatile private var autoStop = true
+    @Volatile private var silenceMs = 3_000L
+    @Volatile private var heardSound = false
+    @Volatile private var lastLoudAt = 0L
+    @Volatile private var autoStopScheduled = false
 
     fun canRecord(): Boolean = ContextCompat.checkSelfPermission(
         context,
@@ -80,6 +85,11 @@ class VoiceInputController(
         scope.launch {
             val config = settings.configOnce()
             engine = config.engine
+            autoStop = config.autoStop
+            silenceMs = config.silenceSeconds.coerceIn(1, 30) * 1_000L
+            heardSound = false
+            lastLoudAt = 0L
+            autoStopScheduled = false
             val selected = when (config.engine) {
                 VoiceEngine.Local -> local
                 VoiceEngine.Cloud -> cloud
@@ -119,6 +129,9 @@ class VoiceInputController(
         val active = driver
         driver = null
         session++
+        heardSound = false
+        lastLoudAt = 0L
+        autoStopScheduled = false
         _state.value = VoiceUiState()
         _level.value = 0f
         if (active != null) {
@@ -155,7 +168,21 @@ class VoiceInputController(
     private fun handle(event: EngineEvent) {
         when (event) {
             is EngineEvent.Text -> _events.tryEmit(VoiceEvent.Transcript(event.text))
-            is EngineEvent.Level -> _level.value = event.value
+            is EngineEvent.Level -> {
+                _level.value = event.value
+                if (_state.value.phase != VoicePhase.Listening) return
+                val now = System.currentTimeMillis()
+                if (event.value >= LOUD_LEVEL) {
+                    heardSound = true
+                    lastLoudAt = now
+                } else if (
+                    autoStop && heardSound && !autoStopScheduled &&
+                    now - lastLoudAt >= silenceMs
+                ) {
+                    autoStopScheduled = true
+                    scope.launch { stop() }
+                }
+            }
             is EngineEvent.Failure -> {
                 val active = driver
                 driver = null
@@ -168,5 +195,9 @@ class VoiceInputController(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val LOUD_LEVEL = 0.12f
     }
 }

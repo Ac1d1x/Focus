@@ -38,6 +38,8 @@ sealed interface VoiceSettingsAction : UiAction {
     data class SetEngine(val engine: VoiceEngine) : VoiceSettingsAction
     data class SetCloudProvider(val providerId: String) : VoiceSettingsAction
     data class SetCloudModel(val model: String) : VoiceSettingsAction
+    data class SetAutoStop(val enabled: Boolean) : VoiceSettingsAction
+    data class SetSilenceSeconds(val seconds: Int) : VoiceSettingsAction
     data class SetTtsEngine(val engine: TtsEngine) : VoiceSettingsAction
     data class SetTtsProvider(val providerId: String) : VoiceSettingsAction
     data class SetTtsVoice(val voice: TtsVoice) : VoiceSettingsAction
@@ -102,6 +104,12 @@ class VoiceSettingsViewModel(
             }
             is VoiceSettingsAction.SetCloudModel -> viewModelScope.launch {
                 settings.setCloudModel(action.model)
+            }
+            is VoiceSettingsAction.SetAutoStop -> viewModelScope.launch {
+                settings.setAutoStop(action.enabled)
+            }
+            is VoiceSettingsAction.SetSilenceSeconds -> viewModelScope.launch {
+                settings.setSilenceSeconds(action.seconds)
             }
             is VoiceSettingsAction.SetTtsEngine -> viewModelScope.launch {
                 settings.setTtsEngine(action.engine)

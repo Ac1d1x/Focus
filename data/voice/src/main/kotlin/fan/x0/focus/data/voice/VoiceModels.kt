@@ -11,6 +11,8 @@ data class VoiceConfig(
     val engine: VoiceEngine = VoiceEngine.Local,
     val cloudProviderId: String = "",
     val cloudModel: String = "whisper-1",
+    val autoStop: Boolean = true,
+    val silenceSeconds: Int = 3,
 )
 
 enum class VoicePhase {

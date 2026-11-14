@@ -560,6 +560,11 @@
     <string name="settings_voice_cloud_deepseek">DeepSeek</string>
     <string name="settings_voice_cloud_deepseek_note">DeepSeek 转写使用 /tools/asr，不需要模型，最长约 2 分钟。</string>
     <string name="settings_voice_cloud_no_provider">请先在账号页添加 Provider。</string>
+    <string name="settings_voice_record">录音</string>
+    <string name="settings_voice_auto_stop">静音自动结束</string>
+    <string name="settings_voice_auto_stop_body">开始说话后，静音超过设定时间会自动停止录音。</string>
+    <string name="settings_voice_auto_stop_time">静音时间</string>
+    <string name="settings_voice_auto_stop_seconds">%1$d 秒</string>
     <string name="settings_voice_tts">朗读</string>
     <string name="settings_voice_tts_engine">朗读方式</string>
     <string name="settings_voice_tts_system">系统</string>

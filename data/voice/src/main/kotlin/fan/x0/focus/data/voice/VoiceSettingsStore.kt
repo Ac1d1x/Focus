@@ -3,6 +3,7 @@ package fan.x0.focus.data.voice
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,8 @@ class VoiceSettingsStore(@Provided private val context: Context) {
         val engine = stringPreferencesKey("engine")
         val cloudProviderId = stringPreferencesKey("cloud_provider_id")
         val cloudModel = stringPreferencesKey("cloud_model")
+        val autoStop = booleanPreferencesKey("auto_stop")
+        val silenceSeconds = intPreferencesKey("silence_seconds")
         val ttsEngine = stringPreferencesKey("tts_engine")
         val ttsProviderId = stringPreferencesKey("tts_provider_id")
         val ttsVoice = stringPreferencesKey("tts_voice")
@@ -32,6 +35,9 @@ class VoiceSettingsStore(@Provided private val context: Context) {
                 ?: VoiceEngine.Local,
             cloudProviderId = prefs[Keys.cloudProviderId].orEmpty(),
             cloudModel = prefs[Keys.cloudModel]?.ifBlank { DEFAULT_CLOUD_MODEL } ?: DEFAULT_CLOUD_MODEL,
+            autoStop = prefs[Keys.autoStop] ?: true,
+            silenceSeconds = (prefs[Keys.silenceSeconds] ?: DEFAULT_SILENCE_SECONDS)
+                .coerceIn(MIN_SILENCE_SECONDS, MAX_SILENCE_SECONDS),
         )
     }
 
@@ -62,6 +68,16 @@ class VoiceSettingsStore(@Provided private val context: Context) {
         context.voiceDataStore.edit { it[Keys.cloudModel] = model.trim() }
     }
 
+    suspend fun setAutoStop(enabled: Boolean) {
+        context.voiceDataStore.edit { it[Keys.autoStop] = enabled }
+    }
+
+    suspend fun setSilenceSeconds(seconds: Int) {
+        context.voiceDataStore.edit {
+            it[Keys.silenceSeconds] = seconds.coerceIn(MIN_SILENCE_SECONDS, MAX_SILENCE_SECONDS)
+        }
+    }
+
     suspend fun setTtsEngine(engine: TtsEngine) {
         context.voiceDataStore.edit { it[Keys.ttsEngine] = engine.name }
     }
@@ -80,5 +96,8 @@ class VoiceSettingsStore(@Provided private val context: Context) {
 
     companion object {
         const val DEFAULT_CLOUD_MODEL = "whisper-1"
+        const val DEFAULT_SILENCE_SECONDS = 3
+        const val MIN_SILENCE_SECONDS = 1
+        const val MAX_SILENCE_SECONDS = 30
     }
 }

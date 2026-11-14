@@ -274,6 +274,7 @@ fun ExPage(
     Scaffold(
         modifier = modifier.nestedScroll(behavior.nestedScrollConnection),
         containerColor = Color.Transparent,
+        contentColor = scheme.onSurface,
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -287,6 +288,9 @@ fun ExPage(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Transparent,
                     scrolledContainerColor = scheme.surfaceContainer,
+                    titleContentColor = scheme.onSurface,
+                    navigationIconContentColor = scheme.onSurface,
+                    actionIconContentColor = scheme.onSurface,
                 ),
             )
         },
@@ -390,7 +394,13 @@ fun ExRow(
                 Spacer(Modifier.width(14.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = scheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 if (!subtitle.isNullOrBlank()) {
                     Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 4, overflow = TextOverflow.Ellipsis)
                 }
@@ -480,11 +490,13 @@ fun ExCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val base = modifier.fillMaxWidth().clip(shape).background(color)
-    Column(
-        (if (onClick != null) base.clickable(onClick = onClick) else base).padding(padding),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        content = content,
-    )
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+        Column(
+            (if (onClick != null) base.clickable(onClick = onClick) else base).padding(padding),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = content,
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -639,7 +651,7 @@ fun ExEmpty(icon: ImageVector, title: String, modifier: Modifier = Modifier, tex
             Box(Modifier.size(96.dp).background(scheme.secondaryContainer, MaterialShapes.Cookie9Sided.toShape()), contentAlignment = Alignment.Center) {
                 Icon(icon, null, Modifier.size(40.dp), tint = scheme.onSecondaryContainer)
             }
-            Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            Text(title, style = MaterialTheme.typography.titleLarge, color = scheme.onSurface, textAlign = TextAlign.Center)
             if (text != null) Text(text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, textAlign = TextAlign.Center)
             action?.invoke()
         }

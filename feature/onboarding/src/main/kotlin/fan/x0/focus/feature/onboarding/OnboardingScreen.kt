@@ -24,6 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.VisualTransformation
@@ -77,6 +80,15 @@ import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.FocusTraceCard
 import fan.x0.focus.core.designsystem.components.FocusVoiceUi
+import fan.x0.focus.core.designsystem.kit.BtnKind
+import fan.x0.focus.core.designsystem.kit.ExButton
+import fan.x0.focus.core.designsystem.kit.ExField
+import fan.x0.focus.core.designsystem.kit.ExIconButton
+import fan.x0.focus.core.designsystem.kit.ExPill
+import fan.x0.focus.core.designsystem.kit.ExSegmented
+import fan.x0.focus.core.designsystem.kit.ExSheet
+import fan.x0.focus.core.designsystem.kit.ExSwitchRow
+import fan.x0.focus.core.designsystem.kit.Ic
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.error.message
@@ -417,134 +429,124 @@ private fun ComposerArea(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ProviderSheet(
     state: OnboardingUiState,
     onAction: (OnboardingAction) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = { onAction(OnboardingAction.CloseProviderSheet) },
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ExSheet(
+        onDismiss = { onAction(OnboardingAction.CloseProviderSheet) },
+        title = stringResource(R.string.onboarding_provider_title),
+        full = true,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Text(
+            text = stringResource(R.string.onboarding_provider_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        PresetRow(state = state, onAction = onAction)
+        ExField(
+            value = state.providerName,
+            onChange = { onAction(OnboardingAction.ProviderNameChanged(it)) },
+            label = stringResource(R.string.onboarding_provider_name),
+        )
+        ExField(
+            value = state.baseUrl,
+            onChange = { onAction(OnboardingAction.BaseUrlChanged(it)) },
+            label = stringResource(R.string.onboarding_base_url),
+            placeholder = "https://api.example.com/v1",
+            keyboard = KeyboardType.Uri,
+            mono = true,
+        )
+        val chat = stringResource(R.string.onboarding_protocol_chat)
+        val responses = stringResource(R.string.onboarding_protocol_responses)
+        val anthropic = stringResource(R.string.onboarding_protocol_anthropic)
+        ExSegmented(
+            options = ChatProtocol.entries,
+            selected = state.protocol,
+            onSelect = { onAction(OnboardingAction.ProtocolChanged(it)) },
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.onboarding_provider_title),
-                        style = MaterialTheme.typography.titleLargeEmphasized,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(R.string.onboarding_provider_body),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = hapticTap { onAction(OnboardingAction.CloseProviderSheet) }) {
-                    Icon(
-                        imageVector = FocusIcons.Close,
-                        contentDescription = stringResource(R.string.onboarding_close),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            when (it) {
+                ChatProtocol.ChatCompletions -> chat
+                ChatProtocol.Responses -> responses
+                ChatProtocol.AnthropicMessages -> anthropic
             }
-            PresetRow(state = state, onAction = onAction)
-            OutlinedTextField(
-                value = state.providerName,
-                onValueChange = { onAction(OnboardingAction.ProviderNameChanged(it)) },
-                label = { Text(stringResource(R.string.onboarding_provider_name)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = FocusShapeTokens.input,
-            )
-            OutlinedTextField(
-                value = state.baseUrl,
-                onValueChange = { onAction(OnboardingAction.BaseUrlChanged(it)) },
-                label = { Text(stringResource(R.string.onboarding_base_url)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = FocusShapeTokens.input,
-            )
-            ProtocolChips(state = state, onAction = onAction)
-            ApiKeyField(state = state, onAction = onAction)
-            ModelField(state = state, onAction = onAction)
-            state.providerFailure?.let { failure ->
-                ProviderFailureCard(failure = failure)
-            }
-            if (state.connectionOk) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        imageVector = FocusIcons.Check,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = stringResource(R.string.onboarding_connection_ok),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FocusOutlinedButton(
-                    text = stringResource(
-                        if (state.testing) {
-                            R.string.onboarding_testing
-                        } else {
-                            R.string.onboarding_test
-                        },
-                    ),
-                    onClick = { onAction(OnboardingAction.TestProvider) },
-                    enabled = state.canTestProvider,
-                    loading = state.testing,
-                    icon = FocusIcons.Bolt,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                )
-                FocusPrimaryButton(
-                    text = stringResource(
-                        if (state.saving) {
-                            R.string.onboarding_saving
-                        } else {
-                            R.string.onboarding_save
-                        },
-                    ),
-                    onClick = { onAction(OnboardingAction.SaveProvider) },
-                    enabled = state.canSaveProvider,
-                    loading = state.saving,
-                    icon = FocusIcons.Check,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                )
-            }
-            Text(
-                text = stringResource(R.string.onboarding_privacy),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FocusTextButton(
-                text = stringResource(R.string.onboarding_controlled_only),
-                onClick = { onAction(OnboardingAction.UseAsControlled) },
-                modifier = Modifier.fillMaxWidth(),
+        }
+        if (!state.keyOptional) {
+            ExField(
+                value = state.apiKey,
+                onChange = { onAction(OnboardingAction.ApiKeyChanged(it)) },
+                label = stringResource(R.string.onboarding_api_key),
+                secret = true,
+                mono = true,
             )
         }
+        ExSwitchRow(
+            title = stringResource(R.string.onboarding_key_optional),
+            checked = state.keyOptional,
+            onChange = { onAction(OnboardingAction.ToggleKeyOptional) },
+        )
+        ExField(
+            value = state.model,
+            onChange = { onAction(OnboardingAction.ModelChanged(it)) },
+            label = stringResource(R.string.onboarding_model),
+            mono = true,
+            trailing = {
+                if (state.fetchingModels) {
+                    LoadingIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    ExIconButton(
+                        icon = Ic.Search,
+                        label = stringResource(R.string.onboarding_model_picker_title),
+                        onClick = { onAction(OnboardingAction.OpenModelPicker) },
+                    )
+                }
+            },
+        )
+        state.providerFailure?.let { failure ->
+            ProviderFailureCard(failure = failure)
+        }
+        if (state.connectionOk) {
+            ExPill(
+                text = stringResource(R.string.onboarding_connection_ok),
+                icon = Ic.Check,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ExButton(
+                text = stringResource(
+                    if (state.testing) R.string.onboarding_testing else R.string.onboarding_test,
+                ),
+                onClick = { onAction(OnboardingAction.TestProvider) },
+                modifier = Modifier.weight(1f),
+                kind = BtnKind.Tonal,
+                icon = Ic.Bolt,
+                enabled = state.canTestProvider,
+                loading = state.testing,
+            )
+            ExButton(
+                text = stringResource(
+                    if (state.saving) R.string.onboarding_saving else R.string.onboarding_save,
+                ),
+                onClick = { onAction(OnboardingAction.SaveProvider) },
+                modifier = Modifier.weight(1f),
+                icon = Ic.Check,
+                enabled = state.canSaveProvider,
+                loading = state.saving,
+            )
+        }
+        Text(
+            text = stringResource(R.string.onboarding_privacy),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ExButton(
+            text = stringResource(R.string.onboarding_controlled_only),
+            onClick = { onAction(OnboardingAction.UseAsControlled) },
+            modifier = Modifier.fillMaxWidth(),
+            kind = BtnKind.Text,
+        )
     }
 }
 

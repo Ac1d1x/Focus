@@ -252,6 +252,13 @@ class ChatEngine(
                         assistantId = AssistantProfile.DEFAULT_ID,
                         turn = context.messages.count { it.role == ChatRole.User },
                     )
+                }.let { base ->
+                    if (deepSeekEnabled) {
+                        base + "\n- Prefer deepseek_web_search and deepseek_read_url for current facts and links. " +
+                            "They run on the server and return source citations."
+                    } else {
+                        base
+                    }
                 }.withSummary(context.summary)
                 val messages = buildList {
                     add(ChatMessageDto(role = "system", content = system))

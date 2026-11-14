@@ -317,7 +317,7 @@
     <string name="settings_tools_deepseek_title">DeepSeek</string>
     <string name="settings_tools_deepseek_body">Server-side search, links, titles, and user metadata.</string>
     <string name="settings_deepseek_title">DeepSeek</string>
-    <string name="settings_deepseek_body">These features apply to DeepSeek providers with the deepseek-flash model.</string>
+    <string name="settings_deepseek_body">These features apply to DeepSeek providers with the deepseek-flash model over Chat Completions or Anthropic Messages.</string>
     <string name="settings_deepseek_enabled">Enable DeepSeek features</string>
     <string name="settings_deepseek_providers">Providers</string>
     <string name="settings_deepseek_no_provider">Add a DeepSeek provider on the Account page first.</string>

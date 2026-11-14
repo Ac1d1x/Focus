@@ -317,7 +317,7 @@
     <string name="settings_tools_deepseek_title">DeepSeek</string>
     <string name="settings_tools_deepseek_body">服务端联网、读链接、会话标题和用户元信息。</string>
     <string name="settings_deepseek_title">DeepSeek</string>
-    <string name="settings_deepseek_body">这些能力只对使用 deepseek-flash 模型的 DeepSeek 服务商生效。</string>
+    <string name="settings_deepseek_body">这些能力只对使用 deepseek-flash 模型的 DeepSeek 服务商生效，支持 Chat Completions 和 Anthropic Messages。</string>
     <string name="settings_deepseek_enabled">启用 DeepSeek 扩展</string>
     <string name="settings_deepseek_providers">服务商</string>
     <string name="settings_deepseek_no_provider">请先在账号页添加 DeepSeek 服务商。</string>

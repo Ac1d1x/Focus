@@ -60,6 +60,10 @@ import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.designsystem.components.FocusSnackbarHost
 import fan.x0.focus.core.designsystem.components.FocusTextButton
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
+import fan.x0.focus.core.designsystem.kit.BtnKind
+import fan.x0.focus.core.designsystem.kit.ExButton
+import fan.x0.focus.core.designsystem.kit.ExField
+import fan.x0.focus.core.designsystem.kit.ExSheet
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
@@ -498,7 +502,6 @@ private fun FocusCardGroupScope.promptItem(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PromptEditorSheet(
     editor: PromptEditorUi,
@@ -507,7 +510,6 @@ private fun PromptEditorSheet(
     onClose: () -> Unit,
     onSave: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val title = stringResource(
         if (editor.target == PromptTarget.Main) R.string.assistant_prompts_main else R.string.assistant_prompts_side,
     )
@@ -525,60 +527,38 @@ private fun PromptEditorSheet(
             R.string.assistant_prompts_side_hint
         },
     )
-    ModalBottomSheet(
-        onDismissRequest = onClose,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .imePadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    ExSheet(onDismiss = onClose, title = title, full = true) {
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        ExField(
+            value = editor.value,
+            onChange = onValueChange,
+            label = hint,
+            singleLine = false,
+            minLines = 8,
+            maxLines = 20,
+            supporting = stringResource(R.string.assistant_prompts_empty),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLargeEmphasized,
+            Spacer(Modifier.weight(1f))
+            ExButton(
+                text = stringResource(R.string.assistant_prompts_cancel),
+                onClick = onClose,
+                kind = BtnKind.Text,
             )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            ExButton(
+                text = stringResource(R.string.assistant_prompts_save),
+                onClick = onSave,
+                loading = saving,
+                enabled = !saving,
             )
-            OutlinedTextField(
-                value = editor.value,
-                onValueChange = onValueChange,
-                placeholder = { Text(hint) },
-                minLines = 8,
-                maxLines = 20,
-                supportingText = {
-                    Text(stringResource(R.string.assistant_prompts_empty))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = FocusShapeTokens.input,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Spacer(Modifier.weight(1f))
-                FocusTextButton(
-                    text = stringResource(R.string.assistant_prompts_cancel),
-                    onClick = onClose,
-                )
-                FocusPrimaryButton(
-                    text = stringResource(R.string.assistant_prompts_save),
-                    onClick = onSave,
-                    loading = saving,
-                    enabled = !saving,
-                )
-            }
         }
     }
 }

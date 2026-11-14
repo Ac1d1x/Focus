@@ -28,13 +28,12 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
+import fan.x0.focus.core.designsystem.theme.FocusMathFont
 
 /*
  * Native LaTeX math typesetting. A formula is parsed into a small node tree, laid out into boxes
@@ -265,7 +264,8 @@ internal class MathParser(private val s: String) {
                 null
             }
             "text", "textrm", "textnormal", "mbox", "mathrm", "operatorname", "mathsf", "texttt", "mathtt", "textsf" -> MSym(plain(braceText()))
-            "textbf", "mathbf", "boldsymbol", "bm", "pmb" -> MSym(plain(braceText()), bold = true)
+            "textbf", "mathbf" -> MSym(plain(braceText()), bold = true)
+            "boldsymbol", "bm", "pmb" -> MSym(plain(braceText()), bold = true, italic = true)
             "textit", "mathit", "mathcal", "mathscr", "mathfrak" -> MSym(plain(braceText()), italic = true)
             "mathbb" -> MSym(braceText().map { BLACKBOARD[it] ?: it.toString() }.joinToString(""))
             "hat", "widehat", "bar", "overline", "underline", "vec", "overrightarrow", "tilde", "widetilde", "dot", "ddot", "boxed" -> MAccent(arg(), name)
@@ -332,6 +332,47 @@ internal class MathParser(private val s: String) {
     }
 }
 
+private val GREEK_ITALIC = mapOf(
+    0x03B1 to 0x1D6FC, 0x03B2 to 0x1D6FD, 0x03B3 to 0x1D6FE, 0x03B4 to 0x1D6FF,
+    0x03B5 to 0x1D700, 0x03F5 to 0x1D700, 0x03B6 to 0x1D701, 0x03B7 to 0x1D702,
+    0x03B8 to 0x1D703, 0x03D1 to 0x1D717, 0x03B9 to 0x1D704, 0x03BA to 0x1D705,
+    0x03F0 to 0x1D718, 0x03BB to 0x1D706, 0x03BC to 0x1D707, 0x03BD to 0x1D708,
+    0x03BE to 0x1D709, 0x03BF to 0x1D70A, 0x03C0 to 0x1D70B, 0x03D6 to 0x1D71B,
+    0x03C1 to 0x1D70C, 0x03F1 to 0x1D71A, 0x03C2 to 0x1D70D, 0x03C3 to 0x1D70E,
+    0x03C4 to 0x1D70F, 0x03C5 to 0x1D710, 0x03C6 to 0x1D711, 0x03D5 to 0x1D719,
+    0x03C7 to 0x1D712, 0x03C8 to 0x1D713, 0x03C9 to 0x1D714, 0x2202 to 0x1D715,
+)
+
+/** Maps letters onto the math alphanumeric block, so one upright math font covers italics too. */
+private fun mathAlphabet(text: String, italic: Boolean, bold: Boolean): String {
+    if (!italic && !bold) return text
+    return buildString(text.length) {
+        text.forEach { c ->
+            val code = c.code
+            val mapped = when {
+                italic && bold -> when {
+                    code in 'A'.code..'Z'.code -> 0x1D468 + code - 'A'.code
+                    code in 'a'.code..'z'.code -> 0x1D482 + code - 'a'.code
+                    else -> GREEK_ITALIC[code]
+                }
+                italic -> when {
+                    code in 'A'.code..'Z'.code -> 0x1D434 + code - 'A'.code
+                    code == 'h'.code -> 0x210E
+                    code in 'a'.code..'z'.code -> 0x1D44E + code - 'a'.code
+                    else -> GREEK_ITALIC[code]
+                }
+                else -> when {
+                    code in 'A'.code..'Z'.code -> 0x1D400 + code - 'A'.code
+                    code in 'a'.code..'z'.code -> 0x1D41A + code - 'a'.code
+                    code in '0'.code..'9'.code -> 0x1D7CE + code - '0'.code
+                    else -> null
+                }
+            }
+            if (mapped != null) append(String(Character.toChars(mapped))) else append(c)
+        }
+    }
+}
+
 /** A laid-out fragment. [paint] draws it with its baseline at y and left edge at x. */
 internal class MBox(val w: Float, val asc: Float, val desc: Float, private val draw: DrawScope.(Float, Float) -> Unit) {
     val h: Float get() = asc + desc
@@ -347,11 +388,14 @@ internal class MathLayout(private val tm: TextMeasurer, private val density: Den
         val style = TextStyle(
             color = color,
             fontSize = with(density) { size.toSp() },
-            fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-            fontFamily = FontFamily.Serif,
+            fontFamily = FocusMathFont,
         )
-        val result = tm.measure(text = AnnotatedString(text), style = style, softWrap = false, maxLines = 1)
+        val result = tm.measure(
+            text = AnnotatedString(mathAlphabet(text, italic, bold)),
+            style = style,
+            softWrap = false,
+            maxLines = 1,
+        )
         val base = result.firstBaseline
         // Font line boxes are taller than the ink. Trimming keeps fractions and scripts tight.
         return MBox(result.size.width.toFloat(), minOf(base, size * 0.78f), minOf(result.size.height - base, size * 0.24f)) { x, y ->

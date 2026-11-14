@@ -95,3 +95,22 @@ val FocusBodyFont: FontFamily = FontFamily(
     FallbackFont(800, 100f, 6f, 18f),
     FallbackFont(900, 100f, 4f, 18f),
 )
+
+private object MathFontLoader : AndroidFont.TypefaceLoader {
+    override fun loadBlocking(context: Context, font: AndroidFont): Typeface =
+        Typeface.Builder(context.assets, "fonts/NotoSansMath-Regular.ttf").build()
+
+    override suspend fun awaitLoad(context: Context, font: AndroidFont): Typeface =
+        loadBlocking(context, font)
+}
+
+private class MathFont : AndroidFont(
+    loadingStrategy = FontLoadingStrategy.Blocking,
+    typefaceLoader = MathFontLoader,
+    variationSettings = FontVariation.Settings(),
+) {
+    override val weight: FontWeight = FontWeight.Normal
+    override val style: FontStyle = FontStyle.Normal
+}
+
+val FocusMathFont: FontFamily = FontFamily(MathFont())

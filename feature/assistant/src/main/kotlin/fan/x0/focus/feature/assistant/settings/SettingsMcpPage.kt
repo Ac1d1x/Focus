@@ -295,28 +295,26 @@ private fun McpEditorSheet(
 
 @Composable
 private fun McpTestReportCard(report: McpTestReport) {
-    ExGroup {
-        ExCard {
-            ExPill(
-                text = stringResource(
-                    R.string.settings_mcp_status_ok,
-                    report.info.name,
-                    report.info.version,
-                ),
-                icon = Ic.Check,
-            )
+    ExCard {
+        ExPill(
+            text = stringResource(
+                R.string.settings_mcp_status_ok,
+                report.info.name,
+                report.info.version,
+            ),
+            icon = Ic.Check,
+        )
+        Text(
+            text = stringResource(R.string.settings_mcp_tools_count, report.tools.size),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        report.tools.take(8).forEach { tool ->
             Text(
-                text = stringResource(R.string.settings_mcp_tools_count, report.tools.size),
-                style = MaterialTheme.typography.labelMedium,
+                text = tool.name,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            report.tools.take(8).forEach { tool ->
-                Text(
-                    text = tool.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }

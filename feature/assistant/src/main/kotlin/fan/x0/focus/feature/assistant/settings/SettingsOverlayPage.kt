@@ -8,6 +8,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -157,7 +158,9 @@ internal fun SettingsOverlayPage(
                     }
                 },
             )
-            if (!isDefault) {
+        }
+        if (!isDefault) {
+            item {
                 ExButton(
                     text = stringResource(
                         if (roleIntent != null) {
@@ -167,9 +170,12 @@ internal fun SettingsOverlayPage(
                         },
                     ),
                     onClick = requestDefault,
+                    modifier = Modifier.fillMaxWidth(),
                     icon = Ic.Sparkle,
                 )
             }
+        }
+        item {
             Text(
                 text = stringResource(R.string.settings_assistant_hint),
                 style = MaterialTheme.typography.bodySmall,

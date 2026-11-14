@@ -210,7 +210,10 @@ class FeedRepository(
         val response = try {
             http.get(url) {
                 header(HttpHeaders.UserAgent, USER_AGENT)
-                header(HttpHeaders.Accept, "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.5")
+                header(
+                    HttpHeaders.Accept,
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                )
             }
         } catch (e: CancellationException) {
             throw e
@@ -339,7 +342,8 @@ class FeedRepository(
 
     companion object {
         private const val MAX_ARTICLES_PER_FETCH = 60
-        private const val USER_AGENT = "Focus/1.0 (Android; RSS reader)"
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
         private const val ARTICLE_SELECT = """
             SELECT a.id, a.feed_id, a.url, a.title, a.author, a.summary, a.content,

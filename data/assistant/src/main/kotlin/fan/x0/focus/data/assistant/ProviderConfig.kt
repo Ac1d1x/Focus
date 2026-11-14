@@ -89,7 +89,7 @@ object ProviderCatalog {
     val presets = listOf(
         ProviderConfig(id = "openai", name = "OpenAI", baseUrl = "https://api.openai.com/v1"),
         ProviderConfig(id = "openrouter", name = "OpenRouter", baseUrl = "https://openrouter.ai/api/v1"),
-        ProviderConfig(id = "deepseek", name = "DeepSeek", baseUrl = "https://api.deepseek.com/v1"),
+        ProviderConfig(id = "deepseek", name = "DeepSeek", baseUrl = "https://api.deepseek.com/v1", model = "deepseek-flash"),
         ProviderConfig(
             id = "anthropic",
             name = "Anthropic",

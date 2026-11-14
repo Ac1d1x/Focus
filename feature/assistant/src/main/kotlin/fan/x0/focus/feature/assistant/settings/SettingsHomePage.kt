@@ -164,20 +164,76 @@ internal fun SettingsHomePage(
         ),
     )
 
+    val deeperEntries = listOf(
+        SettingsEntry(
+            title = stringResource(R.string.settings_tools_search_title),
+            body = stringResource(R.string.settings_tools_search_body),
+            icon = FocusIcons.Search,
+        ) { onOpen(SettingsDestination.WebSearch) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_tools_mcp_title),
+            body = stringResource(R.string.settings_tools_mcp_body),
+            icon = FocusIcons.Link,
+        ) { onOpen(SettingsDestination.Mcp) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_tools_skills_title),
+            body = stringResource(R.string.settings_tools_skills_body),
+            icon = FocusIcons.Tool,
+        ) { onOpen(SettingsDestination.Skills) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_tools_index_title),
+            body = stringResource(R.string.settings_tools_index_body),
+            icon = FocusIcons.Folder,
+        ) { onOpen(SettingsDestination.WorkspaceIndex) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_tools_trust_title),
+            body = stringResource(R.string.settings_tools_trust_body),
+            icon = FocusIcons.Terminal,
+        ) { onOpen(SettingsDestination.WorkspaceTrust) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_feeds_title),
+            body = stringResource(R.string.settings_feeds_body),
+            icon = FocusIcons.Feed,
+        ) { onOpen(SettingsDestination.Tools) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_about_update_item),
+            body = stringResource(R.string.settings_about_update_body),
+            icon = FocusIcons.Refresh,
+        ) { onOpen(SettingsDestination.About) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_about_contributors_item),
+            body = stringResource(R.string.settings_about_contributors_body),
+            icon = FocusIcons.Person,
+        ) { onOpen(SettingsDestination.About) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_about_source_item),
+            body = stringResource(R.string.settings_about_source_body),
+            icon = FocusIcons.Link,
+        ) { onOpen(SettingsDestination.About) },
+        SettingsEntry(
+            title = stringResource(R.string.settings_about_license_item),
+            body = stringResource(R.string.settings_about_license_body),
+            icon = FocusIcons.Library,
+        ) { onOpen(SettingsDestination.About) },
+    )
+
     var query by rememberSaveable { mutableStateOf("") }
-    val filtered = if (query.isBlank()) {
-        sections
+    val results = if (query.isBlank()) {
+        emptyList()
     } else {
-        sections.mapNotNull { section ->
-            if (section.title?.contains(query, ignoreCase = true) == true) {
-                section
-            } else {
-                val entries = section.entries.filter {
-                    it.title.contains(query, ignoreCase = true) || it.body.contains(query, ignoreCase = true)
-                }
-                if (entries.isEmpty()) null else section.copy(entries = entries)
+        (deeperEntries + sections.flatMap { it.entries })
+            .filter {
+                it.title.contains(query, ignoreCase = true) || it.body.contains(query, ignoreCase = true)
             }
-        }
+            .sortedByDescending {
+                when {
+                    it.title.equals(query, ignoreCase = true) -> 3
+                    it.title.startsWith(query, ignoreCase = true) -> 2
+                    it.title.contains(query, ignoreCase = true) -> 1
+                    else -> 0
+                }
+            }
+            .distinctBy { it.title }
     }
 
     SettingsPageScaffold(title = stringResource(R.string.settings_home_title)) {
@@ -213,27 +269,45 @@ internal fun SettingsHomePage(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (filtered.isEmpty()) {
-            item(key = "empty") {
-                Text(
-                    text = stringResource(R.string.settings_search_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
-                )
+        if (query.isNotBlank()) {
+            if (results.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        text = stringResource(R.string.settings_search_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
+                    )
+                }
+            } else {
+                item(key = "results") {
+                    FocusReveal {
+                        FocusCardGroup(title = stringResource(R.string.settings_search_results)) {
+                            results.forEach { entry ->
+                                pageItem(
+                                    title = entry.title,
+                                    body = entry.body,
+                                    icon = entry.icon,
+                                    onClick = entry.onClick,
+                                )
+                            }
+                        }
+                    }
+                }
             }
-        }
-        filtered.forEachIndexed { index, section ->
-            item(key = "section_${section.key}") {
-                FocusReveal(index = index) {
-                    FocusCardGroup(title = section.title) {
-                        section.entries.forEach { entry ->
-                            pageItem(
-                                title = entry.title,
-                                body = entry.body,
-                                icon = entry.icon,
-                                onClick = entry.onClick,
-                            )
+        } else {
+            sections.forEachIndexed { index, section ->
+                item(key = "section_${section.key}") {
+                    FocusReveal(index = index) {
+                        FocusCardGroup(title = section.title) {
+                            section.entries.forEach { entry ->
+                                pageItem(
+                                    title = entry.title,
+                                    body = entry.body,
+                                    icon = entry.icon,
+                                    onClick = entry.onClick,
+                                )
+                            }
                         }
                     }
                 }

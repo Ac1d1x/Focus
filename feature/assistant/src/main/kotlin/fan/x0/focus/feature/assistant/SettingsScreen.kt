@@ -18,10 +18,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import fan.x0.focus.core.designsystem.error.HandleAppErrors
-import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.core.designsystem.theme.FocusMotionDefaults
+import fan.x0.focus.core.mvi.CollectEffect
+import fan.x0.focus.feature.assistant.settings.ProviderEditorSheet
+import fan.x0.focus.feature.assistant.settings.SettingsAboutPage
 import fan.x0.focus.feature.assistant.settings.SettingsAccountPage
 import fan.x0.focus.feature.assistant.settings.SettingsAppearancePage
+import fan.x0.focus.feature.assistant.settings.SettingsAutomationRoute
 import fan.x0.focus.feature.assistant.settings.SettingsChatAgentPage
 import fan.x0.focus.feature.assistant.settings.SettingsChatDetailRoute
 import fan.x0.focus.feature.assistant.settings.SettingsCrashLogsRoute
@@ -33,16 +36,14 @@ import fan.x0.focus.feature.assistant.settings.SettingsMcpRoute
 import fan.x0.focus.feature.assistant.settings.SettingsModelPickerSheet
 import fan.x0.focus.feature.assistant.settings.SettingsModelsRoute
 import fan.x0.focus.feature.assistant.settings.SettingsNotificationsPage
-import fan.x0.focus.feature.assistant.settings.SettingsAutomationRoute
 import fan.x0.focus.feature.assistant.settings.SettingsOverlayPage
 import fan.x0.focus.feature.assistant.settings.SettingsSkillsRoute
-import fan.x0.focus.feature.plugin.SettingsPluginsRoute
 import fan.x0.focus.feature.assistant.settings.SettingsToolsPage
-import fan.x0.focus.feature.assistant.settings.ProviderEditorSheet
-import fan.x0.focus.feature.assistant.settings.SettingsWebSearchRoute
 import fan.x0.focus.feature.assistant.settings.SettingsVoiceRoute
+import fan.x0.focus.feature.assistant.settings.SettingsWebSearchRoute
 import fan.x0.focus.feature.assistant.settings.SettingsWorkspaceIndexRoute
 import fan.x0.focus.feature.assistant.settings.SettingsWorkspaceTrustRoute
+import fan.x0.focus.feature.plugin.SettingsPluginsRoute
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -230,6 +231,12 @@ internal fun SettingsScreen(
                     SettingsDestination.CrashLogs -> SettingsCrashLogsRoute(
                         onBack = { backStack.removeLastOrNull() },
                         snackbar = snackbar,
+                    )
+                    SettingsDestination.About -> SettingsAboutPage(
+                        state = latestState.value,
+                        onAction = onAction,
+                        snackbar = snackbar,
+                        onBack = { backStack.removeLastOrNull() },
                     )
                 }
             }

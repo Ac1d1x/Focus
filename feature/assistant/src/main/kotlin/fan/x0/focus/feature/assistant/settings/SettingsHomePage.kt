@@ -25,6 +25,41 @@ internal fun SettingsHomePage(
     onOpenBridge: (() -> Unit)?,
     onOpenDevice: () -> Unit,
 ) {
+    val accountTitle = stringResource(R.string.settings_page_account)
+    val accountBody = stringResource(R.string.settings_page_account_body)
+    val modelsTitle = stringResource(R.string.settings_page_models)
+    val modelsBody = stringResource(R.string.settings_page_models_body)
+    val chatTitle = stringResource(R.string.settings_page_chat_agent)
+    val chatBody = stringResource(R.string.settings_page_chat_agent_body)
+    val detailTitle = stringResource(R.string.settings_page_chat_detail)
+    val detailBody = stringResource(R.string.settings_page_chat_detail_body)
+    val toolsTitle = stringResource(R.string.settings_page_tools)
+    val toolsBody = stringResource(R.string.settings_page_tools_body)
+    val automationTitle = stringResource(R.string.settings_page_automation)
+    val automationBody = stringResource(R.string.settings_page_automation_body)
+    val pluginsTitle = stringResource(R.string.settings_page_plugins)
+    val pluginsBody = stringResource(R.string.settings_page_plugins_body)
+    val bridgeTitle = stringResource(R.string.settings_page_bridge)
+    val bridgeBody = stringResource(R.string.settings_page_bridge_body)
+    val deviceTitle = stringResource(R.string.settings_page_device)
+    val deviceBody = stringResource(R.string.settings_page_device_body)
+    val imTitle = stringResource(R.string.settings_page_im)
+    val imBody = stringResource(R.string.settings_page_im_body)
+    val voiceTitle = stringResource(R.string.settings_page_voice)
+    val voiceBody = stringResource(R.string.settings_page_voice_body)
+    val overlayTitle = stringResource(R.string.settings_page_overlay)
+    val overlayBody = stringResource(R.string.settings_page_overlay_body)
+    val appearanceTitle = stringResource(R.string.settings_page_appearance)
+    val appearanceBody = stringResource(R.string.settings_page_appearance_body)
+    val notificationsTitle = stringResource(R.string.settings_page_notifications)
+    val notificationsBody = stringResource(R.string.settings_page_notifications_body)
+    val dataTitle = stringResource(R.string.settings_page_data)
+    val dataBody = stringResource(R.string.settings_page_data_body)
+    val crashTitle = stringResource(R.string.settings_page_crash_logs)
+    val crashBody = stringResource(R.string.settings_page_crash_logs_body)
+    val aboutTitle = stringResource(R.string.settings_page_about)
+    val aboutBody = stringResource(R.string.settings_page_about_body)
+
     SettingsPageScaffold(title = stringResource(R.string.settings_home_title)) {
         item(key = "intro") {
             FocusReveal {
@@ -42,52 +77,14 @@ internal fun SettingsHomePage(
                 }
             }
         }
-        item(key = "pages") {
+        item(key = "assistant") {
             FocusReveal(index = 1) {
-                val accountTitle = stringResource(R.string.settings_page_account)
-                val accountBody = stringResource(R.string.settings_page_account_body)
-                val chatTitle = stringResource(R.string.settings_page_chat_agent)
-                val chatBody = stringResource(R.string.settings_page_chat_agent_body)
-                val modelsTitle = stringResource(R.string.settings_page_models)
-                val modelsBody = stringResource(R.string.settings_page_models_body)
-                val superTitle = stringResource(R.string.settings_page_automation)
-                val superBody = stringResource(R.string.settings_page_automation_body)
-                val toolsTitle = stringResource(R.string.settings_page_tools)
-                val toolsBody = stringResource(R.string.settings_page_tools_body)
-                val bridgeTitle = stringResource(R.string.settings_page_bridge)
-                val bridgeBody = stringResource(R.string.settings_page_bridge_body)
-                val deviceTitle = stringResource(R.string.settings_page_device)
-                val deviceBody = stringResource(R.string.settings_page_device_body)
-                val pluginsTitle = stringResource(R.string.settings_page_plugins)
-                val pluginsBody = stringResource(R.string.settings_page_plugins_body)
-                val detailTitle = stringResource(R.string.settings_page_chat_detail)
-                val detailBody = stringResource(R.string.settings_page_chat_detail_body)
-                val overlayTitle = stringResource(R.string.settings_page_overlay)
-                val overlayBody = stringResource(R.string.settings_page_overlay_body)
-                val voiceTitle = stringResource(R.string.settings_page_voice)
-                val voiceBody = stringResource(R.string.settings_page_voice_body)
-                val imTitle = stringResource(R.string.settings_page_im)
-                val imBody = stringResource(R.string.settings_page_im_body)
-                val appearanceTitle = stringResource(R.string.settings_page_appearance)
-                val appearanceBody = stringResource(R.string.settings_page_appearance_body)
-                val notificationsTitle = stringResource(R.string.settings_page_notifications)
-                val notificationsBody = stringResource(R.string.settings_page_notifications_body)
-                val dataTitle = stringResource(R.string.settings_page_data)
-                val dataBody = stringResource(R.string.settings_page_data_body)
-                val crashTitle = stringResource(R.string.settings_page_crash_logs)
-                val crashBody = stringResource(R.string.settings_page_crash_logs_body)
-                FocusCardGroup {
+                FocusCardGroup(title = stringResource(R.string.settings_section_assistant)) {
                     pageItem(
                         title = accountTitle,
                         body = accountBody,
                         icon = FocusIcons.Provider,
                         onClick = { onOpen(SettingsDestination.Account) },
-                    )
-                    pageItem(
-                        title = chatTitle,
-                        body = chatBody,
-                        icon = FocusIcons.Bolt,
-                        onClick = { onOpen(SettingsDestination.ChatAgent) },
                     )
                     pageItem(
                         title = modelsTitle,
@@ -96,16 +93,40 @@ internal fun SettingsHomePage(
                         onClick = { onOpen(SettingsDestination.Models) },
                     )
                     pageItem(
-                        title = superTitle,
-                        body = superBody,
+                        title = chatTitle,
+                        body = chatBody,
                         icon = FocusIcons.Bolt,
-                        onClick = { onOpen(SettingsDestination.Automation) },
+                        onClick = { onOpen(SettingsDestination.ChatAgent) },
                     )
+                    pageItem(
+                        title = detailTitle,
+                        body = detailBody,
+                        icon = FocusIcons.Chat,
+                        onClick = { onOpen(SettingsDestination.ChatDetail) },
+                    )
+                }
+            }
+        }
+        item(key = "capabilities") {
+            FocusReveal(index = 2) {
+                FocusCardGroup(title = stringResource(R.string.settings_section_capabilities)) {
                     pageItem(
                         title = toolsTitle,
                         body = toolsBody,
                         icon = FocusIcons.Tool,
                         onClick = { onOpen(SettingsDestination.Tools) },
+                    )
+                    pageItem(
+                        title = automationTitle,
+                        body = automationBody,
+                        icon = FocusIcons.Bolt,
+                        onClick = { onOpen(SettingsDestination.Automation) },
+                    )
+                    pageItem(
+                        title = pluginsTitle,
+                        body = pluginsBody,
+                        icon = FocusIcons.Tool,
+                        onClick = { onOpen(SettingsDestination.Plugins) },
                     )
                     if (onOpenBridge != null) {
                         pageItem(
@@ -121,23 +142,17 @@ internal fun SettingsHomePage(
                         icon = FocusIcons.Device,
                         onClick = onOpenDevice,
                     )
+                }
+            }
+        }
+        item(key = "connections") {
+            FocusReveal(index = 3) {
+                FocusCardGroup(title = stringResource(R.string.settings_section_connections)) {
                     pageItem(
-                        title = pluginsTitle,
-                        body = pluginsBody,
-                        icon = FocusIcons.Tool,
-                        onClick = { onOpen(SettingsDestination.Plugins) },
-                    )
-                    pageItem(
-                        title = detailTitle,
-                        body = detailBody,
-                        icon = FocusIcons.Chat,
-                        onClick = { onOpen(SettingsDestination.ChatDetail) },
-                    )
-                    pageItem(
-                        title = overlayTitle,
-                        body = overlayBody,
-                        icon = FocusIcons.Assistant,
-                        onClick = { onOpen(SettingsDestination.Overlay) },
+                        title = imTitle,
+                        body = imBody,
+                        icon = FocusIcons.Link,
+                        onClick = { onOpen(SettingsDestination.Im) },
                     )
                     pageItem(
                         title = voiceTitle,
@@ -146,11 +161,17 @@ internal fun SettingsHomePage(
                         onClick = { onOpen(SettingsDestination.Voice) },
                     )
                     pageItem(
-                        title = imTitle,
-                        body = imBody,
-                        icon = FocusIcons.Link,
-                        onClick = { onOpen(SettingsDestination.Im) },
+                        title = overlayTitle,
+                        body = overlayBody,
+                        icon = FocusIcons.Assistant,
+                        onClick = { onOpen(SettingsDestination.Overlay) },
                     )
+                }
+            }
+        }
+        item(key = "app") {
+            FocusReveal(index = 4) {
+                FocusCardGroup(title = stringResource(R.string.settings_section_app)) {
                     pageItem(
                         title = appearanceTitle,
                         body = appearanceBody,
@@ -174,6 +195,18 @@ internal fun SettingsHomePage(
                         body = crashBody,
                         icon = FocusIcons.Warning,
                         onClick = { onOpen(SettingsDestination.CrashLogs) },
+                    )
+                }
+            }
+        }
+        item(key = "about") {
+            FocusReveal(index = 5) {
+                FocusCardGroup {
+                    pageItem(
+                        title = aboutTitle,
+                        body = aboutBody,
+                        icon = FocusIcons.Info,
+                        onClick = { onOpen(SettingsDestination.About) },
                     )
                 }
             }

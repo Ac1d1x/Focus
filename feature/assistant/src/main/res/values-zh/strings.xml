@@ -229,6 +229,10 @@
 
     <string name="settings_home_title">设置</string>
     <string name="settings_back">返回</string>
+    <string name="settings_section_assistant">助手</string>
+    <string name="settings_section_capabilities">能力</string>
+    <string name="settings_section_connections">连接</string>
+    <string name="settings_section_app">应用</string>
     <string name="settings_page_account">账号与模型</string>
     <string name="settings_page_account_body">服务商、密钥和当前模型。</string>
     <string name="settings_page_chat_agent">对话与代理</string>
@@ -261,7 +265,9 @@
     <string name="crash_logs_copied">已复制</string>
     <string name="crash_logs_unknown">未知错误</string>
     <string name="settings_page_data">数据与隐私</string>
-    <string name="settings_page_data_body">本地统计、数据管理和关于信息。</string>
+    <string name="settings_page_about">关于 Focus</string>
+    <string name="settings_page_about_body">版本、更新、贡献者、源码和许可。</string>
+    <string name="settings_page_data_body">本地统计和数据管理。</string>
     <string name="settings_chat_detail_body">统计显示在最后一条助手回复下方。可以逐项开关，也可以调整顺序。</string>
     <string name="settings_chat_detail_fields">字段</string>
     <string name="settings_chat_detail_preview">实时预览</string>

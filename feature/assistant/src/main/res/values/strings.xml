@@ -229,6 +229,10 @@
 
     <string name="settings_home_title">Settings</string>
     <string name="settings_back">Back</string>
+    <string name="settings_section_assistant">Assistant</string>
+    <string name="settings_section_capabilities">Capabilities</string>
+    <string name="settings_section_connections">Connections</string>
+    <string name="settings_section_app">App</string>
     <string name="settings_page_account">Account and models</string>
     <string name="settings_page_account_body">Providers, keys, and the active model.</string>
     <string name="settings_page_chat_agent">Chat and agent</string>
@@ -261,7 +265,9 @@
     <string name="crash_logs_copied">Copied</string>
     <string name="crash_logs_unknown">Unknown error</string>
     <string name="settings_page_data">Data and privacy</string>
-    <string name="settings_page_data_body">Local stats, data management, and about.</string>
+    <string name="settings_page_about">About Focus</string>
+    <string name="settings_page_about_body">Version, updates, contributors, source, and license.</string>
+    <string name="settings_page_data_body">Local stats and data management.</string>
     <string name="settings_chat_detail_body">Stats appear under the last assistant reply. Turn fields on or off and move them into the order you want.</string>
     <string name="settings_chat_detail_fields">Fields</string>
     <string name="settings_chat_detail_preview">Live preview</string>

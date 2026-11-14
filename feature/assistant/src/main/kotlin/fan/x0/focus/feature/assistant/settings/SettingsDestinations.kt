@@ -25,4 +25,5 @@ enum class SettingsDestination : NavKey {
     Notifications,
     Data,
     CrashLogs,
+    About,
 }

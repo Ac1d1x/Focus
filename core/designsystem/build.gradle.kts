@@ -5,6 +5,10 @@ plugins {
 
 android {
     namespace = "fan.x0.focus.core.designsystem"
+
+    androidResources {
+        noCompress += listOf("ttf")
+    }
 }
 
 dependencies {

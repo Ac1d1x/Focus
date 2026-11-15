@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -58,6 +61,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
@@ -97,7 +101,7 @@ fun FocusComposer(
     val motion = LocalFocusMotion.current
     val haptics = LocalFocusHaptics.current
     val scheme = MaterialTheme.colorScheme
-    val shape = MaterialTheme.shapes.extraLarge
+    val shape = if (immersive) RoundedCornerShape(22.dp) else MaterialTheme.shapes.extraLarge
     val buttonInteraction = remember { MutableInteractionSource() }
     val fieldInteraction = remember { MutableInteractionSource() }
     val focused by fieldInteraction.collectIsFocusedAsState()
@@ -212,11 +216,56 @@ fun FocusComposer(
             shape = FocusShapeTokens.input,
         )
     }
-    val sendButton: @Composable () -> Unit = {
+    val simpleField: @Composable () -> Unit = {
+        BasicTextField(
+            value = fieldValue,
+            onValueChange = { value ->
+                val next = atomicDelete(fieldValue, value, highlightTokens)
+                fieldValue = next
+                onInputChange(next.text)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent(onKeyEvent),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface),
+            cursorBrush = SolidColor(scheme.primary),
+            maxLines = 5,
+            visualTransformation = highlight,
+            interactionSource = fieldInteraction,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(
+                onSend = {
+                    if (canSend) {
+                        haptics.tap()
+                        onSend()
+                    }
+                },
+            ),
+            decorationBox = { inner ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .padding(start = 16.dp, end = 44.dp, top = 10.dp, bottom = 10.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (fieldValue.text.isEmpty()) {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = scheme.onSurfaceVariant,
+                        )
+                    }
+                    inner()
+                }
+            },
+        )
+    }
+    val sendButton: @Composable (Dp, Dp) -> Unit = { buttonSize, glyphSize ->
         if (showButton) {
             Surface(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(buttonSize)
                     .pressScale(buttonInteraction),
                 shape = CircleShape,
                 color = buttonContainer,
@@ -244,14 +293,14 @@ fun FocusComposer(
                     ) { mode ->
                         when (mode) {
                             ComposerButton.Busy -> LoadingIndicator(
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(glyphSize),
                                 color = buttonContent,
                             )
                             ComposerButton.Mic -> Icon(
                                 imageVector = FocusIcons.Mic,
                                 contentDescription = stringResource(R.string.common_voice_start),
                                 tint = buttonContent,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(glyphSize),
                             )
                             ComposerButton.Stop -> Icon(
                                 imageVector = FocusIcons.Stop,
@@ -259,13 +308,13 @@ fun FocusComposer(
                                     if (voiceActive) R.string.common_voice_stop else R.string.common_stop,
                                 ),
                                 tint = buttonContent,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(glyphSize),
                             )
                             ComposerButton.Send -> Icon(
                                 imageVector = FocusIcons.Send,
                                 contentDescription = stringResource(R.string.common_send),
                                 tint = buttonContent,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(glyphSize),
                             )
                         }
                     }
@@ -277,7 +326,10 @@ fun FocusComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(
+                horizontal = if (immersive) 8.dp else 12.dp,
+                vertical = if (immersive) 8.dp else 10.dp,
+            )
             .onSizeChanged { onHeightChange(it.height) },
         verticalAlignment = Alignment.Bottom,
     ) {
@@ -293,27 +345,53 @@ fun FocusComposer(
             shape = shape,
             color = Color.Transparent,
         ) {
-            Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
-                if (voice != null) {
-                    FocusVoiceHud(
-                        voice = voice,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                }
-                attachments()
-                if (immersive) {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        field(Modifier.weight(1f))
+            if (immersive) {
+                Column {
+                    if (voice != null) {
+                        FocusVoiceHud(
+                            voice = voice,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                        attachments()
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp),
+                    ) {
+                        simpleField()
                         if (onAdd != null) {
-                            FocusComposerPill(
-                                icon = FocusIcons.Add,
-                                contentDescription = addContentDescription,
-                                onClick = onAdd,
-                                modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
-                            )
+                            Surface(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(44.dp),
+                                shape = CircleShape,
+                                color = Color.Transparent,
+                                contentColor = scheme.onSurfaceVariant,
+                                onClick = hapticTap { onAdd() },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = FocusIcons.Add,
+                                        contentDescription = addContentDescription,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
                         }
                     }
-                } else {
+                }
+            } else {
+                Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
+                    if (voice != null) {
+                        FocusVoiceHud(
+                            voice = voice,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                    attachments()
                     field(Modifier)
                     Row(
                         modifier = Modifier
@@ -338,14 +416,14 @@ fun FocusComposer(
                                 onClick = onAdd,
                             )
                         }
-                        sendButton()
+                        sendButton(36.dp, 16.dp)
                     }
                 }
             }
         }
         if (immersive) {
-            Box(modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) {
-                sendButton()
+            Box(modifier = Modifier.padding(start = 8.dp, bottom = 1.dp)) {
+                sendButton(44.dp, 20.dp)
             }
         }
     }

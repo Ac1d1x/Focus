@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -47,10 +46,12 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.TransformOrigin
@@ -109,26 +110,28 @@ private class ChatBubbleShape(
     }
 }
 
-@Composable
-private fun BubbleTail(
+private fun DrawScope.drawBubbleTail(
     fromUser: Boolean,
     color: Color,
-    modifier: Modifier = Modifier,
 ) {
-    Canvas(modifier = modifier.size(BubbleTailWidth, BubbleTailHeight)) {
-        val path = Path()
-        if (fromUser) {
-            path.moveTo(0f, 0f)
-            path.lineTo(size.width - 1f, size.height)
-            path.lineTo(0f, size.height)
-        } else {
-            path.moveTo(size.width, 0f)
-            path.lineTo(1f, size.height)
-            path.lineTo(size.width, size.height)
-        }
-        path.close()
-        drawPath(path, color)
+    val tailWidth = BubbleTailWidth.toPx()
+    val tailHeight = BubbleTailHeight.toPx()
+    val overlap = 1.dp.toPx()
+    val bottom = size.height
+    val path = Path()
+    if (fromUser) {
+        val base = size.width - overlap
+        path.moveTo(base, bottom - tailHeight)
+        path.lineTo(base + tailWidth, bottom)
+        path.lineTo(base, bottom)
+    } else {
+        val base = overlap
+        path.moveTo(base, bottom - tailHeight)
+        path.lineTo(base - tailWidth, bottom)
+        path.lineTo(base, bottom)
     }
+    path.close()
+    drawPath(path, color)
 }
 
 @Composable
@@ -149,8 +152,7 @@ fun FocusChatBubble(
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val totalMaxWidth = maxWidth * if (fromUser) 0.82f else 0.9f
-        val tailSpace = if (fromUser || tail) BubbleTailWidth else 0.dp
-        val bubbleMaxWidth = (totalMaxWidth - tailSpace).coerceAtLeast(64.dp)
+        val bubbleMaxWidth = totalMaxWidth.coerceAtLeast(64.dp)
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart,
@@ -210,7 +212,12 @@ private fun UserBubble(
         animationSpec = motion.effectsDefault(),
         label = "userBubbleContent",
     )
-    Row(verticalAlignment = Alignment.Bottom) {
+    Box(
+        modifier = Modifier.drawWithContent {
+            drawContent()
+            drawBubbleTail(fromUser = true, color = container)
+        },
+    ) {
         Surface(
             modifier = Modifier
                 .widthIn(min = 64.dp, max = maxWidth)
@@ -258,11 +265,6 @@ private fun UserBubble(
                 )
             }
         }
-        BubbleTail(
-            fromUser = true,
-            color = container,
-            modifier = Modifier.offset(x = (-1).dp),
-        )
     }
 }
 
@@ -362,42 +364,26 @@ private fun AssistantBubble(
                     onLongPress = onLongPress,
                 ),
         ) { body() }
-        FocusChatBubbleStyle.Bubble -> Row(verticalAlignment = Alignment.Bottom) {
-            if (tail) {
-                BubbleTail(
-                    fromUser = false,
-                    color = container,
-                    modifier = Modifier.offset(x = 1.dp),
-                )
-            }
-            AssistantBubbleSurface(
-                body = body,
-                shape = shape,
-                container = container,
-                border = border,
-                selectable = selectable,
-                onLongPress = onLongPress,
-                maxWidth = maxWidth,
-            )
-        }
-        FocusChatBubbleStyle.Card -> Row(verticalAlignment = Alignment.Bottom) {
-            if (tail) {
-                BubbleTail(
-                    fromUser = false,
-                    color = container,
-                    modifier = Modifier.offset(x = 1.dp),
-                )
-            }
-            AssistantBubbleSurface(
-                body = body,
-                shape = shape,
-                container = container,
-                border = border,
-                selectable = selectable,
-                onLongPress = onLongPress,
-                maxWidth = maxWidth,
-            )
-        }
+        FocusChatBubbleStyle.Bubble -> AssistantBubbleSurface(
+            body = body,
+            shape = shape,
+            container = container,
+            border = border,
+            selectable = selectable,
+            onLongPress = onLongPress,
+            maxWidth = maxWidth,
+            tail = tail,
+        )
+        FocusChatBubbleStyle.Card -> AssistantBubbleSurface(
+            body = body,
+            shape = shape,
+            container = container,
+            border = border,
+            selectable = selectable,
+            onLongPress = onLongPress,
+            maxWidth = maxWidth,
+            tail = tail,
+        )
     }
 }
 
@@ -410,24 +396,32 @@ private fun AssistantBubbleSurface(
     selectable: Boolean,
     onLongPress: (() -> Unit)?,
     maxWidth: Dp,
+    tail: Boolean,
 ) {
     val motion = LocalFocusMotion.current
     val scheme = MaterialTheme.colorScheme
-    Surface(
-        modifier = Modifier
-            .widthIn(min = 64.dp, max = maxWidth)
-            .animateContentSize(motion.spatialDefault())
-            .bubbleGestures(
-                shape = shape,
-                contentColor = scheme.onSurface,
-                selectable = selectable,
-                onLongPress = onLongPress,
-            ),
-        shape = shape,
-        color = container,
-        contentColor = scheme.onSurface,
-        border = border,
-    ) { body() }
+    Box(
+        modifier = Modifier.drawWithContent {
+            drawContent()
+            if (tail) drawBubbleTail(fromUser = false, color = container)
+        },
+    ) {
+        Surface(
+            modifier = Modifier
+                .widthIn(min = 64.dp, max = maxWidth)
+                .animateContentSize(motion.spatialDefault())
+                .bubbleGestures(
+                    shape = shape,
+                    contentColor = scheme.onSurface,
+                    selectable = selectable,
+                    onLongPress = onLongPress,
+                ),
+            shape = shape,
+            color = container,
+            contentColor = scheme.onSurface,
+            border = border,
+        ) { body() }
+    }
 }
 
 @Composable

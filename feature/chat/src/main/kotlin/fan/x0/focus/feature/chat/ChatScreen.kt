@@ -129,6 +129,7 @@ import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 import fan.x0.focus.core.mvi.CollectEffect
+import fan.x0.focus.data.assistant.AssistantReplyStyle
 import fan.x0.focus.core.notify.AppPresence
 import fan.x0.focus.core.notify.MessageNotifier
 import java.io.File
@@ -842,6 +843,7 @@ private fun ChatThread(
         onAction(ChatAction.ConsumeHighlight)
     }
 
+    val sideInset = if (state.replyStyle == AssistantReplyStyle.Bubble) 12.dp else 16.dp
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
@@ -849,9 +851,9 @@ private fun ChatThread(
                 .fillMaxSize()
                 .testTag(ChatThreadTag),
             contentPadding = PaddingValues(
-                start = 16.dp,
+                start = sideInset,
                 top = 8.dp,
-                end = 16.dp,
+                end = sideInset,
                 bottom = bottomPadding + if (state.selectionKey != null) 64.dp else 8.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp),

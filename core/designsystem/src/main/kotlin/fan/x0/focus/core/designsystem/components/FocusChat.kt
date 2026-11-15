@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -64,59 +66,68 @@ import kotlinx.coroutines.flow.first
 
 enum class FocusChatBubbleStyle { Flat, Bubble, Card }
 
+private val BubbleTailWidth = 8.dp
+private val BubbleTailHeight = 14.dp
+
 private class ChatBubbleShape(
     private val fromUser: Boolean,
-    private val tail: Boolean,
     private val topNear: Boolean,
+    private val tailSide: Boolean,
 ) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val pad = with(density) { 2.dp.toPx() }
-        val tailWidth = with(density) { 8.dp.toPx() }
-        val tailHeight = with(density) { 13.dp.toPx() }
         val radius = with(density) { 18.dp.toPx() }.coerceAtMost((size.height - pad * 2) / 2f)
         val near = with(density) { 6.dp.toPx() }
         val top = pad
         val bottom = size.height - pad
-        val left = if (fromUser) pad else if (tail) tailWidth else pad
-        val right = if (fromUser) (if (tail) size.width - tailWidth else size.width - pad) else size.width - pad
+        val left = pad
+        val right = size.width - pad
         val topStart = if (!fromUser && topNear) near else radius
         val topEnd = if (fromUser && topNear) near else radius
+        val bottomStart = if (!fromUser && tailSide) 0f else radius
+        val bottomEnd = if (fromUser && tailSide) 0f else radius
         val path = Path()
         path.moveTo(left + topStart, top)
         path.lineTo(right - topEnd, top)
         path.quadraticBezierTo(right, top, right, top + topEnd)
-        if (fromUser && tail) {
-            path.lineTo(right, bottom - tailHeight)
-            path.quadraticBezierTo(
-                right + tailWidth * 0.35f,
-                bottom - tailHeight * 0.2f,
-                size.width - pad,
-                bottom,
-            )
-            path.lineTo(right - with(density) { 4.dp.toPx() }, bottom)
-            path.lineTo(left + radius, bottom)
-            path.quadraticBezierTo(left, bottom, left, bottom - radius)
+        path.lineTo(right, bottom - bottomEnd)
+        if (bottomEnd > 0f) {
+            path.quadraticBezierTo(right, bottom, right - bottomEnd, bottom)
         } else {
-            path.lineTo(right, bottom - radius)
-            path.quadraticBezierTo(right, bottom, right - radius, bottom)
+            path.lineTo(right, bottom)
         }
-        if (!fromUser && tail) {
-            path.lineTo(left + with(density) { 4.dp.toPx() }, bottom)
-            path.lineTo(pad, bottom)
-            path.quadraticBezierTo(
-                left + tailWidth * 0.35f,
-                bottom - tailHeight * 0.2f,
-                left,
-                bottom - tailHeight,
-            )
-        } else if (!fromUser || !tail) {
-            path.lineTo(left + radius, bottom)
-            path.quadraticBezierTo(left, bottom, left, bottom - radius)
+        path.lineTo(left + bottomStart, bottom)
+        if (bottomStart > 0f) {
+            path.quadraticBezierTo(left, bottom, left, bottom - bottomStart)
+        } else {
+            path.lineTo(left, bottom)
         }
         path.lineTo(left, top + topStart)
         path.quadraticBezierTo(left, top, left + topStart, top)
         path.close()
         return Outline.Generic(path)
+    }
+}
+
+@Composable
+private fun BubbleTail(
+    fromUser: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier.size(BubbleTailWidth, BubbleTailHeight)) {
+        val path = Path()
+        if (fromUser) {
+            path.moveTo(0f, 0f)
+            path.lineTo(size.width, size.height)
+            path.lineTo(0f, size.height)
+        } else {
+            path.moveTo(size.width, 0f)
+            path.lineTo(0f, size.height)
+            path.lineTo(size.width, size.height)
+        }
+        path.close()
+        drawPath(path, color)
     }
 }
 
@@ -137,7 +148,9 @@ fun FocusChatBubble(
     topNear: Boolean = false,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val bubbleMaxWidth = maxWidth * if (fromUser) 0.82f else 0.9f
+        val totalMaxWidth = maxWidth * if (fromUser) 0.82f else 0.9f
+        val tailSpace = if (fromUser || tail) BubbleTailWidth else 0.dp
+        val bubbleMaxWidth = (totalMaxWidth - tailSpace).coerceAtLeast(64.dp)
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart,
@@ -186,7 +199,7 @@ private fun UserBubble(
 ) {
     val scheme = MaterialTheme.colorScheme
     val motion = LocalFocusMotion.current
-    val shape = ChatBubbleShape(fromUser = true, tail = true, topNear = false)
+    val shape = ChatBubbleShape(fromUser = true, topNear = false, tailSide = true)
     val container by animateColorAsState(
         targetValue = if (highlighted) scheme.tertiaryContainer else scheme.primary,
         animationSpec = motion.effectsDefault(),
@@ -197,53 +210,56 @@ private fun UserBubble(
         animationSpec = motion.effectsDefault(),
         label = "userBubbleContent",
     )
-    Surface(
-        modifier = Modifier
-            .widthIn(min = 64.dp, max = maxWidth)
-            .wrapContentWidth(Alignment.End)
-            .animateContentSize(motion.spatialDefault())
-            .bubbleGestures(
-                shape = shape,
-                contentColor = content,
-                selectable = selectable,
-                onLongPress = onLongPress,
-            ),
-        shape = shape,
-        color = container,
-        contentColor = content,
-        border = if (selectable) BorderStroke(1.dp, content) else null,
-        tonalElevation = 0.dp,
-    ) {
-        Column {
-            Column(
-                modifier = Modifier.padding(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 8.dp),
-            ) {
-                header?.let {
-                    it()
-                    Spacer(Modifier.height(6.dp))
-                }
-                if (selectable) {
-                    SelectionContainer {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Surface(
+            modifier = Modifier
+                .widthIn(min = 64.dp, max = maxWidth)
+                .wrapContentWidth(Alignment.End)
+                .animateContentSize(motion.spatialDefault())
+                .bubbleGestures(
+                    shape = shape,
+                    contentColor = content,
+                    selectable = selectable,
+                    onLongPress = onLongPress,
+                ),
+            shape = shape,
+            color = container,
+            contentColor = content,
+            border = if (selectable) BorderStroke(1.dp, content) else null,
+            tonalElevation = 0.dp,
+        ) {
+            Column {
+                Column(
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 8.dp),
+                ) {
+                    header?.let {
+                        it()
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    if (selectable) {
+                        SelectionContainer {
+                            Text(
+                                text = text,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                    } else {
                         Text(
                             text = text,
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
-                } else {
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
                 }
+                BubbleReactions(
+                    reactions = reactions,
+                    fromUser = true,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(start = 6.dp, end = 8.dp, bottom = 6.dp),
+                )
             }
-            BubbleReactions(
-                reactions = reactions,
-                fromUser = true,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(start = 6.dp, end = 12.dp, bottom = 6.dp),
-            )
         }
+        BubbleTail(fromUser = true, color = container)
     }
 }
 
@@ -265,8 +281,8 @@ private fun AssistantBubble(
     val motion = LocalFocusMotion.current
     val shape = when (style) {
         FocusChatBubbleStyle.Flat -> RectangleShape
-        FocusChatBubbleStyle.Bubble -> ChatBubbleShape(fromUser = false, tail = tail, topNear = topNear)
-        FocusChatBubbleStyle.Card -> ChatBubbleShape(fromUser = false, tail = tail, topNear = topNear)
+        FocusChatBubbleStyle.Bubble -> ChatBubbleShape(fromUser = false, topNear = topNear, tailSide = tail)
+        FocusChatBubbleStyle.Card -> ChatBubbleShape(fromUser = false, topNear = topNear, tailSide = tail)
     }
     val container by animateColorAsState(
         targetValue = when {
@@ -283,8 +299,8 @@ private fun AssistantBubble(
         style == FocusChatBubbleStyle.Card -> BorderStroke(1.dp, scheme.outlineVariant)
         else -> null
     }
-    val horizontalStart = if (style == FocusChatBubbleStyle.Flat) 0.dp else 18.dp
-    val horizontalEnd = if (style == FocusChatBubbleStyle.Flat) 0.dp else 12.dp
+    val horizontalStart = if (style == FocusChatBubbleStyle.Flat) 0.dp else 14.dp
+    val horizontalEnd = if (style == FocusChatBubbleStyle.Flat) 0.dp else 14.dp
     val vertical = if (style == FocusChatBubbleStyle.Flat) 4.dp else 10.dp
     val textModifier = if (style == FocusChatBubbleStyle.Flat && highlighted) {
         Modifier.border(2.dp, scheme.primary, MaterialTheme.shapes.medium).padding(6.dp)
@@ -294,7 +310,12 @@ private fun AssistantBubble(
     val body: @Composable () -> Unit = {
         Column {
             Column(
-                modifier = Modifier.padding(start = horizontalStart, end = horizontalEnd, top = vertical, bottom = 8.dp),
+                modifier = Modifier.padding(
+                    start = horizontalStart,
+                    end = horizontalEnd,
+                    top = vertical,
+                    bottom = if (style == FocusChatBubbleStyle.Flat) 4.dp else 8.dp,
+                ),
             ) {
                 header?.let {
                     it()
@@ -322,7 +343,7 @@ private fun AssistantBubble(
             BubbleReactions(
                 reactions = reactions,
                 fromUser = false,
-                modifier = Modifier.padding(start = 12.dp, end = 6.dp, bottom = 6.dp),
+                modifier = Modifier.padding(start = 8.dp, end = 6.dp, bottom = 6.dp),
             )
         }
     }
@@ -338,39 +359,61 @@ private fun AssistantBubble(
                     onLongPress = onLongPress,
                 ),
         ) { body() }
-        FocusChatBubbleStyle.Bubble -> Surface(
-            modifier = Modifier
-                .widthIn(min = 64.dp, max = maxWidth)
-                .wrapContentWidth(Alignment.Start)
-                .animateContentSize(motion.spatialDefault())
-                .bubbleGestures(
-                    shape = shape,
-                    contentColor = scheme.onSurface,
-                    selectable = selectable,
-                    onLongPress = onLongPress,
-                ),
-            shape = shape,
-            color = container,
-            contentColor = scheme.onSurface,
-            border = border,
-        ) { body() }
-        FocusChatBubbleStyle.Card -> Surface(
-            modifier = Modifier
-                .widthIn(min = 64.dp, max = maxWidth)
-                .wrapContentWidth(Alignment.Start)
-                .animateContentSize(motion.spatialDefault())
-                .bubbleGestures(
-                    shape = shape,
-                    contentColor = scheme.onSurface,
-                    selectable = selectable,
-                    onLongPress = onLongPress,
-                ),
-            shape = shape,
-            color = container,
-            contentColor = scheme.onSurface,
-            border = border,
-        ) { body() }
+        FocusChatBubbleStyle.Bubble -> Row(verticalAlignment = Alignment.Bottom) {
+            if (tail) BubbleTail(fromUser = false, color = container)
+            AssistantBubbleSurface(
+                body = body,
+                shape = shape,
+                container = container,
+                border = border,
+                selectable = selectable,
+                onLongPress = onLongPress,
+                maxWidth = maxWidth,
+            )
+        }
+        FocusChatBubbleStyle.Card -> Row(verticalAlignment = Alignment.Bottom) {
+            if (tail) BubbleTail(fromUser = false, color = container)
+            AssistantBubbleSurface(
+                body = body,
+                shape = shape,
+                container = container,
+                border = border,
+                selectable = selectable,
+                onLongPress = onLongPress,
+                maxWidth = maxWidth,
+            )
+        }
     }
+}
+
+@Composable
+private fun AssistantBubbleSurface(
+    body: @Composable () -> Unit,
+    shape: Shape,
+    container: Color,
+    border: BorderStroke?,
+    selectable: Boolean,
+    onLongPress: (() -> Unit)?,
+    maxWidth: Dp,
+) {
+    val motion = LocalFocusMotion.current
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .widthIn(min = 64.dp, max = maxWidth)
+            .wrapContentWidth(Alignment.Start)
+            .animateContentSize(motion.spatialDefault())
+            .bubbleGestures(
+                shape = shape,
+                contentColor = scheme.onSurface,
+                selectable = selectable,
+                onLongPress = onLongPress,
+            ),
+        shape = shape,
+        color = container,
+        contentColor = scheme.onSurface,
+        border = border,
+    ) { body() }
 }
 
 @Composable

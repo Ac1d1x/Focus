@@ -92,6 +92,7 @@ fun FocusComposer(
     onVoiceCancel: () -> Unit = {},
     attachments: @Composable ColumnScope.() -> Unit = {},
     pills: @Composable RowScope.() -> Unit = {},
+    immersive: Boolean = false,
 ) {
     val motion = LocalFocusMotion.current
     val haptics = LocalFocusHaptics.current
@@ -166,153 +167,185 @@ fun FocusComposer(
         label = "sendContent",
     )
 
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
-            .onSizeChanged { onHeightChange(it.height) }
-            .clip(shape)
-            .background(container)
-            .hazeBlur(
-                input = HazeInput.Sources(hazeState),
-                style = blurStyle,
+    val buttonMode = when {
+        sending && canStop -> ComposerButton.Stop
+        voiceBusy -> ComposerButton.Busy
+        voiceActive -> ComposerButton.Stop
+        canSend -> ComposerButton.Send
+        mic -> ComposerButton.Mic
+        else -> ComposerButton.Send
+    }
+    val field: @Composable (Modifier) -> Unit = { fieldModifier ->
+        TextField(
+            value = fieldValue,
+            onValueChange = { value ->
+                val next = atomicDelete(fieldValue, value, highlightTokens)
+                fieldValue = next
+                onInputChange(next.text)
+            },
+            modifier = fieldModifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent(onKeyEvent),
+            placeholder = {
+                Text(placeholder)
+            },
+            maxLines = 5,
+            visualTransformation = highlight,
+            interactionSource = fieldInteraction,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
             ),
-        shape = shape,
-        color = Color.Transparent,
-    ) {
-        Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
-            if (voice != null) {
-                FocusVoiceHud(
-                    voice = voice,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-            attachments()
-            TextField(
-                value = fieldValue,
-                onValueChange = { value ->
-                    val next = atomicDelete(fieldValue, value, highlightTokens)
-                    fieldValue = next
-                    onInputChange(next.text)
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(
+                onSend = {
+                    if (canSend) {
+                        haptics.tap()
+                        onSend()
+                    }
                 },
+            ),
+            shape = FocusShapeTokens.input,
+        )
+    }
+    val sendButton: @Composable () -> Unit = {
+        if (showButton) {
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .onPreviewKeyEvent(onKeyEvent),
-                placeholder = {
-                    Text(placeholder)
+                    .size(36.dp)
+                    .pressScale(buttonInteraction),
+                shape = CircleShape,
+                color = buttonContainer,
+                contentColor = buttonContent,
+                enabled = buttonEnabled,
+                onClick = hapticTap {
+                    when {
+                        sending && canStop -> onStop()
+                        voiceBusy -> onVoiceCancel()
+                        voiceActive -> onVoiceStop()
+                        canSend -> onSend()
+                        onVoiceStart != null -> onVoiceStart()
+                    }
                 },
-                maxLines = 5,
-                visualTransformation = highlight,
-                interactionSource = fieldInteraction,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(
-                    onSend = {
-                        if (canSend) {
-                            haptics.tap()
-                            onSend()
-                        }
-                    },
-                ),
-                shape = FocusShapeTokens.input,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                interactionSource = buttonInteraction,
             ) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .horizontalScroll(rememberScrollState()),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    pills()
-                }
-                if (onAdd != null) {
-                    FocusComposerPill(
-                        icon = FocusIcons.Add,
-                        contentDescription = addContentDescription,
-                        onClick = onAdd,
-                    )
-                }
-                val buttonMode = when {
-                    sending && canStop -> ComposerButton.Stop
-                    voiceBusy -> ComposerButton.Busy
-                    voiceActive -> ComposerButton.Stop
-                    canSend -> ComposerButton.Send
-                    mic -> ComposerButton.Mic
-                    else -> ComposerButton.Send
-                }
-                if (showButton) {
-                    Surface(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .pressScale(buttonInteraction),
-                        shape = CircleShape,
-                        color = buttonContainer,
-                        contentColor = buttonContent,
-                        enabled = buttonEnabled,
-                        onClick = hapticTap {
-                            when {
-                                sending && canStop -> onStop()
-                                voiceBusy -> onVoiceCancel()
-                                voiceActive -> onVoiceStop()
-                                canSend -> onSend()
-                                onVoiceStart != null -> onVoiceStart()
-                            }
+                Box(contentAlignment = Alignment.Center) {
+                    AnimatedContent(
+                        targetState = buttonMode,
+                        transitionSpec = {
+                            (fadeIn(motion.effectsFast()) + scaleIn(motion.spatialDefault(), initialScale = 0.8f)) togetherWith
+                                (fadeOut(motion.effectsFast()) + scaleOut(motion.spatialDefault(), targetScale = 0.8f))
                         },
-                        interactionSource = buttonInteraction,
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            AnimatedContent(
-                                targetState = buttonMode,
-                                transitionSpec = {
-                                    (fadeIn(motion.effectsFast()) + scaleIn(motion.spatialDefault(), initialScale = 0.8f)) togetherWith
-                                        (fadeOut(motion.effectsFast()) + scaleOut(motion.spatialDefault(), targetScale = 0.8f))
-                                },
-                                label = "sendIcon",
-                            ) { mode ->
-                                when (mode) {
-                                    ComposerButton.Busy -> LoadingIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        color = buttonContent,
-                                    )
-                                    ComposerButton.Mic -> Icon(
-                                        imageVector = FocusIcons.Mic,
-                                        contentDescription = stringResource(R.string.common_voice_start),
-                                        tint = buttonContent,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    ComposerButton.Stop -> Icon(
-                                        imageVector = FocusIcons.Stop,
-                                        contentDescription = stringResource(
-                                            if (voiceActive) R.string.common_voice_stop else R.string.common_stop,
-                                        ),
-                                        tint = buttonContent,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                    ComposerButton.Send -> Icon(
-                                        imageVector = FocusIcons.Send,
-                                        contentDescription = stringResource(R.string.common_send),
-                                        tint = buttonContent,
-                                        modifier = Modifier.size(16.dp),
-                                    )
-                                }
-                            }
+                        label = "sendIcon",
+                    ) { mode ->
+                        when (mode) {
+                            ComposerButton.Busy -> LoadingIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = buttonContent,
+                            )
+                            ComposerButton.Mic -> Icon(
+                                imageVector = FocusIcons.Mic,
+                                contentDescription = stringResource(R.string.common_voice_start),
+                                tint = buttonContent,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            ComposerButton.Stop -> Icon(
+                                imageVector = FocusIcons.Stop,
+                                contentDescription = stringResource(
+                                    if (voiceActive) R.string.common_voice_stop else R.string.common_stop,
+                                ),
+                                tint = buttonContent,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            ComposerButton.Send -> Icon(
+                                imageVector = FocusIcons.Send,
+                                contentDescription = stringResource(R.string.common_send),
+                                tint = buttonContent,
+                                modifier = Modifier.size(16.dp),
+                            )
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .onSizeChanged { onHeightChange(it.height) },
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Surface(
+            modifier = Modifier
+                .weight(1f)
+                .clip(shape)
+                .background(container)
+                .hazeBlur(
+                    input = HazeInput.Sources(hazeState),
+                    style = blurStyle,
+                ),
+            shape = shape,
+            color = Color.Transparent,
+        ) {
+            Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
+                if (voice != null) {
+                    FocusVoiceHud(
+                        voice = voice,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
+                }
+                attachments()
+                if (immersive) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        field(Modifier.weight(1f))
+                        if (onAdd != null) {
+                            FocusComposerPill(
+                                icon = FocusIcons.Add,
+                                contentDescription = addContentDescription,
+                                onClick = onAdd,
+                                modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
+                            )
+                        }
+                    }
+                } else {
+                    field(Modifier)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 8.dp, end = 8.dp, top = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState()),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            pills()
+                        }
+                        if (onAdd != null) {
+                            FocusComposerPill(
+                                icon = FocusIcons.Add,
+                                contentDescription = addContentDescription,
+                                onClick = onAdd,
+                            )
+                        }
+                        sendButton()
+                    }
+                }
+            }
+        }
+        if (immersive) {
+            Box(modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) {
+                sendButton()
             }
         }
     }
@@ -321,6 +354,7 @@ fun FocusComposer(
 @Composable
 fun FocusComposerPill(
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     label: String? = null,
     contentDescription: String? = null,
@@ -332,7 +366,7 @@ fun FocusComposerPill(
     val circleSize = if (compact) 26.dp else 28.dp
     val circleIcon = if (compact) 13.dp else 14.dp
     Surface(
-        modifier = if (label == null) Modifier.size(circleSize) else Modifier.heightIn(min = 26.dp),
+        modifier = modifier.then(if (label == null) Modifier.size(circleSize) else Modifier.heightIn(min = 26.dp)),
         shape = CircleShape,
         color = if (selected) scheme.secondaryContainer else scheme.surfaceContainerHigh,
         contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant,

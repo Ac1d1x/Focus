@@ -130,6 +130,11 @@ class SettingsViewModel(
                 updateState { copy(replyStyle = style) }
             }
         }
+        viewModelScope.launch {
+            appearance.immersiveComposer.collect { enabled ->
+                updateState { copy(immersiveComposer = enabled) }
+            }
+        }
     }
 
     private suspend fun loadBalances(providers: List<ProviderConfig>) {
@@ -158,6 +163,10 @@ class SettingsViewModel(
             is SettingsAction.ReplyStyleChanged -> {
                 viewModelScope.launch { appearance.setReplyStyle(action.style) }
                 updateState { copy(replyStyle = action.style) }
+            }
+            is SettingsAction.ImmersiveComposerChanged -> {
+                viewModelScope.launch { appearance.setImmersiveComposer(action.value) }
+                updateState { copy(immersiveComposer = action.value) }
             }
             SettingsAction.RefreshData -> refreshData()
             SettingsAction.CheckUpdate -> updates.check(userInitiated = true)

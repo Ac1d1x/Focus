@@ -362,6 +362,25 @@ internal fun SettingsAppearancePage(
                 }
             }
         }
+        item(key = "composer") {
+            FocusReveal(index = 6) {
+                FocusCardGroup(title = stringResource(R.string.settings_composer_title)) {
+                    switchItem(
+                        checked = state.immersiveComposer,
+                        onCheckedChange = { onAction(SettingsAction.ImmersiveComposerChanged(it)) },
+                        headlineContent = { Text(stringResource(R.string.settings_composer_immersive)) },
+                        supportingContent = { Text(stringResource(R.string.settings_composer_immersive_body)) },
+                        leadingContent = {
+                            FocusCardGroupIcon(
+                                icon = FocusIcons.Send,
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

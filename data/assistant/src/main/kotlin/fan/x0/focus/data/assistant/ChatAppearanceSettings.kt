@@ -1,6 +1,7 @@
 package fan.x0.focus.data.assistant
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ private val Context.chatAppearanceDataStore by preferencesDataStore(name = "chat
 @Single
 class ChatAppearanceSettings(@Provided private val context: Context) {
     private val replyStyleKey = stringPreferencesKey("assistant_reply_style")
+    private val immersiveComposerKey = booleanPreferencesKey("assistant_immersive_composer")
 
     val replyStyle: Flow<AssistantReplyStyle> = context.chatAppearanceDataStore.data.map { prefs ->
         prefs[replyStyleKey]
@@ -26,6 +28,16 @@ class ChatAppearanceSettings(@Provided private val context: Context) {
     suspend fun setReplyStyle(style: AssistantReplyStyle) {
         context.chatAppearanceDataStore.edit { prefs ->
             prefs[replyStyleKey] = style.name
+        }
+    }
+
+    val immersiveComposer: Flow<Boolean> = context.chatAppearanceDataStore.data.map { prefs ->
+        prefs[immersiveComposerKey] ?: false
+    }
+
+    suspend fun setImmersiveComposer(enabled: Boolean) {
+        context.chatAppearanceDataStore.edit { prefs ->
+            prefs[immersiveComposerKey] = enabled
         }
     }
 }

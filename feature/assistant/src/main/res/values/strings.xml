@@ -139,6 +139,9 @@
     <string name="settings_reply_style_flat">Flat</string>
     <string name="settings_reply_style_bubble">Bubble</string>
     <string name="settings_reply_style_card">Card</string>
+    <string name="settings_composer_title">Composer</string>
+    <string name="settings_composer_immersive">Immersive composer</string>
+    <string name="settings_composer_immersive_body">Show only the text field and send button, hiding model and reasoning options.</string>
     <string name="settings_feeds_title">Feed refresh</string>
     <string name="settings_feeds_item">Refresh interval</string>
     <string name="settings_feeds_body">How often feeds are checked in the background.</string>

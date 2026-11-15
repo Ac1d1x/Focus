@@ -139,6 +139,9 @@
     <string name="settings_reply_style_flat">平铺</string>
     <string name="settings_reply_style_bubble">气泡</string>
     <string name="settings_reply_style_card">卡片</string>
+    <string name="settings_composer_title">输入框</string>
+    <string name="settings_composer_immersive">沉浸输入框</string>
+    <string name="settings_composer_immersive_body">只显示输入框和发送按钮，隐藏模型和思考选项。</string>
     <string name="settings_feeds_title">订阅刷新</string>
     <string name="settings_feeds_item">刷新间隔</string>
     <string name="settings_feeds_body">后台多久检查一次订阅。</string>

@@ -208,6 +208,11 @@ class ChatViewModel(
             }
         }
         viewModelScope.launch {
+            appearance.immersiveComposer.collect { enabled ->
+                updateState { copy(immersiveComposer = enabled) }
+            }
+        }
+        viewModelScope.launch {
             policy.config.collect { config ->
                 updateState { copy(policy = config.policy) }
             }

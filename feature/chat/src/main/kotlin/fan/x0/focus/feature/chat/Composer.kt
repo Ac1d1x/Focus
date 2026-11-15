@@ -115,6 +115,7 @@ internal fun Composer(
             canSend = state.canSend,
             sending = state.sending,
             canStop = state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay,
+            immersive = state.immersiveComposer,
             onSend = { onAction(ChatAction.Send) },
             onStop = { onAction(ChatAction.Stop) },
             hazeState = hazeState,

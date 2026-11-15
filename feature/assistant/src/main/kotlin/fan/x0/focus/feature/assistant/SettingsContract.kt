@@ -27,6 +27,7 @@ data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val language: String? = null,
     val replyStyle: AssistantReplyStyle = AssistantReplyStyle.Bubble,
+    val immersiveComposer: Boolean = false,
     val resetConfirm: Boolean = false,
     val dataUsage: DataUsage = DataUsage(),
     val dataUsageLoading: Boolean = false,
@@ -105,6 +106,7 @@ sealed interface SettingsAction : UiAction {
     data class NotificationsEnabledChanged(val value: Boolean) : SettingsAction
     data class LanguageChanged(val tag: String?) : SettingsAction
     data class ReplyStyleChanged(val style: AssistantReplyStyle) : SettingsAction
+    data class ImmersiveComposerChanged(val value: Boolean) : SettingsAction
     data object RefreshData : SettingsAction
     data object CheckUpdate : SettingsAction
     data object ToggleContributors : SettingsAction

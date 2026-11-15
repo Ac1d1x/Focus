@@ -353,6 +353,7 @@ data class ChatUiState(
     val liveStats: MessageStats = MessageStats(),
     val statsConfig: ChatDetailConfig = ChatDetailConfig(),
     val replyStyle: AssistantReplyStyle = AssistantReplyStyle.Bubble,
+    val immersiveComposer: Boolean = false,
     val todos: List<ConversationTodo> = emptyList(),
     val menu: ChatMenuUi? = null,
     val edit: EditUi? = null,

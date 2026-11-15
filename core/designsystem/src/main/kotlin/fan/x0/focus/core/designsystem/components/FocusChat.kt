@@ -22,10 +22,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -80,8 +80,8 @@ private class ChatBubbleShape(
         val near = with(density) { 6.dp.toPx() }
         val top = pad
         val bottom = size.height - pad
-        val left = pad
-        val right = size.width - pad
+        val left = if (!fromUser && tailSide) 0f else pad
+        val right = if (fromUser && tailSide) size.width else size.width - pad
         val topStart = if (!fromUser && topNear) near else radius
         val topEnd = if (fromUser && topNear) near else radius
         val bottomStart = if (!fromUser && tailSide) 0f else radius
@@ -119,11 +119,11 @@ private fun BubbleTail(
         val path = Path()
         if (fromUser) {
             path.moveTo(0f, 0f)
-            path.lineTo(size.width, size.height)
+            path.lineTo(size.width - 1f, size.height)
             path.lineTo(0f, size.height)
         } else {
             path.moveTo(size.width, 0f)
-            path.lineTo(0f, size.height)
+            path.lineTo(1f, size.height)
             path.lineTo(size.width, size.height)
         }
         path.close()
@@ -214,7 +214,6 @@ private fun UserBubble(
         Surface(
             modifier = Modifier
                 .widthIn(min = 64.dp, max = maxWidth)
-                .wrapContentWidth(Alignment.End)
                 .animateContentSize(motion.spatialDefault())
                 .bubbleGestures(
                     shape = shape,
@@ -259,7 +258,11 @@ private fun UserBubble(
                 )
             }
         }
-        BubbleTail(fromUser = true, color = container)
+        BubbleTail(
+            fromUser = true,
+            color = container,
+            modifier = Modifier.offset(x = (-1).dp),
+        )
     }
 }
 
@@ -360,7 +363,13 @@ private fun AssistantBubble(
                 ),
         ) { body() }
         FocusChatBubbleStyle.Bubble -> Row(verticalAlignment = Alignment.Bottom) {
-            if (tail) BubbleTail(fromUser = false, color = container)
+            if (tail) {
+                BubbleTail(
+                    fromUser = false,
+                    color = container,
+                    modifier = Modifier.offset(x = 1.dp),
+                )
+            }
             AssistantBubbleSurface(
                 body = body,
                 shape = shape,
@@ -372,7 +381,13 @@ private fun AssistantBubble(
             )
         }
         FocusChatBubbleStyle.Card -> Row(verticalAlignment = Alignment.Bottom) {
-            if (tail) BubbleTail(fromUser = false, color = container)
+            if (tail) {
+                BubbleTail(
+                    fromUser = false,
+                    color = container,
+                    modifier = Modifier.offset(x = 1.dp),
+                )
+            }
             AssistantBubbleSurface(
                 body = body,
                 shape = shape,
@@ -401,7 +416,6 @@ private fun AssistantBubbleSurface(
     Surface(
         modifier = Modifier
             .widthIn(min = 64.dp, max = maxWidth)
-            .wrapContentWidth(Alignment.Start)
             .animateContentSize(motion.spatialDefault())
             .bubbleGestures(
                 shape = shape,

@@ -352,9 +352,21 @@ private fun AssistantBubble(
                             modifier = Modifier.padding(vertical = 2.dp),
                         )
                         selectable -> SelectionContainer {
-                            FocusMarkdown(text = text, modifier = textModifier, color = scheme.onSurface, streaming = streaming)
+                            FocusMarkdown(
+                                text = text,
+                                modifier = textModifier,
+                                color = scheme.onSurface,
+                                streaming = streaming,
+                                wrapContent = true,
+                            )
                         }
-                        else -> FocusMarkdown(text = text, modifier = textModifier, color = scheme.onSurface, streaming = streaming)
+                        else -> FocusMarkdown(
+                            text = text,
+                            modifier = textModifier,
+                            color = scheme.onSurface,
+                            streaming = streaming,
+                            wrapContent = true,
+                        )
                     }
                 }
             }

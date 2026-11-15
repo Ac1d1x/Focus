@@ -86,6 +86,7 @@ fun FocusMarkdown(
     streaming: Boolean = false,
     bodyStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     preserveLineBreaks: Boolean = false,
+    wrapContent: Boolean = false,
 ) {
     val blocks = remember(text, preserveLineBreaks) { parseBlocks(text, preserveLineBreaks) }
     val linkColor = MaterialTheme.colorScheme.primary
@@ -94,7 +95,8 @@ fun FocusMarkdown(
     LaunchedEffect(text, streaming) {
         if (streaming) haptics.streamTick()
     }
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val rowFill = if (wrapContent) Modifier else Modifier.fillMaxWidth()
+    Column(modifier = modifier.then(rowFill), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         blocks.forEachIndexed { index, block ->
             BlockContent(
                 block = block,
@@ -102,6 +104,7 @@ fun FocusMarkdown(
                 linkColor = linkColor,
                 bodyStyle = bodyStyle,
                 fade = if (index == blocks.lastIndex) fade else null,
+                rowFill = rowFill,
             )
         }
     }
@@ -206,6 +209,7 @@ private fun BlockContent(
     linkColor: Color,
     bodyStyle: TextStyle,
     fade: StreamFadeState?,
+    rowFill: Modifier,
 ) {
     when (block) {
         is MdBlock.Heading -> MarkdownInlineText(
@@ -231,11 +235,10 @@ private fun BlockContent(
             linkColor = linkColor,
             bodyStyle = bodyStyle,
             fade = fade,
+            rowFill = rowFill,
         )
         is MdBlock.Quote -> Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+            modifier = rowFill.height(IntrinsicSize.Min),
         ) {
             Box(
                 modifier = Modifier
@@ -251,13 +254,19 @@ private fun BlockContent(
                 modifier = Modifier.padding(start = 10.dp),
             )
         }
-        is MdBlock.Code -> CodeBlock(block = block, fade = fade)
+        is MdBlock.Code -> CodeBlock(block = block, fade = fade, rowFill = rowFill)
         is MdBlock.Formula -> MathView(
             latex = block.latex,
             color = color,
             fontSize = bodyStyle.fontSize,
         )
-        is MdBlock.Table -> TableBlock(block = block, color = color, linkColor = linkColor, fade = fade)
+        is MdBlock.Table -> TableBlock(
+            block = block,
+            color = color,
+            linkColor = linkColor,
+            fade = fade,
+            rowFill = rowFill,
+        )
         MdBlock.Divider -> HorizontalDivider(
             modifier = Modifier.padding(vertical = 2.dp),
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
@@ -272,11 +281,10 @@ private fun ListRow(
     linkColor: Color,
     bodyStyle: TextStyle,
     fade: StreamFadeState?,
+    rowFill: Modifier,
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = (item.depth * 16).dp),
+        modifier = rowFill.padding(start = (item.depth * 16).dp),
         verticalAlignment = Alignment.Top,
     ) {
         Box(
@@ -328,12 +336,12 @@ private fun ListRow(
 }
 
 @Composable
-private fun CodeBlock(block: MdBlock.Code, fade: StreamFadeState?) {
+private fun CodeBlock(block: MdBlock.Code, fade: StreamFadeState?, rowFill: Modifier) {
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     var copied by remember(block.text) { mutableStateOf(false) }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = rowFill,
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -405,6 +413,7 @@ private fun TableBlock(
     color: Color,
     linkColor: Color,
     fade: StreamFadeState?,
+    rowFill: Modifier,
 ) {
     val widths = remember(block.headers, block.rows) {
         block.headers.indices.map { index ->
@@ -414,7 +423,7 @@ private fun TableBlock(
         }
     }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = rowFill,
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {

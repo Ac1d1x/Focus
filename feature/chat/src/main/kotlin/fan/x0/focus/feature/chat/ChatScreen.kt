@@ -843,7 +843,7 @@ private fun ChatThread(
         onAction(ChatAction.ConsumeHighlight)
     }
 
-    val sideInset = if (state.replyStyle == AssistantReplyStyle.Bubble) 12.dp else 16.dp
+    val sideInset = if (state.replyStyle == AssistantReplyStyle.Bubble) 10.dp else 16.dp
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,

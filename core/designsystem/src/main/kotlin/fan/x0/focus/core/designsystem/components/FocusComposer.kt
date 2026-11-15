@@ -76,6 +76,7 @@ fun FocusComposer(
     placeholder: String,
     canSend: Boolean,
     sending: Boolean,
+    canStop: Boolean = true,
     onSend: () -> Unit,
     onStop: () -> Unit,
     hazeState: HazeState,
@@ -112,11 +113,12 @@ fun FocusComposer(
             fallbackColorEffect(HazeColorEffect.tint(container))
         }
     }
-    val active = canSend || sending
+    val active = canSend || (sending && canStop)
     val voiceActive = voice?.active == true
     val voiceBusy = voice?.busy == true
-    val mic = !active && !voiceActive && !voiceBusy && onVoiceStart != null
+    val mic = !canSend && !sending && !voiceActive && !voiceBusy && onVoiceStart != null
     val buttonEnabled = active || voiceActive || voiceBusy || onVoiceStart != null
+    val showButton = active || voiceActive || voiceBusy || mic
     var fieldValue by remember { mutableStateOf(TextFieldValue(input)) }
     LaunchedEffect(input) {
         if (fieldValue.text != input) {
@@ -245,66 +247,68 @@ fun FocusComposer(
                     )
                 }
                 val buttonMode = when {
-                    sending -> ComposerButton.Stop
+                    sending && canStop -> ComposerButton.Stop
                     voiceBusy -> ComposerButton.Busy
                     voiceActive -> ComposerButton.Stop
                     canSend -> ComposerButton.Send
                     mic -> ComposerButton.Mic
                     else -> ComposerButton.Send
                 }
-                Surface(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .pressScale(buttonInteraction),
-                    shape = CircleShape,
-                    color = buttonContainer,
-                    contentColor = buttonContent,
-                    enabled = buttonEnabled,
-                    onClick = hapticTap {
-                        when {
-                            sending -> onStop()
-                            voiceBusy -> onVoiceCancel()
-                            voiceActive -> onVoiceStop()
-                            canSend -> onSend()
-                            onVoiceStart != null -> onVoiceStart()
-                        }
-                    },
-                    interactionSource = buttonInteraction,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        AnimatedContent(
-                            targetState = buttonMode,
-                            transitionSpec = {
-                                (fadeIn(motion.effectsFast()) + scaleIn(motion.spatialDefault(), initialScale = 0.8f)) togetherWith
-                                    (fadeOut(motion.effectsFast()) + scaleOut(motion.spatialDefault(), targetScale = 0.8f))
-                            },
-                            label = "sendIcon",
-                        ) { mode ->
-                            when (mode) {
-                                ComposerButton.Busy -> LoadingIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = buttonContent,
-                                )
-                                ComposerButton.Mic -> Icon(
-                                    imageVector = FocusIcons.Mic,
-                                    contentDescription = stringResource(R.string.common_voice_start),
-                                    tint = buttonContent,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                ComposerButton.Stop -> Icon(
-                                    imageVector = FocusIcons.Stop,
-                                    contentDescription = stringResource(
-                                        if (voiceActive) R.string.common_voice_stop else R.string.common_stop,
-                                    ),
-                                    tint = buttonContent,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                ComposerButton.Send -> Icon(
-                                    imageVector = FocusIcons.Send,
-                                    contentDescription = stringResource(R.string.common_send),
-                                    tint = buttonContent,
-                                    modifier = Modifier.size(16.dp),
-                                )
+                if (showButton) {
+                    Surface(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .pressScale(buttonInteraction),
+                        shape = CircleShape,
+                        color = buttonContainer,
+                        contentColor = buttonContent,
+                        enabled = buttonEnabled,
+                        onClick = hapticTap {
+                            when {
+                                sending && canStop -> onStop()
+                                voiceBusy -> onVoiceCancel()
+                                voiceActive -> onVoiceStop()
+                                canSend -> onSend()
+                                onVoiceStart != null -> onVoiceStart()
+                            }
+                        },
+                        interactionSource = buttonInteraction,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            AnimatedContent(
+                                targetState = buttonMode,
+                                transitionSpec = {
+                                    (fadeIn(motion.effectsFast()) + scaleIn(motion.spatialDefault(), initialScale = 0.8f)) togetherWith
+                                        (fadeOut(motion.effectsFast()) + scaleOut(motion.spatialDefault(), targetScale = 0.8f))
+                                },
+                                label = "sendIcon",
+                            ) { mode ->
+                                when (mode) {
+                                    ComposerButton.Busy -> LoadingIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = buttonContent,
+                                    )
+                                    ComposerButton.Mic -> Icon(
+                                        imageVector = FocusIcons.Mic,
+                                        contentDescription = stringResource(R.string.common_voice_start),
+                                        tint = buttonContent,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    ComposerButton.Stop -> Icon(
+                                        imageVector = FocusIcons.Stop,
+                                        contentDescription = stringResource(
+                                            if (voiceActive) R.string.common_voice_stop else R.string.common_stop,
+                                        ),
+                                        tint = buttonContent,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    ComposerButton.Send -> Icon(
+                                        imageVector = FocusIcons.Send,
+                                        contentDescription = stringResource(R.string.common_send),
+                                        tint = buttonContent,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
                             }
                         }
                     }

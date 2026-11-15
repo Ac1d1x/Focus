@@ -55,6 +55,8 @@ internal fun ChatMessageBubble(
     onSpeak: (ChatMenuUi) -> Unit,
     streaming: Boolean = false,
     showAssistantHeader: Boolean = false,
+    tail: Boolean = true,
+    topNear: Boolean = false,
 ) {
     val text = when (entry) {
         is ChatEntry.User -> entry.text
@@ -105,6 +107,8 @@ internal fun ChatMessageBubble(
                 null
             },
             header = quoteHeader,
+            tail = tail,
+            topNear = topNear,
             menu = {
                 val menu = state.menu
                 if (menu?.key == key) {

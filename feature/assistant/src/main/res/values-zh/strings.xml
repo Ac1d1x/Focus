@@ -820,8 +820,8 @@
     <string name="settings_roleplay_typing_body">每条气泡出现前等一会，像角色正在打字。</string>
     <string name="settings_roleplay_markdown">去掉 Markdown</string>
     <string name="settings_roleplay_markdown_body">气泡保持纯文本。代码块会保留。</string>
-    <string name="settings_roleplay_trace">显示工具过程</string>
-    <string name="settings_roleplay_trace_body">在消息里显示思考和工具步骤。关闭更沉浸。</string>
+    <string name="settings_roleplay_trace">显示思考和工具过程</string>
+    <string name="settings_roleplay_trace_body">在消息里显示模型思考和工具步骤。关闭后完全隐藏。</string>
     <string name="settings_roleplay_read_delay">阅读延迟</string>
     <string name="settings_roleplay_gap">气泡间隔</string>
     <string name="settings_roleplay_pace">节奏倍率</string>

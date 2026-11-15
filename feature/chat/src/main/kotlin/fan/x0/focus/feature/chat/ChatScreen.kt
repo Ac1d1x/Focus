@@ -328,6 +328,7 @@ fun ChatScreen(
                         state.compacting -> stringResource(R.string.chat_compacting)
                         state.typing -> stringResource(R.string.chat_typing)
                         state.roleplay != null && !state.sending -> roleplayStatusText(state.roleplay)
+                        state.sending && state.roleplayTyping -> null
                         state.sending -> state.workingText.ifBlank {
                             stringResource(R.string.chat_working)
                         }
@@ -929,6 +930,8 @@ private fun ChatThread(
                                 onSpeak = onSpeak,
                                 streaming = entry.live,
                                 showAssistantHeader = index == 0 || entries[index - 1] !is ChatEntry.Assistant,
+                                tail = entries.getOrNull(index + 1) !is ChatEntry.Assistant,
+                                topNear = index > 0 && entries[index - 1] is ChatEntry.Assistant,
                             )
                         }
                         is ChatEntry.Trace -> FocusTraceCard(

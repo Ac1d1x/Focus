@@ -844,6 +844,7 @@ class ChatEngine(
                     turnId = turnId,
                     proactive = options.proactive.isNotBlank(),
                     config = roleplayConfig,
+                    showReasoning = roleplayConfig.showToolTrace,
                 ).forEach { (id, bubble) ->
                     emit(ChatEvent.RoleplayBubbleShown(id, bubble.text, bubble.delayMs))
                 }
@@ -1032,6 +1033,7 @@ class ChatEngine(
         turnId: String,
         proactive: Boolean,
         config: RoleplayConfig,
+        showReasoning: Boolean,
     ): List<Pair<Long, RoleplayBubble>> {
         val cleaned = bubbles.mapNotNull { bubble ->
             val text = applyPunctuation(
@@ -1046,7 +1048,7 @@ class ChatEngine(
                 conversationId = conversationId,
                 role = ChatRole.Assistant,
                 content = "",
-                reasoning = message.reasoning,
+                reasoning = if (showReasoning) message.reasoning else "",
                 toolCalls = calls,
                 stats = totalStats,
                 elapsedMs = reasoningMs,
@@ -1064,7 +1066,7 @@ class ChatEngine(
                 conversationId = conversationId,
                 role = ChatRole.Assistant,
                 content = bubble.text,
-                reasoning = if (index == 0) message.reasoning else "",
+                reasoning = if (index == 0 && showReasoning) message.reasoning else "",
                 toolCalls = if (last) calls else emptyList(),
                 stats = if (last) totalStats else null,
                 elapsedMs = if (index == 0) reasoningMs else 0,

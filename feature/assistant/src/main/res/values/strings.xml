@@ -820,8 +820,8 @@
     <string name="settings_roleplay_typing_body">Wait a moment before each bubble as if the character is typing.</string>
     <string name="settings_roleplay_markdown">Strip Markdown</string>
     <string name="settings_roleplay_markdown_body">Keep chat bubbles plain. Code fences are preserved.</string>
-    <string name="settings_roleplay_trace">Show tool activity</string>
-    <string name="settings_roleplay_trace_body">Show reasoning and tool steps in the thread. Off keeps the chat clean.</string>
+    <string name="settings_roleplay_trace">Show thinking and tool activity</string>
+    <string name="settings_roleplay_trace_body">Show model reasoning and tool steps. Off hides them completely.</string>
     <string name="settings_roleplay_read_delay">Read delay</string>
     <string name="settings_roleplay_gap">Bubble gap</string>
     <string name="settings_roleplay_pace">Pace</string>

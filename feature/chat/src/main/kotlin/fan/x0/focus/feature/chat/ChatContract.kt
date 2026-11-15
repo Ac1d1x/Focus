@@ -321,6 +321,7 @@ data class ChatUiState(
     val assistantKind: AssistantKind = AssistantKind.Assistant,
     val typing: Boolean = false,
     val roleplay: RoleplayStateView? = null,
+    val roleplayTyping: Boolean = false,
     val assistantEmoji: String = "",
     val assistantAvatar: String = "",
     val workingText: String = "",

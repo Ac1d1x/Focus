@@ -114,6 +114,7 @@ internal fun Composer(
             placeholder = state.inputPlaceholder(),
             canSend = state.canSend,
             sending = state.sending,
+            canStop = state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay,
             onSend = { onAction(ChatAction.Send) },
             onStop = { onAction(ChatAction.Stop) },
             hazeState = hazeState,

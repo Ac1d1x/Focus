@@ -87,14 +87,13 @@ private class ChatBubbleShape(
         path.quadraticBezierTo(right, top, right, top + topEnd)
         if (fromUser && tail) {
             path.lineTo(right, bottom - tailHeight)
-            path.cubicTo(
-                right + tailWidth * 0.55f,
-                bottom - tailHeight * 0.35f,
+            path.quadraticBezierTo(
+                right + tailWidth * 0.35f,
+                bottom - tailHeight * 0.2f,
                 size.width - pad,
-                bottom - pad,
-                right - tailWidth * 0.35f,
                 bottom,
             )
+            path.lineTo(right - with(density) { 4.dp.toPx() }, bottom)
             path.lineTo(left + radius, bottom)
             path.quadraticBezierTo(left, bottom, left, bottom - radius)
         } else {
@@ -102,12 +101,11 @@ private class ChatBubbleShape(
             path.quadraticBezierTo(right, bottom, right - radius, bottom)
         }
         if (!fromUser && tail) {
-            path.lineTo(left + tailWidth * 0.35f, bottom)
-            path.cubicTo(
-                left + tailWidth * 0.55f,
-                bottom - tailHeight * 0.35f,
-                pad,
-                bottom - pad,
+            path.lineTo(left + with(density) { 4.dp.toPx() }, bottom)
+            path.lineTo(pad, bottom)
+            path.quadraticBezierTo(
+                left + tailWidth * 0.35f,
+                bottom - tailHeight * 0.2f,
                 left,
                 bottom - tailHeight,
             )
@@ -139,7 +137,7 @@ fun FocusChatBubble(
     topNear: Boolean = false,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val bubbleMaxWidth = maxWidth * 0.82f
+        val bubbleMaxWidth = maxWidth * if (fromUser) 0.82f else 0.9f
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart,

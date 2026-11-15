@@ -76,6 +76,7 @@ internal fun ChatMessageBubble(
     val canMenu = entry.messageId != null
     val citations = (entry as? ChatEntry.Assistant)?.citations.orEmpty()
     val display = remember(text, citations) { withCitationMarkers(text, citations) }
+    val screenOffset = if (state.replyStyle == AssistantReplyStyle.Bubble) 6.dp else 0.dp
     val quoteHeader: (@Composable () -> Unit)? = quote?.let {
         {
             MessageQuote(
@@ -109,6 +110,7 @@ internal fun ChatMessageBubble(
             header = quoteHeader,
             tail = tail,
             topNear = topNear,
+            screenOffset = screenOffset,
             menu = {
                 val menu = state.menu
                 if (menu?.key == key) {

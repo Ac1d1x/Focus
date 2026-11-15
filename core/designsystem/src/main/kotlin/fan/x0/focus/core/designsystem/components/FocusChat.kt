@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -165,12 +166,15 @@ fun FocusChatBubble(
     menu: (@Composable () -> Unit)? = null,
     tail: Boolean = true,
     topNear: Boolean = false,
+    screenOffset: Dp = 0.dp,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val totalMaxWidth = maxWidth * if (fromUser) 0.82f else 0.9f
         val bubbleMaxWidth = totalMaxWidth.coerceAtLeast(64.dp)
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(x = if (fromUser) screenOffset else -screenOffset),
             contentAlignment = if (fromUser) Alignment.CenterEnd else Alignment.CenterStart,
         ) {
             Box {

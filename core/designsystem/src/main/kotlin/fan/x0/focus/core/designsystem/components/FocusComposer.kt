@@ -347,12 +347,6 @@ fun FocusComposer(
         ) {
             if (immersive) {
                 Column {
-                    if (voice != null) {
-                        FocusVoiceHud(
-                            voice = voice,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        )
-                    }
                     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
                         attachments()
                     }

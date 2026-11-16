@@ -854,7 +854,7 @@ private fun ChatThread(
                 end = 16.dp,
                 bottom = bottomPadding + if (state.selectionKey != null) 64.dp else 8.dp,
             ),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(0.5.dp),
         ) {
             itemsIndexed(
                 items = entries,

@@ -96,6 +96,7 @@ fun FocusComposer(
     onVoiceCancel: () -> Unit = {},
     attachments: @Composable ColumnScope.() -> Unit = {},
     pills: @Composable RowScope.() -> Unit = {},
+    reply: @Composable () -> Unit = {},
     immersive: Boolean = false,
 ) {
     val motion = LocalFocusMotion.current
@@ -323,7 +324,7 @@ fun FocusComposer(
         }
     }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(
@@ -331,93 +332,95 @@ fun FocusComposer(
                 vertical = if (immersive) 8.dp else 10.dp,
             )
             .onSizeChanged { onHeightChange(it.height) },
-        verticalAlignment = Alignment.Bottom,
     ) {
-        Surface(
-            modifier = Modifier
-                .weight(1f)
-                .clip(shape)
-                .background(container)
-                .hazeBlur(
-                    input = HazeInput.Sources(hazeState),
-                    style = blurStyle,
-                ),
-            shape = shape,
-            color = Color.Transparent,
-        ) {
-            if (immersive) {
-                Column {
-                    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                        attachments()
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 44.dp),
-                    ) {
-                        simpleField()
-                        if (onAdd != null) {
-                            Surface(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(44.dp),
-                                shape = CircleShape,
-                                color = Color.Transparent,
-                                contentColor = scheme.onSurfaceVariant,
-                                onClick = hapticTap { onAdd() },
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = FocusIcons.Add,
-                                        contentDescription = addContentDescription,
-                                        modifier = Modifier.size(24.dp),
-                                    )
+        reply()
+        Row(verticalAlignment = Alignment.Bottom) {
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .background(container)
+                    .hazeBlur(
+                        input = HazeInput.Sources(hazeState),
+                        style = blurStyle,
+                    ),
+                shape = shape,
+                color = Color.Transparent,
+            ) {
+                if (immersive) {
+                    Column {
+                        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                            attachments()
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp),
+                        ) {
+                            simpleField()
+                            if (onAdd != null) {
+                                Surface(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .size(44.dp),
+                                    shape = CircleShape,
+                                    color = Color.Transparent,
+                                    contentColor = scheme.onSurfaceVariant,
+                                    onClick = hapticTap { onAdd() },
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = FocusIcons.Add,
+                                            contentDescription = addContentDescription,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } else {
-                Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
-                    if (voice != null) {
-                        FocusVoiceHud(
-                            voice = voice,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        )
-                    }
-                    attachments()
-                    field(Modifier)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 8.dp, end = 8.dp, top = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
+                } else {
+                    Column(modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 8.dp, bottom = 6.dp)) {
+                        if (voice != null) {
+                            FocusVoiceHud(
+                                voice = voice,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        attachments()
+                        field(Modifier)
                         Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .horizontalScroll(rememberScrollState()),
+                                .fillMaxWidth()
+                                .padding(start = 8.dp, end = 8.dp, top = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            pills()
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .horizontalScroll(rememberScrollState()),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                pills()
+                            }
+                            if (onAdd != null) {
+                                FocusComposerPill(
+                                    icon = FocusIcons.Add,
+                                    contentDescription = addContentDescription,
+                                    onClick = onAdd,
+                                )
+                            }
+                            sendButton(36.dp, 16.dp)
                         }
-                        if (onAdd != null) {
-                            FocusComposerPill(
-                                icon = FocusIcons.Add,
-                                contentDescription = addContentDescription,
-                                onClick = onAdd,
-                            )
-                        }
-                        sendButton(36.dp, 16.dp)
                     }
                 }
             }
-        }
-        if (immersive) {
-            Box(modifier = Modifier.padding(start = 8.dp, bottom = 1.dp)) {
-                sendButton(44.dp, 20.dp)
+            if (immersive) {
+                Box(modifier = Modifier.padding(start = 8.dp, bottom = 1.dp)) {
+                    sendButton(44.dp, 20.dp)
+                }
             }
         }
     }

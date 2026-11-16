@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,12 +16,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -194,21 +197,22 @@ internal fun Composer(
                     else -> false
                 }
             },
+            reply = {
+                state.reply?.let { reply ->
+                    ReplyPreview(
+                        reply = reply,
+                        onCancel = { onAction(ChatAction.CancelReply) },
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                }
+            },
             attachments = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    state.reply?.let { reply ->
-                        ReplyPreview(
-                            reply = reply,
-                            onCancel = { onAction(ChatAction.CancelReply) },
-                        )
-                    }
-                    if (state.attachments.isNotEmpty() || state.attaching) {
-                        AttachmentRow(
-                            attachments = state.attachments,
-                            attaching = state.attaching,
-                            onRemove = { onAction(ChatAction.RemoveAttachment(it)) },
-                        )
-                    }
+                if (state.attachments.isNotEmpty() || state.attaching) {
+                    AttachmentRow(
+                        attachments = state.attachments,
+                        attaching = state.attaching,
+                        onRemove = { onAction(ChatAction.RemoveAttachment(it)) },
+                    )
                 }
             },
             pills = {
@@ -317,54 +321,65 @@ private fun ChatUiState.inputPlaceholder(): String {
 private fun ReplyPreview(
     reply: ReplyUi,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val scheme = MaterialTheme.colorScheme
     val author = reply.author.ifBlank { stringResource(R.string.chat_quote_you) }
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = scheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Icon(
                 imageVector = FocusIcons.Reply,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp),
+                tint = scheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(32.dp)
+                    .background(scheme.primary, RoundedCornerShape(1.dp)),
             )
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 Text(
                     text = stringResource(R.string.chat_reply_title, author),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = scheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = reply.preview,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = scheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Surface(
                 onClick = hapticTap(onCancel),
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(44.dp),
                 shape = CircleShape,
                 color = Color.Transparent,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                contentColor = scheme.onSurfaceVariant,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = FocusIcons.Close,
                         contentDescription = stringResource(R.string.chat_reply_cancel),
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

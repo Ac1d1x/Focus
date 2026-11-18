@@ -2076,6 +2076,7 @@ class ChatViewModel(
                         else -> entries += ChatEntry.Notice(
                             key = "m${message.id}",
                             text = message.content,
+                            label = message.label.orEmpty(),
                         )
                     }
                 }

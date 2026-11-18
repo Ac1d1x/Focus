@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -33,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +50,7 @@ import fan.x0.focus.core.designsystem.components.shimmer
 import fan.x0.focus.core.designsystem.components.stateLayer
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
+import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 
 @Composable
 internal fun ChatFailureCard(
@@ -164,6 +169,177 @@ internal fun ChatNoticeCard(
             }
         }
     }
+}
+
+@Composable
+internal fun ChatSideStopCard(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val body = if (text.isBlank() || text.trim() == "已停止。") {
+        stringResource(R.string.chat_side_card_stopped_body)
+    } else {
+        text
+    }
+    SideChatEventCard(
+        icon = FocusIcons.Stop,
+        title = stringResource(R.string.chat_side_card_stopped),
+        body = body,
+        containerColor = scheme.surfaceContainerHigh,
+        contentColor = scheme.onSurface,
+        badgeColor = scheme.surfaceContainerHighest,
+        badgeContentColor = scheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun ChatSideApprovalCard(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val title = sideApprovalTitle(text)
+    val body = if (title.isBlank()) {
+        stringResource(R.string.chat_side_card_approval_body_plain)
+    } else {
+        stringResource(R.string.chat_side_card_approval_body, title)
+    }
+    SideChatEventCard(
+        icon = FocusIcons.Warning,
+        title = stringResource(R.string.chat_side_card_approval),
+        body = body,
+        containerColor = scheme.tertiaryContainer,
+        contentColor = scheme.onTertiaryContainer,
+        badgeColor = scheme.onTertiaryContainer.copy(alpha = 0.12f),
+        badgeContentColor = scheme.onTertiaryContainer,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun ChatSideResultCard(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val result = remember(text) { parseSideResult(text) }
+    val container = if (result.failed) scheme.errorContainer else scheme.primaryContainer
+    val content = if (result.failed) scheme.onErrorContainer else scheme.onPrimaryContainer
+    SideChatEventCard(
+        icon = if (result.failed) FocusIcons.Warning else FocusIcons.Task,
+        title = stringResource(
+            if (result.failed) R.string.chat_side_result_failed else R.string.chat_side_result_done,
+        ),
+        subtitle = result.title.takeIf { it.isNotBlank() },
+        body = result.summary.takeIf { it.isNotBlank() },
+        containerColor = container,
+        contentColor = content,
+        badgeColor = content.copy(alpha = 0.12f),
+        badgeContentColor = content,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun SideChatEventCard(
+    icon: ImageVector,
+    title: String,
+    containerColor: Color,
+    contentColor: Color,
+    badgeColor: Color,
+    badgeContentColor: Color,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    body: String? = null,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = FocusShapeTokens.cardLarge,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = badgeColor,
+                    contentColor = badgeContentColor,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = title,
+                        style = LocalFocusTypography.current.titleMedium,
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = contentColor.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            if (!body.isNullOrBlank()) {
+                SelectionContainer {
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor.copy(alpha = 0.85f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class SideResultText(
+    val title: String,
+    val summary: String,
+    val failed: Boolean,
+)
+
+private fun sideApprovalTitle(text: String): String {
+    val trimmed = text.trim()
+    if (!trimmed.endsWith("等待审批")) return ""
+    return trimmed.removePrefix("旁聊 ").removeSuffix(" 等待审批").trim()
+}
+
+private fun parseSideResult(text: String): SideResultText {
+    val titleStart = text.indexOf('\u300A')
+    val titleEnd = text.indexOf('\u300B', titleStart + 1)
+    val title = if (titleStart >= 0 && titleEnd > titleStart) {
+        text.substring(titleStart + 1, titleEnd).trim()
+    } else {
+        ""
+    }
+    val tail = if (titleEnd >= 0) text.substring(titleEnd + 1) else text
+    val failed = tail.trimStart().startsWith("失败")
+    val colon = tail.indexOf('：')
+    val raw = if (colon >= 0) tail.substring(colon + 1) else tail
+    val summary = raw.substringBefore("\n\n这是一条后台结果。").trim()
+    return SideResultText(title = title, summary = summary, failed = failed)
 }
 
 @Composable

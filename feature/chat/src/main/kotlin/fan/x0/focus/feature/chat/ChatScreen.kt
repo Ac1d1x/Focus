@@ -995,7 +995,12 @@ private fun ChatThread(
                             retryable = entry.retryable,
                             onRetry = { onAction(ChatAction.RetryLast) },
                         )
-                        is ChatEntry.Notice -> ChatNoticeCard(text = entry.text)
+                        is ChatEntry.Notice -> when {
+                            entry.label == "agent_stop" -> ChatSideStopCard(text = entry.text)
+                            entry.label == "side_approval" -> ChatSideApprovalCard(text = entry.text)
+                            entry.label.startsWith("side_result:") -> ChatSideResultCard(text = entry.text)
+                            else -> ChatNoticeCard(text = entry.text)
+                        }
                         is ChatEntry.Compaction -> ChatCompactionCard(
                             text = entry.summary,
                             streaming = entry.streaming,

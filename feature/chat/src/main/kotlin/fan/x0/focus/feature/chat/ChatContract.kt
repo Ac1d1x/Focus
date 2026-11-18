@@ -273,7 +273,11 @@ sealed interface ChatEntry {
 
     data class Failure(override val key: String, val message: String, val retryable: Boolean) : ChatEntry
 
-    data class Notice(override val key: String, val text: String) : ChatEntry
+    data class Notice(
+        override val key: String,
+        val text: String,
+        val label: String = "",
+    ) : ChatEntry
 
     data class Compaction(
         override val key: String,

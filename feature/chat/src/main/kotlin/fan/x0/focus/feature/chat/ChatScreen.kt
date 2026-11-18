@@ -103,6 +103,7 @@ import fan.x0.focus.core.designsystem.components.FocusActivity
 import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
 import fan.x0.focus.core.designsystem.components.FocusChatTopBar
+import fan.x0.focus.core.designsystem.components.FocusChatTopBarHeight
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusJumpToLatest
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
@@ -114,6 +115,7 @@ import fan.x0.focus.core.designsystem.components.FocusSignalTone
 import fan.x0.focus.core.designsystem.components.FocusTimelineStep
 import fan.x0.focus.core.designsystem.components.FocusTraceCard
 import fan.x0.focus.core.designsystem.components.FocusTraceStep
+import fan.x0.focus.core.designsystem.components.focusTopFade
 import fan.x0.focus.core.designsystem.components.LocalFocusDrawerOpener
 import fan.x0.focus.core.designsystem.components.LocalFocusSettingsOpener
 import fan.x0.focus.core.designsystem.components.LocalFocusSignal
@@ -308,101 +310,6 @@ fun ChatScreen(
     ) {
         Scaffold(
             containerColor = Color.Transparent,
-            topBar = {
-                FocusChatTopBar(
-                    title = when {
-                        state.isMain -> state.title.ifBlank { stringResource(R.string.chat_main_title) }
-                        state.isSide && state.title.isNotBlank() -> stringResource(
-                            if (state.assistantKind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
-                                R.string.chat_scene_title
-                            } else {
-                                R.string.chat_side_title
-                            },
-                            state.title,
-                        )
-                        else -> state.title.ifBlank {
-                            state.assistantName.ifBlank { stringResource(R.string.chat_title) }
-                        }
-                    },
-                    subtitle = when {
-                        retry != null -> stringResource(R.string.chat_retrying, retry.attempt, retry.max)
-                        state.compacting -> stringResource(R.string.chat_compacting)
-                        state.typing -> stringResource(R.string.chat_typing)
-                        state.roleplay != null && !state.sending -> roleplayStatusText(state.roleplay)
-                        state.sending && state.roleplayTyping -> null
-                        state.sending -> state.workingText.ifBlank {
-                            stringResource(R.string.chat_working)
-                        }
-                        state.imSource != null -> stringResource(
-                            R.string.chat_im_source,
-                            state.imSource.accountName,
-                            state.imSource.chatTitle,
-                        )
-                        state.isMain || state.isSide -> null
-                        state.title.isBlank() -> stringResource(R.string.chat_subtitle)
-                        else -> null
-                    },
-                    scrolledUnder = topBarScrolled && !state.isEmpty,
-                    onMenu = if (state.isSide) null else LocalFocusDrawerOpener.current,
-                    onBack = if (state.isSide) {
-                        { onAction(ChatAction.BackToMain) }
-                    } else {
-                        null
-                    },
-                    trailing = {
-                        if (!state.isEmpty && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .size(ChatMascotSize)
-                                    .onGloballyPositioned { mascotTop = it.positionInRoot() },
-                            )
-                        }
-                    },
-                    actions = {
-                        if (state.isMain && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
-                            val unread = state.sideUnreadCount
-                            val badge = if (unread > 0) unread else state.sideActiveCount
-                            IconButton(onClick = hapticTap { onAction(ChatAction.OpenSidePanel) }) {
-                                BadgedBox(
-                                    badge = {
-                                        if (badge > 0) {
-                                            Badge(
-                                                containerColor = if (unread > 0) {
-                                                    MaterialTheme.colorScheme.error
-                                                } else {
-                                                    MaterialTheme.colorScheme.secondaryContainer
-                                                },
-                                                contentColor = if (unread > 0) {
-                                                    MaterialTheme.colorScheme.onError
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSecondaryContainer
-                                                },
-                                            ) {
-                                                Text(badge.coerceAtMost(99).toString())
-                                            }
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        FocusIcons.Groups,
-                                        contentDescription = stringResource(R.string.chat_side_panel_title),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        } else {
-                            IconButton(onClick = hapticTap { onAction(ChatAction.NewConversation) }) {
-                                Icon(
-                                    FocusIcons.Add,
-                                    contentDescription = stringResource(R.string.chat_new),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    },
-                )
-            },
         ) { padding ->
             var composerHeight by remember { mutableStateOf(0) }
             val hazeState = rememberHazeState()
@@ -526,6 +433,103 @@ fun ChatScreen(
                 )
             }
         }
+        FocusChatTopBar(
+            title = when {
+                state.isMain -> state.title.ifBlank { stringResource(R.string.chat_main_title) }
+                state.isSide && state.title.isNotBlank() -> stringResource(
+                    if (state.assistantKind == fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                        R.string.chat_scene_title
+                    } else {
+                        R.string.chat_side_title
+                    },
+                    state.title,
+                )
+                else -> state.title.ifBlank {
+                    state.assistantName.ifBlank { stringResource(R.string.chat_title) }
+                }
+            },
+            subtitle = when {
+                retry != null -> stringResource(R.string.chat_retrying, retry.attempt, retry.max)
+                state.compacting -> stringResource(R.string.chat_compacting)
+                state.typing -> stringResource(R.string.chat_typing)
+                state.roleplay != null && !state.sending -> roleplayStatusText(state.roleplay)
+                state.sending && state.roleplayTyping -> null
+                state.sending -> state.workingText.ifBlank {
+                    stringResource(R.string.chat_working)
+                }
+                state.imSource != null -> stringResource(
+                    R.string.chat_im_source,
+                    state.imSource.accountName,
+                    state.imSource.chatTitle,
+                )
+                state.isMain || state.isSide -> null
+                state.title.isBlank() -> stringResource(R.string.chat_subtitle)
+                else -> null
+            },
+            scrolledUnder = topBarScrolled && !state.isEmpty,
+            onMenu = if (state.isSide) null else LocalFocusDrawerOpener.current,
+            onBack = if (state.isSide) {
+                { onAction(ChatAction.BackToMain) }
+            } else {
+                null
+            },
+            trailing = {
+                if (!state.isEmpty && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(ChatMascotSize)
+                            .onGloballyPositioned { mascotTop = it.positionInRoot() },
+                    )
+                }
+            },
+            actions = {
+                if (state.isMain && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
+                    val unread = state.sideUnreadCount
+                    val badge = if (unread > 0) unread else state.sideActiveCount
+                    IconButton(onClick = hapticTap { onAction(ChatAction.OpenSidePanel) }) {
+                        BadgedBox(
+                            badge = {
+                                if (badge > 0) {
+                                    Badge(
+                                        containerColor = if (unread > 0) {
+                                            MaterialTheme.colorScheme.error
+                                        } else {
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        },
+                                        contentColor = if (unread > 0) {
+                                            MaterialTheme.colorScheme.onError
+                                        } else {
+                                            MaterialTheme.colorScheme.onSecondaryContainer
+                                        },
+                                    ) {
+                                        Text(badge.coerceAtMost(99).toString())
+                                    }
+                                }
+                            },
+                        ) {
+                            Icon(
+                                FocusIcons.Groups,
+                                contentDescription = stringResource(R.string.chat_side_panel_title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    IconButton(onClick = hapticTap { onAction(ChatAction.NewConversation) }) {
+                        Icon(
+                            FocusIcons.Add,
+                            contentDescription = stringResource(R.string.chat_new),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth(),
+        )
+
         if (!state.isEmpty && !state.slash.visible && !state.mention.visible &&
             state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay
         ) {
@@ -858,10 +862,11 @@ private fun ChatThread(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
+                .focusTopFade(FocusChatTopBarHeight + 24.dp)
                 .testTag(ChatThreadTag),
             contentPadding = PaddingValues(
                 start = 16.dp,
-                top = 8.dp,
+                top = FocusChatTopBarHeight + 8.dp,
                 end = 16.dp,
                 bottom = bottomPadding + if (state.selectionKey != null) 64.dp else 8.dp,
             ),

@@ -36,6 +36,8 @@ val LocalFocusDrawerOpener = staticCompositionLocalOf<() -> Unit> { {} }
 val LocalFocusDrawerAvailable = staticCompositionLocalOf { true }
 val LocalFocusSettingsOpener = staticCompositionLocalOf<() -> Unit> { {} }
 
+val FocusChatTopBarHeight = 64.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FocusLargeTopBar(

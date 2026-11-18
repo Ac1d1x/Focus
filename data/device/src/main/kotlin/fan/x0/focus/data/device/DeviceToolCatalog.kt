@@ -74,19 +74,19 @@ object DeviceToolCatalog {
         ),
         ToolSpec(
             name = "device_snapshot",
-            description = "Read the current screen as indexed accessibility nodes. Screenshot is attached by default. Use the returned node index with device_tap and device_type. When a virtual screen is running, this reads it automatically; pass display_id=0 for the physical screen.",
+            description = "Read the current screen as indexed accessibility nodes. Use the returned node index with device_tap and device_type. Screenshots are slow, pass include_screenshot=true only when nodes are not enough. When a virtual screen is running, this reads it automatically; pass display_id=0 for the physical screen.",
             kind = ToolKind.Read,
             parameters = schema {
                 put("device_id", string("local or a remote device id from device_list"))
                 put("display_id", displayId())
-                put("include_screenshot", boolean("Attach a screenshot, default true"))
+                put("include_screenshot", boolean("Attach a screenshot, default false. Only for images, canvas, or custom views"))
                 put("settle_ms", number("Wait before reading, default 0"))
                 put("max_nodes", number("Maximum nodes, default 180"))
             },
         ),
         ToolSpec(
             name = "device_tap",
-            description = "Tap one node from the latest snapshot, or tap a relative screen position. One action per response. The result contains the new screen.",
+            description = "Tap one node from the latest snapshot, or tap a relative screen position. One action per response. The result contains the new node list.",
             kind = ToolKind.Write,
             parameters = schema {
                 put("device_id", string("local or a remote device id from device_list"))
@@ -94,12 +94,12 @@ object DeviceToolCatalog {
                 put("index", number("Node index from the latest snapshot"))
                 put("x", decimal("Relative x from 0 to 1, used when index is absent"))
                 put("y", decimal("Relative y from 0 to 1, used when index is absent"))
-                put("include_screenshot", boolean("Attach a screenshot, default true"))
+                put("include_screenshot", boolean("Attach a screenshot, default false. Only for images, canvas, or custom views"))
             },
         ),
         ToolSpec(
             name = "device_long_press",
-            description = "Long press one node or a relative screen position. The result contains the new screen.",
+            description = "Long press one node or a relative screen position. The result contains the new node list.",
             kind = ToolKind.Write,
             parameters = schema {
                 put("device_id", string("local or a remote device id from device_list"))
@@ -107,19 +107,19 @@ object DeviceToolCatalog {
                 put("index", number("Node index from the latest snapshot"))
                 put("x", decimal("Relative x from 0 to 1"))
                 put("y", decimal("Relative y from 0 to 1"))
-                put("include_screenshot", boolean("Attach a screenshot, default true"))
+                put("include_screenshot", boolean("Attach a screenshot, default false. Only for images, canvas, or custom views"))
             },
         ),
         ToolSpec(
             name = "device_swipe",
-            description = "Swipe or scroll. Direction is the finger direction. Pass index to swipe inside one scrollable node.",
+            description = "Swipe or scroll. Direction is the finger direction. Pass index to swipe inside one scrollable node. The result contains the new node list.",
             kind = ToolKind.Write,
             parameters = schema(required = listOf("direction")) {
                 put("device_id", string("local or a remote device id from device_list"))
                 put("display_id", displayId())
                 put("direction", string("up, down, left, or right"))
                 put("index", number("Node index to swipe inside, optional"))
-                put("include_screenshot", boolean("Attach a screenshot, default true"))
+                put("include_screenshot", boolean("Attach a screenshot, default false. Only for images, canvas, or custom views"))
             },
         ),
         ToolSpec(

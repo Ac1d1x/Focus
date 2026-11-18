@@ -248,7 +248,7 @@ class DeviceRuntime(
     }
 
     suspend fun snapshot(
-        includeScreenshot: Boolean = true,
+        includeScreenshot: Boolean = false,
         settleMs: Long = 0,
         maxNodes: Int = 180,
         deviceId: String = "local",
@@ -320,7 +320,7 @@ class DeviceRuntime(
                 if (!opened) return stepError("Could not open ${app.label} (${app.packageName}) on the virtual screen")
                 delay(settle.coerceAtLeast(700))
                 return snapshot(
-                    includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: true,
+                    includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: false,
                     settleMs = 0,
                     displayId = target,
                 )
@@ -335,7 +335,7 @@ class DeviceRuntime(
                 if (openAppShell(app.packageName)) delay(500)
             }
             return snapshot(
-                includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: true,
+                includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: false,
                 settleMs = 0,
                 displayId = target,
             )
@@ -392,7 +392,7 @@ class DeviceRuntime(
         if (!ok) return stepError("Action failed: $action")
         delay(settle)
         return snapshot(
-            includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: true,
+            includeScreenshot = args["include_screenshot"]?.jsonPrimitive?.booleanOrNull ?: false,
             settleMs = 0,
             displayId = target,
         )

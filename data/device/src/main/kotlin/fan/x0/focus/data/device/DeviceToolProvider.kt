@@ -289,7 +289,7 @@ class DeviceToolProvider(
         if (target.endpoint == null) {
             requireSession()
             val step = runtime.snapshot(
-                includeScreenshot = args.flag("include_screenshot") ?: true,
+                includeScreenshot = args.flag("include_screenshot") ?: false,
                 settleMs = (args.int("settle_ms") ?: 0).toLong(),
                 maxNodes = (args.int("max_nodes") ?: 180).coerceIn(20, 400),
                 deviceName = store.deviceName(),

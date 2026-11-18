@@ -2,6 +2,7 @@ package fan.x0.focus.core.designsystem.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,14 +21,21 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 import fan.x0.focus.core.designsystem.R
 import fan.x0.focus.core.designsystem.theme.LocalFocusMotion
 
@@ -121,6 +129,7 @@ fun FocusCompactTopBar(
 
 @Composable
 fun FocusTopBarCapsule(
+    hazeState: HazeState,
     showBackground: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
@@ -132,13 +141,28 @@ fun FocusTopBarCapsule(
         label = "topBarCapsule",
     )
     val scheme = MaterialTheme.colorScheme
+    val container = scheme.surfaceContainerLow
+    val blurStyle = remember(container) {
+        HazeBlurStyle {
+            blurRadius(20.dp)
+            noiseFactor(0f)
+            backgroundColor(container)
+            fallbackColorEffect(HazeColorEffect.tint(container))
+        }
+    }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Surface(
             modifier = Modifier
                 .matchParentSize()
-                .graphicsLayer { alpha = backgroundAlpha },
+                .graphicsLayer { alpha = backgroundAlpha }
+                .clip(CircleShape)
+                .background(container)
+                .hazeBlur(
+                    input = HazeInput.Sources(hazeState),
+                    style = blurStyle,
+                ),
             shape = CircleShape,
-            color = scheme.surfaceContainerLow,
+            color = Color.Transparent,
             border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.5f)),
             content = {},
         )
@@ -150,6 +174,7 @@ fun FocusTopBarCapsule(
 @Composable
 fun FocusChatTopBar(
     title: String,
+    hazeState: HazeState,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     scrolledUnder: Boolean = false,
@@ -161,27 +186,34 @@ fun FocusChatTopBar(
     TopAppBar(
         modifier = modifier,
         title = {
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMediumEmphasized,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (subtitle != null) {
+            FocusTopBarCapsule(
+                hazeState = hazeState,
+                showBackground = scrolledUnder,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
                     Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                        text = title,
+                        style = MaterialTheme.typography.bodyMediumEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         },
         navigationIcon = {
             if (onBack != null || onMenu != null) {
                 FocusTopBarCapsule(
+                    hazeState = hazeState,
                     showBackground = scrolledUnder,
                     modifier = Modifier.padding(start = 8.dp, end = 4.dp),
                 ) {
@@ -200,6 +232,7 @@ fun FocusChatTopBar(
             trailing()
             if (actions != null) {
                 FocusTopBarCapsule(
+                    hazeState = hazeState,
                     showBackground = scrolledUnder,
                     modifier = Modifier.padding(start = 4.dp, end = 8.dp),
                     content = actions,

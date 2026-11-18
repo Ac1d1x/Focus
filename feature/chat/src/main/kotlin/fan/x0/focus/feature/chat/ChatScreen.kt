@@ -294,6 +294,7 @@ fun ChatScreen(
     val avatarState = state.avatarState(celebrate)
     val working = state.sending
     val retry = state.retry
+    val hazeState = rememberHazeState()
     var mascotTop by remember { mutableStateOf<Offset?>(null) }
     var mascotBottom by remember { mutableStateOf<Offset?>(null) }
     var overlayOrigin by remember { mutableStateOf(Offset.Zero) }
@@ -312,7 +313,6 @@ fun ChatScreen(
             containerColor = Color.Transparent,
         ) { padding ->
             var composerHeight by remember { mutableStateOf(0) }
-            val hazeState = rememberHazeState()
             val composerPadding = with(LocalDensity.current) { composerHeight.toDp() } + 12.dp
             val composerOffset = with(LocalDensity.current) { composerHeight.toDp() } + 8.dp
             val motion = LocalFocusMotion.current
@@ -448,6 +448,7 @@ fun ChatScreen(
                     state.assistantName.ifBlank { stringResource(R.string.chat_title) }
                 }
             },
+            hazeState = hazeState,
             subtitle = when {
                 retry != null -> stringResource(R.string.chat_retrying, retry.attempt, retry.max)
                 state.compacting -> stringResource(R.string.chat_compacting)

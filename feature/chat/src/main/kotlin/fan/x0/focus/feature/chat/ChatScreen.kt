@@ -897,6 +897,7 @@ private fun ChatThread(
                     play = play,
                     fromUser = entry is ChatEntry.User,
                     onPlayed = { played += entry.key },
+                    modifier = if (entry.isCard()) Modifier.padding(vertical = 10.dp) else Modifier,
                 ) {
                     when (entry) {
                         is ChatEntry.User -> Column(
@@ -1008,7 +1009,9 @@ private fun ChatThread(
                 item(key = "retry") {
                     ChatRetryCard(
                         retry = retry,
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(vertical = 10.dp),
                     )
                 }
             }
@@ -1017,7 +1020,9 @@ private fun ChatThread(
                     ChatTodoCard(
                         conversationId = state.conversationId,
                         todos = todos,
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(vertical = 10.dp),
                     )
                 }
             }
@@ -1095,13 +1100,28 @@ private fun ChatEntry.isFresh(): Boolean = when (this) {
     else -> key.startsWith("local-") || key.startsWith("live-")
 }
 
+private fun ChatEntry.isCard(): Boolean = when (this) {
+    is ChatEntry.Trace,
+    is ChatEntry.Activity,
+    is ChatEntry.Approval,
+    is ChatEntry.Plan,
+    is ChatEntry.Ask,
+    is ChatEntry.Trust,
+    is ChatEntry.Failure,
+    is ChatEntry.Notice,
+    is ChatEntry.Compaction,
+    -> true
+    is ChatEntry.User, is ChatEntry.Assistant -> false
+}
+
 // New bubbles pop in from their own corner; history entries render without motion.
 @Composable
 private fun ChatBubbleEnter(
     play: Boolean,
     fromUser: Boolean,
     onPlayed: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
-) = FocusBubbleEnter(play, fromUser, onPlayed, content)
+) = FocusBubbleEnter(play, fromUser, onPlayed, modifier, content)
 
 private fun LazyListState.atBottom(): Boolean = !canScrollForward

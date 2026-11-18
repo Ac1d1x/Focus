@@ -22,6 +22,7 @@ fun FocusBubbleEnter(
     play: Boolean,
     fromUser: Boolean,
     onPlayed: () -> Unit = {},
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val motion = LocalFocusMotion.current
@@ -44,9 +45,9 @@ fun FocusBubbleEnter(
     val origin = if (fromUser) TransformOrigin(1f, 1f) else TransformOrigin(0f, 1f)
     Box(
         modifier = if (settled) {
-            Modifier
+            modifier
         } else {
-            Modifier.graphicsLayer {
+            modifier.graphicsLayer {
                 this.alpha = alpha.value
                 scaleX = startScale + (1f - startScale) * progress.value
                 scaleY = scaleX

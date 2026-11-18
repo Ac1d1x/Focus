@@ -21,7 +21,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import androidx.core.content.ContextCompat
 import fan.x0.focus.data.device.system.DeviceAccessibilityService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -43,6 +42,22 @@ class DeviceAccessibility(@Provided private val context: Context) {
     private val shotMutex = Mutex()
     private var lastShotAt = 0L
 
+    private val captureExecutor by lazy {
+        java.util.concurrent.Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "focus-device-shot").apply { isDaemon = true }
+        }
+    }
+
+    private val keyguardManager by lazy { context.getSystemService(android.app.KeyguardManager::class.java) }
+    private val powerManager by lazy { context.getSystemService(PowerManager::class.java) }
+    private val inputMethods by lazy { context.getSystemService(InputMethodManager::class.java) }
+
+    @Volatile
+    private var imeCache: Set<String> = emptySet()
+
+    @Volatile
+    private var imeCacheAt = 0L
+
     fun ready(): Boolean = DeviceAccessibilityService.current != null
 
     fun service(): AccessibilityService? = DeviceAccessibilityService.current
@@ -54,7 +69,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
         displayId: Int = 0,
         displayWidth: Int = 0,
         displayHeight: Int = 0,
-    ): DeviceSnapshot = withContext(Dispatchers.Main) {
+    ): DeviceSnapshot = withContext(Dispatchers.Default) {
         val service = DeviceAccessibilityService.current
             ?: return@withContext DeviceSnapshot(
                 deviceId = deviceId,
@@ -74,8 +89,8 @@ class DeviceAccessibility(@Provided private val context: Context) {
         val metrics = displayMetrics(displayId)
         val screenWidth = metrics.widthPixels.takeIf { it > 0 } ?: displayWidth
         val screenHeight = metrics.heightPixels.takeIf { it > 0 } ?: displayHeight
-        val active = targetWindow(windows, context.packageName)
-        val root = active?.root
+        val target = targetRoot(windows, context.packageName)
+        val root = target?.root
             ?: if (displayId == 0) {
                 service.rootInActiveWindow?.takeIf {
                     it.packageName?.toString() != context.packageName
@@ -83,12 +98,8 @@ class DeviceAccessibility(@Provided private val context: Context) {
             } else {
                 null
             }
-        val keyguard = runCatching {
-            context.getSystemService(android.app.KeyguardManager::class.java)?.isKeyguardLocked == true
-        }.getOrDefault(false)
-        val screenOn = runCatching {
-            context.getSystemService(PowerManager::class.java)?.isInteractive != false
-        }.getOrDefault(true)
+        val keyguard = runCatching { keyguardManager?.isKeyguardLocked == true }.getOrDefault(false)
+        val screenOn = runCatching { powerManager?.isInteractive != false }.getOrDefault(true)
         val imePackages = imePackages()
         val keyboard = windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
         val nodes = mutableListOf<DeviceNode>()
@@ -104,7 +115,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
             )
         }
         val packageName = root?.packageName?.toString().orEmpty()
-        val title = active?.title?.toString().orEmpty()
+        val title = target?.window?.title?.toString().orEmpty()
         val snapshot = DeviceSnapshot(
             deviceId = deviceId,
             displayId = displayId,
@@ -271,7 +282,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
     suspend fun currentPackage(displayId: Int = 0): String? = withContext(Dispatchers.Main) {
         val service = DeviceAccessibilityService.current ?: return@withContext null
         val windows = windowsFor(service, displayId)
-        targetWindow(windows, context.packageName)?.root?.packageName?.toString()
+        targetRoot(windows, context.packageName)?.root?.packageName?.toString()
     }
 
     suspend fun typeOnDisplay(
@@ -282,7 +293,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
     ): Boolean = withContext(Dispatchers.Main) {
         val service = DeviceAccessibilityService.current ?: return@withContext false
         val windows = windowsFor(service, displayId)
-        val root = targetWindow(windows, context.packageName)?.root ?: return@withContext false
+        val root = targetRoot(windows, context.packageName)?.root ?: return@withContext false
         val focused = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             ?: findEditable(root)
             ?: return@withContext false
@@ -456,26 +467,38 @@ class DeviceAccessibility(@Provided private val context: Context) {
         return null
     }
 
-    private fun targetWindow(
+    private data class WindowRoot(
+        val window: AccessibilityWindowInfo,
+        val root: AccessibilityNodeInfo,
+    )
+
+    private fun targetRoot(
         windows: List<AccessibilityWindowInfo>,
         ownPackage: String,
-    ): AccessibilityWindowInfo? {
-        val candidates = windows.filter { window ->
-            window.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD &&
-                runCatching { window.root?.packageName?.toString() }.getOrNull() != ownPackage
+    ): WindowRoot? {
+        val applications = windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+        val system = windows.filter {
+            it.type != AccessibilityWindowInfo.TYPE_APPLICATION &&
+                it.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD
         }
-        return candidates.firstOrNull {
-            it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.isActive
-        } ?: candidates.firstOrNull {
-            it.type == AccessibilityWindowInfo.TYPE_APPLICATION && it.isFocused
-        } ?: candidates.firstOrNull {
-            it.type == AccessibilityWindowInfo.TYPE_APPLICATION
-        } ?: candidates.firstOrNull { it.isActive } ?: candidates.firstOrNull()
+        val ordered = buildList {
+            applications.firstOrNull { it.isActive }?.let { add(it) }
+            applications.firstOrNull { it.isFocused }?.let { add(it) }
+            addAll(applications)
+            system.firstOrNull { it.isFocused }?.let { add(it) }
+            system.firstOrNull { it.isActive }?.let { add(it) }
+            addAll(system)
+        }.distinct()
+        for (window in ordered) {
+            val root = runCatching { window.root }.getOrNull() ?: continue
+            if (root.packageName?.toString() != ownPackage) return WindowRoot(window, root)
+        }
+        return null
     }
 
     private fun focusedInput(service: AccessibilityService): AccessibilityNodeInfo? {
         val windows = runCatching { service.windows.toList() }.getOrDefault(emptyList())
-        val target = targetWindow(windows, context.packageName)
+        val target = targetRoot(windows, context.packageName)
         return target?.root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             ?: service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 ?.takeIf { it.packageName?.toString() != context.packageName }
@@ -522,12 +545,13 @@ class DeviceAccessibility(@Provided private val context: Context) {
         withContext(Dispatchers.Main) {
             service.takeScreenshotOfWindow(
                 windowId,
-                ContextCompat.getMainExecutor(context),
+                captureExecutor,
                 object : AccessibilityService.TakeScreenshotCallback {
                     override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
                         val buffer = result.hardwareBuffer
                         val wrapped = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
                         bitmap = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                        wrapped?.recycle()
                         buffer.close()
                         latch.countDown()
                     }
@@ -550,12 +574,13 @@ class DeviceAccessibility(@Provided private val context: Context) {
         withContext(Dispatchers.Main) {
             service.takeScreenshot(
                 android.view.Display.DEFAULT_DISPLAY,
-                ContextCompat.getMainExecutor(context),
+                captureExecutor,
                 object : AccessibilityService.TakeScreenshotCallback {
                     override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
                         val buffer = result.hardwareBuffer
                         val wrapped = Bitmap.wrapHardwareBuffer(buffer, result.colorSpace)
                         bitmap = wrapped?.copy(Bitmap.Config.ARGB_8888, false)
+                        wrapped?.recycle()
                         buffer.close()
                         latch.countDown()
                     }
@@ -572,10 +597,16 @@ class DeviceAccessibility(@Provided private val context: Context) {
         return bitmap
     }
 
-    private fun imePackages(): Set<String> = runCatching {
-        val manager = context.getSystemService(InputMethodManager::class.java) ?: return emptySet()
-        manager.enabledInputMethodList.map { it.packageName }.toSet()
-    }.getOrDefault(emptySet())
+    private fun imePackages(): Set<String> {
+        val now = System.currentTimeMillis()
+        if (now - imeCacheAt < IME_CACHE_MS) return imeCache
+        val packages = runCatching {
+            inputMethods?.enabledInputMethodList?.map { it.packageName }?.toSet().orEmpty()
+        }.getOrDefault(emptySet())
+        imeCache = packages
+        imeCacheAt = now
+        return packages
+    }
 
     private fun collect(
         node: AccessibilityNodeInfo,
@@ -657,11 +688,6 @@ class DeviceAccessibility(@Provided private val context: Context) {
             builder.append(' ').append(node.label.ifBlank { node.className })
             builder.append(" (").append(node.className.ifBlank { "View" }).append(")")
             if (node.viewId.isNotBlank()) builder.append(" id=").append(node.viewId)
-            builder.append(" bounds=")
-                .append(node.bounds.left).append(',')
-                .append(node.bounds.top).append(',')
-                .append(node.bounds.right).append(',')
-                .append(node.bounds.bottom)
             if (node.clickable) builder.append(" clickable")
             if (node.editable) builder.append(" editable")
             if (node.scrollable) builder.append(" scrollable")
@@ -672,5 +698,9 @@ class DeviceAccessibility(@Provided private val context: Context) {
             builder.append('\n')
         }
         return builder.toString().trimEnd()
+    }
+
+    private companion object {
+        const val IME_CACHE_MS = 15_000L
     }
 }

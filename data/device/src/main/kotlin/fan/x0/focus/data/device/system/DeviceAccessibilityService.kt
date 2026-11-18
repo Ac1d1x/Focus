@@ -13,8 +13,7 @@ class DeviceAccessibilityService : AccessibilityService() {
         val info = serviceInfo ?: AccessibilityServiceInfo()
         var flags = info.flags or
             AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-            AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-            AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             flags = flags or AccessibilityServiceInfo.FLAG_INPUT_METHOD_EDITOR
         }
@@ -33,14 +32,16 @@ class DeviceAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        lastEventAt = System.currentTimeMillis()
-        lastPackage = event?.packageName?.toString().orEmpty()
-        lastClass = event?.className?.toString().orEmpty()
         if (event == null) return
+        val eventPackage = event.packageName?.toString().orEmpty()
+        if (eventPackage == packageName) return
+        lastEventAt = System.currentTimeMillis()
+        lastPackage = eventPackage
+        lastClass = event.className?.toString().orEmpty()
         val text = event.text.joinToString(" ")
         DeviceEvents.record(
             type = AccessibilityEvent.eventTypeToString(event.eventType),
-            packageName = event.packageName?.toString().orEmpty(),
+            packageName = eventPackage,
             className = event.className?.toString().orEmpty(),
             text = text.ifBlank { event.contentDescription?.toString().orEmpty() },
         )

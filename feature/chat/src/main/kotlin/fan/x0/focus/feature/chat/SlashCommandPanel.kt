@@ -2,6 +2,7 @@ package fan.x0.focus.feature.chat
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -27,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -106,16 +106,21 @@ private fun SlashCommandRow(
 ) {
     val scheme = MaterialTheme.colorScheme
     val motion = LocalFocusMotion.current
-    val container by animateColorAsState(
-        targetValue = if (selected) scheme.secondaryContainer else Color.Transparent,
+    val selection by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
         animationSpec = motion.effectsFast(),
-        label = "slashRowContainer",
+        label = "slashRowSelection",
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
+        animationSpec = motion.effectsFast(),
+        label = "slashRowContent",
     )
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = FocusShapeTokens.inner(FocusRadii.extraLarge, 12.dp),
-        color = container,
-        contentColor = if (selected) scheme.onSecondaryContainer else scheme.onSurface,
+        color = scheme.secondaryContainer.copy(alpha = selection),
+        contentColor = content,
         onClick = hapticTap(onClick),
     ) {
         Row(
@@ -126,7 +131,7 @@ private fun SlashCommandRow(
             Icon(
                 imageVector = spec.id.icon(),
                 contentDescription = null,
-                tint = if (selected) scheme.onSecondaryContainer else scheme.onSurfaceVariant,
+                tint = content,
                 modifier = Modifier.size(20.dp),
             )
             Column(modifier = Modifier.weight(1f)) {

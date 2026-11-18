@@ -40,6 +40,7 @@ import fan.x0.focus.data.assistant.ChatTurnTrustPhase
 import fan.x0.focus.data.assistant.CommandPolicy
 import fan.x0.focus.data.assistant.ConversationCompaction
 import fan.x0.focus.data.assistant.ConversationKind
+import fan.x0.focus.data.assistant.ConversationOrigin
 import fan.x0.focus.data.assistant.ConversationTodo
 import fan.x0.focus.data.assistant.FileMentionBinding
 import fan.x0.focus.data.assistant.FileMentionEntry
@@ -847,6 +848,7 @@ class ChatViewModel(
                 providerId = currentState.providerId,
                 model = currentState.model,
                 reasoning = currentState.reasoningLevel,
+                origin = ConversationOrigin.User,
             )
             switchTo(conversation.id)
         }

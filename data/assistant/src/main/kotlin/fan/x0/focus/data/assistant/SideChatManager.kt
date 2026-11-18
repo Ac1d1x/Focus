@@ -351,6 +351,7 @@ class SideChatManager(
         failed: Boolean,
         turnId: Long,
     ) {
+        if (conversation.origin == ConversationOrigin.User) return
         val main = chats.ensureMainConversation(conversation.assistantId)
         if (main.id == conversation.id) return
         if (summary.isBlank() && !failed) return

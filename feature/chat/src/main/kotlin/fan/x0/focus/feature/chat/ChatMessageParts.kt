@@ -132,7 +132,7 @@ internal fun ChatMessageBubble(
             )
         }
         if (!fromUser && citations.isNotEmpty()) {
-            ChatCitationCard(
+            ChatCitationCapsule(
                 citations = citations,
                 modifier = Modifier.padding(top = 6.dp),
             )

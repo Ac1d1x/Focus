@@ -702,7 +702,7 @@
     <string name="settings_models_tools">Tools</string>
     <string name="settings_models_reasoning">Reasoning</string>
     <string name="settings_page_automation">Automation</string>
-    <string name="settings_page_automation_body">Triggers, event sources, side chat concurrency, and the watchdog.</string>
+    <string name="settings_page_automation_body">Triggers, event sources, and side chat concurrency.</string>
     <string name="settings_super_title">Automation</string>
     <string name="settings_super_sources">Sources</string>
     <string name="settings_super_source_side_chat">Side chat results</string>
@@ -724,10 +724,8 @@
     <string name="settings_super_concurrency_body">How many side chats may run at once. More may queue.</string>
     <string name="settings_super_rate_limit">Event limit per minute</string>
     <string name="settings_super_rate_limit_body">Above %1$d events per source in a minute, new events are filtered.</string>
-    <string name="settings_super_watchdog">Watchdog</string>
     <string name="settings_super_usage">Token usage</string>
     <string name="settings_super_usage_body">%1$d input, %2$d output</string>
-    <string name="settings_super_watchdog_body">Stop work that times out, repeats a tool, or never reports.</string>
     <string name="settings_super_today">Post results to Today</string>
     <string name="settings_super_today_body">Add a card to Today when a side chat result is shown.</string>
     <string name="settings_super_saved">Saved</string>

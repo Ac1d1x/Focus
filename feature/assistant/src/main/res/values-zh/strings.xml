@@ -702,7 +702,7 @@
     <string name="settings_models_tools">工具</string>
     <string name="settings_models_reasoning">推理</string>
     <string name="settings_page_automation">自动化</string>
-    <string name="settings_page_automation_body">触发器、事件来源、旁聊并发和看门狗。</string>
+    <string name="settings_page_automation_body">触发器、事件来源和旁聊并发。</string>
     <string name="settings_super_title">自动化</string>
     <string name="settings_super_sources">事件来源</string>
     <string name="settings_super_source_side_chat">旁聊结果</string>
@@ -724,10 +724,8 @@
     <string name="settings_super_concurrency_body">同时最多运行几个旁聊，多出的会排队。</string>
     <string name="settings_super_rate_limit">每分钟事件上限</string>
     <string name="settings_super_rate_limit_body">单个来源每分钟超过 %1$d 条后，新事件会被过滤。</string>
-    <string name="settings_super_watchdog">看门狗</string>
     <string name="settings_super_usage">Token 用量</string>
     <string name="settings_super_usage_body">输入 %1$d，输出 %2$d</string>
-    <string name="settings_super_watchdog_body">停止超时、重复调用工具或一直不汇报的任务。</string>
     <string name="settings_super_today">结果发到 Today</string>
     <string name="settings_super_today_body">显示旁聊结果卡片时，在 Today 里也放一张。</string>
     <string name="settings_super_saved">已保存</string>

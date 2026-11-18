@@ -39,7 +39,6 @@ data class AutomationUiState(
     val loading: Boolean = true,
     val sources: List<AgentSourceRowUi> = emptyList(),
     val maxConcurrent: Int = AgentEventConfig.DEFAULT_MAX_CONCURRENT,
-    val watchdog: Boolean = true,
     val rateLimit: Int = AgentEventConfig.DEFAULT_RATE_LIMIT,
     val postToToday: Boolean = false,
     val usage: DataUsage = DataUsage(),
@@ -53,7 +52,6 @@ data class AutomationUiState(
 sealed interface AutomationAction : fan.x0.focus.core.mvi.UiAction {
     data class ToggleSource(val source: AgentEventSource, val enabled: Boolean) : AutomationAction
     data class SetConcurrent(val value: Int) : AutomationAction
-    data class ToggleWatchdog(val enabled: Boolean) : AutomationAction
     data class SetRateLimit(val value: Int) : AutomationAction
     data class ToggleToday(val enabled: Boolean) : AutomationAction
     data object NewTrigger : AutomationAction
@@ -98,7 +96,6 @@ class AutomationViewModel(
                             )
                         },
                         maxConcurrent = config.maxConcurrentSideChats,
-                        watchdog = config.watchdogEnabled,
                         rateLimit = config.rateLimitPerMinute,
                         postToToday = config.postResultsToToday,
                     )
@@ -124,9 +121,6 @@ class AutomationViewModel(
             }
             is AutomationAction.SetConcurrent -> persist {
                 settings.setMaxConcurrentSideChats(action.value)
-            }
-            is AutomationAction.ToggleWatchdog -> persist {
-                settings.setWatchdogEnabled(action.enabled)
             }
             is AutomationAction.SetRateLimit -> persist {
                 settings.setRateLimit(action.value)

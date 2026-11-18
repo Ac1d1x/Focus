@@ -15,7 +15,6 @@ import org.koin.core.annotation.Single
 data class AgentEventConfig(
     val sources: Map<AgentEventSource, Boolean>,
     val maxConcurrentSideChats: Int,
-    val watchdogEnabled: Boolean,
     val rateLimitPerMinute: Int,
     val postResultsToToday: Boolean = false,
 ) {
@@ -30,7 +29,6 @@ data class AgentEventConfig(
         fun defaults(): AgentEventConfig = AgentEventConfig(
             sources = AgentEventSource.entries.associateWith { true },
             maxConcurrentSideChats = DEFAULT_MAX_CONCURRENT,
-            watchdogEnabled = true,
             rateLimitPerMinute = DEFAULT_RATE_LIMIT,
             postResultsToToday = false,
         )
@@ -41,7 +39,6 @@ data class AgentEventConfig(
 private data class AgentEventConfigPayload(
     val sources: Map<String, Boolean> = emptyMap(),
     val maxConcurrentSideChats: Int = AgentEventConfig.DEFAULT_MAX_CONCURRENT,
-    val watchdogEnabled: Boolean = true,
     val rateLimitPerMinute: Int = AgentEventConfig.DEFAULT_RATE_LIMIT,
     val postResultsToToday: Boolean = false,
 )
@@ -63,7 +60,6 @@ class AgentEventSettings(@Provided private val context: Context) {
             },
             maxConcurrentSideChats = stored.maxConcurrentSideChats
                 .coerceIn(1, AgentEventConfig.MAX_CONCURRENT_LIMIT),
-            watchdogEnabled = stored.watchdogEnabled,
             rateLimitPerMinute = stored.rateLimitPerMinute.coerceIn(5, 300),
             postResultsToToday = stored.postResultsToToday,
         )
@@ -77,10 +73,6 @@ class AgentEventSettings(@Provided private val context: Context) {
 
     suspend fun setMaxConcurrentSideChats(value: Int) = edit { payload ->
         payload.copy(maxConcurrentSideChats = value.coerceIn(1, AgentEventConfig.MAX_CONCURRENT_LIMIT))
-    }
-
-    suspend fun setWatchdogEnabled(value: Boolean) = edit { payload ->
-        payload.copy(watchdogEnabled = value)
     }
 
     suspend fun setPostResultsToToday(value: Boolean) = edit { payload ->

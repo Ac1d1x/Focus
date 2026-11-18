@@ -477,21 +477,6 @@ private fun RuntimeSection(
                 label = { stringResource(R.string.settings_super_rate_value, it) },
             )
         }
-        FocusCardGroup {
-            switchItem(
-                checked = state.watchdog,
-                checkedIcon = FocusIcons.Check,
-                onCheckedChange = { onAction(AutomationAction.ToggleWatchdog(it)) },
-                headlineContent = { Text(stringResource(R.string.settings_super_watchdog)) },
-                supportingContent = {
-                    Text(
-                        text = stringResource(R.string.settings_super_watchdog_body),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                },
-                leadingContent = { FocusCardGroupIcon(icon = FocusIcons.Notification) },
-            )
-        }
     }
 }
 

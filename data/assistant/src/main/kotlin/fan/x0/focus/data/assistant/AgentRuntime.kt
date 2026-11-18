@@ -14,7 +14,6 @@ class AgentRuntime(
     private val dispatcher: AgentEventDispatcher,
     private val bus: AgentEventBus,
     private val journal: TurnJournalStore,
-    private val watchdog: AgentWatchdog,
     private val triggers: AgentTriggerScheduler,
     private val webhook: AgentWebhookServer,
     private val roleplay: RoleplayScheduler,
@@ -27,7 +26,6 @@ class AgentRuntime(
         journal.interruptAll()
         sideChats.recover()
         dispatcher.resume()
-        watchdog.start()
         triggers.start()
         roleplay.start()
         webhook.start()

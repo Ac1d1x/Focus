@@ -18,8 +18,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fan.x0.focus.core.designsystem.components.FocusCardGroup
 import fan.x0.focus.core.designsystem.components.FocusCardGroupIcon
 import fan.x0.focus.core.designsystem.components.FocusIcons
-import fan.x0.focus.core.designsystem.components.FocusPickerCapability
-import fan.x0.focus.core.designsystem.components.FocusPickerDetail
 import fan.x0.focus.core.designsystem.components.FocusReveal
 import fan.x0.focus.core.modelpicker.ModelPickerGroup
 import fan.x0.focus.core.modelpicker.ModelPickerModel
@@ -162,7 +160,10 @@ private fun RoleModelPicker(
                 ModelPickerModel(
                     id = model.id,
                     label = model.name,
-                    detail = model.toDetail(),
+                    imageInput = model.vision,
+                    imageOutput = model.imageOutput,
+                    tools = model.tools,
+                    reasoning = model.reasoning,
                 )
             },
         )
@@ -191,17 +192,6 @@ private fun RoleModelPicker(
         loading = state.modelsLoading,
         onRefresh = { onAction(RoleModelsAction.RefreshModels) },
     )
-}
-
-@Composable
-private fun RoleModelOption.toDetail(): FocusPickerDetail? {
-    val capabilities = buildList {
-        if (vision) add(FocusPickerCapability(FocusIcons.Photo, stringResource(R.string.settings_models_vision)))
-        if (tools) add(FocusPickerCapability(FocusIcons.Tool, stringResource(R.string.settings_models_tools)))
-        if (reasoning) add(FocusPickerCapability(FocusIcons.Idea, stringResource(R.string.settings_models_reasoning)))
-    }
-    if (detail.isBlank() && capabilities.isEmpty()) return null
-    return FocusPickerDetail(meta = detail.ifBlank { null }, capabilities = capabilities)
 }
 
 @Composable

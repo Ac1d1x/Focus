@@ -73,39 +73,6 @@ object BrandIcons {
         providerIcons.firstOrNull { it.key == key.lowercase() }?.label
 
     fun isCustomImage(icon: String): Boolean = icon.startsWith("data:image/")
-
-    @DrawableRes
-    fun forModel(model: String): Int? {
-        val text = model.lowercase().substringAfterLast('/')
-        return modelBrands.firstOrNull { (keys, _) -> keys.any { text.startsWithKey(it) } }?.second
-    }
-
-    private fun String.startsWithKey(key: String): Boolean =
-        this == key || startsWith("$key-") || startsWith("$key.") || startsWith("${key}_") || startsWith("$key:")
-
-    private val modelBrands: List<Pair<List<String>, Int>> = listOf(
-        listOf("openrouter") to R.drawable.brand_openrouter,
-        listOf("gpt", "chatgpt", "o1", "o3", "o4", "davinci") to R.drawable.brand_openai,
-        listOf("claude", "anthropic") to R.drawable.brand_anthropic,
-        listOf("deepseek") to R.drawable.brand_deepseek,
-        listOf("gemini", "gemma", "palm") to R.drawable.brand_gemini,
-        listOf("qwen", "qwq", "qvq") to R.drawable.brand_qwen,
-        listOf("glm", "chatglm") to R.drawable.brand_chatglm,
-        listOf("kimi", "moonshot") to R.drawable.brand_kimi,
-        listOf("mistral", "mixtral", "codestral", "ministral", "magistral", "devstral") to R.drawable.brand_mistral,
-        listOf("grok") to R.drawable.brand_grok,
-        listOf("llama", "meta") to R.drawable.brand_meta,
-        listOf("yi", "lingyiwanwu") to R.drawable.brand_yi,
-        listOf("baichuan") to R.drawable.brand_baichuan,
-        listOf("doubao", "seed") to R.drawable.brand_doubao,
-        listOf("hunyuan") to R.drawable.brand_hunyuan,
-        listOf("minimax", "abab") to R.drawable.brand_minimax,
-        listOf("step") to R.drawable.brand_stepfun,
-        listOf("ernie") to R.drawable.brand_baidu,
-        listOf("command") to R.drawable.brand_cohere,
-        listOf("sonar", "perplexity") to R.drawable.brand_perplexity,
-        listOf("nemotron", "nvidia") to R.drawable.brand_nvidia,
-    )
 }
 
 @Composable

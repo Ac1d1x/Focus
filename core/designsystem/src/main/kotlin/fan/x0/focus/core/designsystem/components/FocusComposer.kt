@@ -431,6 +431,7 @@ fun FocusComposerPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
+    leading: (@Composable () -> Unit)? = null,
     label: String? = null,
     contentDescription: String? = null,
     selected: Boolean = false,
@@ -450,11 +451,17 @@ fun FocusComposerPill(
     ) {
         if (label == null) {
             Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon ?: FocusIcons.Assistant,
-                    contentDescription = contentDescription,
-                    modifier = Modifier.size(circleIcon),
-                )
+                if (leading != null) {
+                    Box(modifier = Modifier.size(circleIcon)) {
+                        leading()
+                    }
+                } else {
+                    Icon(
+                        imageVector = icon ?: FocusIcons.Assistant,
+                        contentDescription = contentDescription,
+                        modifier = Modifier.size(circleIcon),
+                    )
+                }
             }
         } else {
             Row(
@@ -462,7 +469,11 @@ fun FocusComposerPill(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                if (icon != null) {
+                if (leading != null) {
+                    Box(modifier = Modifier.size(12.dp)) {
+                        leading()
+                    }
+                } else if (icon != null) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,

@@ -119,6 +119,10 @@ internal fun ModelsDevModel.toMeta(): ModelMeta = ModelMeta(
         !modalities?.input.isNullOrEmpty() -> modalities?.input?.any { it.equals("image", true) }
         else -> attachment
     },
+    supportsImageOutput = when {
+        !modalities?.output.isNullOrEmpty() -> modalities?.output?.any { it.equals("image", true) }
+        else -> null
+    },
     supportsTools = toolCall,
     supportsReasoning = reasoning,
     description = description?.trim()?.ifBlank { null },

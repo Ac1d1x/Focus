@@ -21,6 +21,7 @@ work = "2.12.0"
 glance = "1.2.0"
 jsoup = "1.23.2"
 haze = "2.0.1"
+coil = "3.6.3"
 junit = "4.13.2"
 kxml2 = "2.3.0"
 zxing = "3.5.3"
@@ -80,6 +81,8 @@ glance-material3 = { module = "androidx.glance:glance-material3", version.ref = 
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 haze-blur = { module = "dev.chrisbanes.haze:haze-blur", version.ref = "haze" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "coil" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }

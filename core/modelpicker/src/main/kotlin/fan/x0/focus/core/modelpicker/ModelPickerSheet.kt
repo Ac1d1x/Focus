@@ -24,7 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,32 +47,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fan.x0.focus.core.designsystem.components.BrandIcon
-import fan.x0.focus.core.designsystem.components.BrandIcons
+import fan.x0.focus.core.designsystem.components.AutoModelIcon
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusIconBadge
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
-import fan.x0.focus.core.designsystem.components.FocusPickerCapability
-import fan.x0.focus.core.designsystem.components.FocusPickerDetail
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.components.rememberProviderImage
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
-import fan.x0.focus.core.network.openai.ModelMeta
 import fan.x0.focus.data.assistant.ProviderModel
 import fan.x0.focus.data.assistant.ProviderModelGroup
 import kotlinx.coroutines.launch
-import java.util.Locale
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 
 data class ModelPickerModel(
     val id: String,
     val label: String,
-    val detail: FocusPickerDetail? = null,
+    val imageInput: Boolean = false,
+    val imageOutput: Boolean = false,
+    val tools: Boolean = false,
+    val reasoning: Boolean = false,
 )
 
 data class ModelPickerGroup(
@@ -82,61 +81,23 @@ data class ModelPickerGroup(
     val models: List<ModelPickerModel> = emptyList(),
 )
 
-data class ModelPickerLabels(
-    val context: String,
-    val cutoff: String,
-    val vision: String,
-    val tools: String,
-    val reasoning: String,
-)
-
-@Composable
-fun rememberModelPickerLabels(): ModelPickerLabels = ModelPickerLabels(
-    context = stringResource(R.string.model_picker_context),
-    cutoff = stringResource(R.string.model_picker_cutoff),
-    vision = stringResource(R.string.model_picker_vision),
-    tools = stringResource(R.string.model_picker_tools),
-    reasoning = stringResource(R.string.model_picker_reasoning),
-)
-
-fun ModelMeta.toModelPickerDetail(labels: ModelPickerLabels): FocusPickerDetail? {
-    val meta = buildList {
-        contextWindow?.takeIf { it > 0 }?.let { add(labels.context.format(contextLabel(it))) }
-        if (inputPrice != null || outputPrice != null) {
-            add("${money(inputPrice)} / ${money(outputPrice)} /M")
-        }
-        knowledgeCutoff?.let { add(labels.cutoff.format(it)) }
-    }.joinToString(" · ")
-
-    val capabilities = buildList {
-        if (supportsImage == true) add(FocusPickerCapability(FocusIcons.Photo, labels.vision))
-        if (supportsTools == true) add(FocusPickerCapability(FocusIcons.Tool, labels.tools))
-        if (supportsReasoning == true) add(FocusPickerCapability(FocusIcons.Idea, labels.reasoning))
-    }
-
-    val summary = description?.trim()?.ifBlank { null }
-    if (meta.isBlank() && capabilities.isEmpty() && summary == null) return null
-    return FocusPickerDetail(
-        meta = meta.ifBlank { null },
-        capabilities = capabilities,
-        description = summary,
-    )
-}
-
 @Composable
 fun rememberModelPickerGroups(groups: List<ProviderModelGroup>): List<ModelPickerGroup> {
-    val labels = rememberModelPickerLabels()
-    return remember(groups, labels) {
+    return remember(groups) {
         groups.map { group ->
             ModelPickerGroup(
                 id = group.providerId,
                 title = group.providerName,
                 icon = group.icon,
                 models = group.models.map { model ->
+                    val meta = model.meta
                     ModelPickerModel(
                         id = model.id,
                         label = model.name.ifBlank { model.id },
-                        detail = model.meta.toModelPickerDetail(labels),
+                        imageInput = meta.supportsImage == true,
+                        imageOutput = meta.supportsImageOutput == true,
+                        tools = meta.supportsTools == true,
+                        reasoning = meta.supportsReasoning == true,
                     )
                 },
             )
@@ -151,8 +112,7 @@ fun rememberModelPickerGroup(
     icon: String = "",
     models: List<ProviderModel>,
 ): ModelPickerGroup {
-    val labels = rememberModelPickerLabels()
-    return remember(providerId, providerName, icon, models, labels) {
+    return remember(providerId, providerName, icon, models) {
         ModelPickerGroup(
             id = providerId,
             title = providerName,
@@ -344,7 +304,6 @@ fun ModelPickerSheet(
                     if (keyword.isNotBlank() || group.id !in collapsed) {
                         items(models, key = { "${group.id}:${it.id}" }, contentType = { "model" }) { model ->
                             ModelRow(
-                                group = group,
                                 model = model,
                                 selected = group.id == selectedProviderId && model.id == selectedModelId,
                                 onClick = { onSelect(group.id, model.id) },
@@ -404,7 +363,6 @@ private fun ProviderHeader(
 
 @Composable
 private fun ModelRow(
-    group: ModelPickerGroup,
     model: ModelPickerModel,
     selected: Boolean,
     onClick: () -> Unit,
@@ -422,7 +380,7 @@ private fun ModelRow(
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ModelAvatar(model = model, selected = selected)
@@ -448,32 +406,27 @@ private fun ModelRow(
                         )
                     }
                 }
-                model.detail?.meta?.let { meta ->
-                    Text(
-                        text = meta,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (selected) scheme.onPrimaryContainer.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
-                    )
-                }
-                val capabilities = model.detail?.capabilities.orEmpty()
-                if (capabilities.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        capabilities.forEach { capability ->
-                            CapabilityChip(capability = capability)
-                        }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    ModalityTag(model = model)
+                    if (model.tools) {
+                        AbilityTag(
+                            icon = FocusIcons.Tool,
+                            description = stringResource(R.string.model_picker_tools),
+                            container = scheme.tertiaryContainer,
+                            content = scheme.onTertiaryContainer,
+                        )
                     }
-                }
-                model.detail?.description?.let { description ->
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (selected) scheme.onPrimaryContainer.copy(alpha = 0.72f) else scheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (model.reasoning) {
+                        AbilityTag(
+                            icon = FocusIcons.Idea,
+                            description = stringResource(R.string.model_picker_reasoning),
+                            container = scheme.primaryContainer,
+                            content = scheme.onPrimaryContainer,
+                        )
+                    }
                 }
             }
         }
@@ -481,37 +434,81 @@ private fun ModelRow(
 }
 
 @Composable
-private fun CapabilityChip(capability: FocusPickerCapability) {
+private fun ModalityTag(model: ModelPickerModel) {
+    val scheme = MaterialTheme.colorScheme
     Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = RoundedCornerShape(8.dp),
+        color = scheme.secondaryContainer,
+        contentColor = scheme.onSecondaryContainer,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Icon(
-                imageVector = capability.icon,
+                imageVector = FocusIcons.Text,
+                contentDescription = stringResource(R.string.model_picker_text),
+                modifier = Modifier.size(14.dp),
+            )
+            if (model.imageInput) {
+                Icon(
+                    imageVector = FocusIcons.Photo,
+                    contentDescription = stringResource(R.string.model_picker_vision),
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Icon(
+                imageVector = FocusIcons.Chevron,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+            )
+            Icon(
+                imageVector = FocusIcons.Text,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
             )
-            Text(
-                text = capability.label,
-                style = MaterialTheme.typography.labelSmall,
-            )
+            if (model.imageOutput) {
+                Icon(
+                    imageVector = FocusIcons.Photo,
+                    contentDescription = stringResource(R.string.model_picker_image_output),
+                    modifier = Modifier.size(14.dp),
+                )
+            }
         }
     }
 }
 
+@Composable
+private fun AbilityTag(
+    icon: ImageVector,
+    description: String,
+    container: Color,
+    content: Color,
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = container,
+        contentColor = content,
+    ) {
+        Box(
+            modifier = Modifier.size(20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+    }
+}
 
 @Composable
 private fun ModelAvatar(
     model: ModelPickerModel,
     selected: Boolean,
 ) {
-    val brand = BrandIcons.forModel(model.id)
     Surface(
         modifier = Modifier.size(40.dp),
         shape = MaterialTheme.shapes.small,
@@ -526,20 +523,16 @@ private fun ModelAvatar(
             MaterialTheme.colorScheme.onSecondaryContainer
         },
     ) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (brand != null) {
-                BrandIcon(
-                    icon = brand,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
-            } else {
-                Icon(
-                    imageVector = FocusIcons.Assistant,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AutoModelIcon(
+                name = model.id,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
@@ -571,17 +564,4 @@ private fun ProviderAvatar(
         container = MaterialTheme.colorScheme.secondaryContainer,
         tint = MaterialTheme.colorScheme.onSecondaryContainer,
     )
-}
-
-internal fun contextLabel(tokens: Int): String = when {
-    tokens >= 1_000_000 -> "${trimDecimal(Math.round(tokens / 100_000.0) / 10.0)}M"
-    tokens >= 1_000 -> "${Math.round(tokens / 1_000.0)}K"
-    else -> tokens.toString()
-}
-
-private fun money(value: Double?): String = value?.let { "$${trimDecimal(it)}" } ?: "-"
-
-private fun trimDecimal(value: Double): String {
-    val text = String.format(Locale.US, "%.4f", value)
-    return text.trimEnd('0').trimEnd('.')
 }

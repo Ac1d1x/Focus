@@ -101,6 +101,9 @@ private fun JsonObject.toMeta(): ModelMeta {
     val inputModalities = obj("architecture")?.strings("input_modalities")
         ?: obj("modalities")?.strings("input")
         ?: strings("input_modalities")
+    val outputModalities = obj("architecture")?.strings("output_modalities")
+        ?: obj("modalities")?.strings("output")
+        ?: strings("output_modalities")
     val context = number("context_length")?.toInt()
         ?: number("context_window")?.toInt()
         ?: obj("top_provider")?.number("context_length")?.toInt()
@@ -114,6 +117,11 @@ private fun JsonObject.toMeta(): ModelMeta {
             inputModalities.any { it.equals("image", true) }
         } else {
             bool("vision") ?: bool("image_input")
+        },
+        supportsImageOutput = if (outputModalities.isNotEmpty()) {
+            outputModalities.any { it.equals("image", true) }
+        } else {
+            bool("image_output")
         },
         supportsTools = if (parameters.isNotEmpty()) {
             parameters.any { it.equals("tools", true) || it.equals("tool_choice", true) }

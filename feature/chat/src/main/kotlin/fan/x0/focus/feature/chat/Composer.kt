@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.HazeState
+import fan.x0.focus.core.designsystem.components.AutoModelIcon
 import fan.x0.focus.core.designsystem.components.FocusComposer
 import fan.x0.focus.core.designsystem.components.FocusComposerPill
 import fan.x0.focus.core.designsystem.components.FocusIcons
@@ -61,8 +63,6 @@ import fan.x0.focus.core.designsystem.components.FocusVoiceUi
 import fan.x0.focus.core.modelpicker.ModelPickerGroup
 import fan.x0.focus.core.modelpicker.ModelPickerModel
 import fan.x0.focus.core.modelpicker.ModelPickerSheet
-import fan.x0.focus.core.modelpicker.rememberModelPickerLabels
-import fan.x0.focus.core.modelpicker.toModelPickerDetail
 import fan.x0.focus.core.designsystem.components.hapticTap
 import fan.x0.focus.core.designsystem.theme.FocusShapeTokens
 import fan.x0.focus.core.designsystem.error.message
@@ -218,7 +218,12 @@ internal fun Composer(
             pills = {
                 FocusComposerPill(
                     label = modelLabel.ifBlank { stringResource(R.string.chat_picker_model_empty) },
-                    icon = FocusIcons.Assistant,
+                    leading = {
+                        AutoModelIcon(
+                            name = state.model,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    },
                     compact = true,
                     onClick = { onAction(ChatAction.OpenPicker(ComposerPicker.Model)) },
                 )
@@ -235,8 +240,7 @@ internal fun Composer(
 
     when (state.picker) {
         ComposerPicker.Model -> {
-            val labels = rememberModelPickerLabels()
-            val groups = remember(state.providers, state.models, labels) {
+            val groups = remember(state.providers, state.models) {
                 state.providers.mapNotNull { provider ->
                     val models = state.models[provider.id].orEmpty()
                     if (models.isEmpty()) return@mapNotNull null
@@ -245,10 +249,14 @@ internal fun Composer(
                         title = provider.name,
                         icon = provider.icon,
                         models = models.map { option ->
+                            val meta = option.meta
                             ModelPickerModel(
                                 id = option.id,
                                 label = option.name.ifBlank { option.id },
-                                detail = option.meta.toModelPickerDetail(labels),
+                                imageInput = meta.supportsImage == true,
+                                imageOutput = meta.supportsImageOutput == true,
+                                tools = meta.supportsTools == true,
+                                reasoning = meta.supportsReasoning == true,
                             )
                         },
                     )

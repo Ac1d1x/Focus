@@ -41,8 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import fan.x0.focus.core.designsystem.components.BrandIcon
-import fan.x0.focus.core.designsystem.components.BrandIcons
+import fan.x0.focus.core.designsystem.components.AutoModelIcon
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.components.FocusOutlinedButton
@@ -186,7 +185,6 @@ private fun ProviderModelRow(
     onSetDefault: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val brand = BrandIcons.forModel(model.id)
     Surface(
         onClick = hapticTap(onEdit),
         modifier = Modifier.fillMaxWidth(),
@@ -214,19 +212,12 @@ private fun ProviderModelRow(
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    if (brand != null) {
-                        BrandIcon(
-                            icon = brand,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    } else {
-                        Icon(
-                            imageVector = FocusIcons.Assistant,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    AutoModelIcon(
+                        name = model.id,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxSize(),
+                    )
                 }
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -479,7 +470,6 @@ private fun ProviderAvailableModelRow(
     selected: Boolean,
     onToggle: () -> Unit,
 ) {
-    val brand = BrandIcons.forModel(id)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -489,20 +479,10 @@ private fun ProviderAvailableModelRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (brand != null) {
-            BrandIcon(
-                icon = brand,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-            )
-        } else {
-            Icon(
-                imageVector = FocusIcons.Assistant,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        AutoModelIcon(
+            name = id,
+            modifier = Modifier.size(18.dp),
+        )
         Text(
             text = id,
             style = MaterialTheme.typography.bodyLarge,

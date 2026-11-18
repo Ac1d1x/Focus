@@ -245,13 +245,13 @@ private fun FocusPickerItemRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val brand = BrandIcons.forModel(item.id)
+    val hasIcon = remember(item.id) { computeModelIcon(item.id) != null }
     ListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = hapticSelect(onClick)),
-        leadingContent = if (brand != null) {
+        leadingContent = if (hasIcon) {
             {
                 Surface(
                     shape = MaterialTheme.shapes.small,
@@ -270,10 +270,11 @@ private fun FocusPickerItemRow(
                         modifier = Modifier.size(32.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        BrandIcon(
-                            icon = brand,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
+                        AutoModelIcon(
+                            name = item.id,
+                            modifier = Modifier
+                                .padding(6.dp)
+                                .fillMaxSize(),
                         )
                     }
                 }

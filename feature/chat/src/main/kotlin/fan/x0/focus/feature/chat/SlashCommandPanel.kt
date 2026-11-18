@@ -1,15 +1,11 @@
 package fan.x0.focus.feature.chat
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +17,6 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -97,24 +92,6 @@ internal fun SlashCommandPanel(
                         )
                     }
                 }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            AnimatedContent(
-                targetState = selected,
-                transitionSpec = {
-                    (fadeIn(motion.effectsFast()) + slideInVertically(motion.spatialFast()) { it / 2 }) togetherWith
-                        (fadeOut(motion.effectsFast()) + slideOutVertically(motion.spatialFast()) { -it / 2 })
-                },
-                label = "slashHint",
-            ) { spec ->
-                Text(
-                    text = stringResource(spec.hintRes),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
         }
     }

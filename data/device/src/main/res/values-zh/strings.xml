@@ -12,4 +12,15 @@
     <string name="device_notification_display_body">虚拟屏正在此设备上运行</string>
     <string name="device_trigger_service_title">事件触发器运行中</string>
     <string name="device_trigger_service_body">Focus 正在监听触发事件</string>
+    <string name="device_indicator_typing">输入中</string>
+    <string name="device_indicator_open_app">打开 %1$s</string>
+    <string name="device_indicator_back">返回</string>
+    <string name="device_indicator_home">主屏幕</string>
+    <string name="device_indicator_recents">最近任务</string>
+    <string name="device_indicator_notifications">通知</string>
+    <string name="device_indicator_quick_settings">快捷设置</string>
+    <string name="device_indicator_enter">回车</string>
+    <string name="device_indicator_delete">删除</string>
+    <string name="device_indicator_escape">退出</string>
+    <string name="device_indicator_wait">等待 %1$d 秒</string>
 </resources>

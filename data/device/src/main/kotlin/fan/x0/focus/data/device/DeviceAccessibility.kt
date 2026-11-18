@@ -134,6 +134,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
 
     suspend fun screenshot(): String? = shotMutex.withLock {
         val service = DeviceAccessibilityService.current ?: return@withLock null
+        service.indicator.dismiss()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return@withLock null
         val wait = 350L - (System.currentTimeMillis() - lastShotAt)
         if (wait > 0) delay(wait)
@@ -147,6 +148,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
 
     suspend fun screenshotWindow(): DeviceWindowShot? = shotMutex.withLock {
         val service = DeviceAccessibilityService.current ?: return@withLock null
+        service.indicator.dismiss()
         if (Build.VERSION.SDK_INT < 34) return@withLock null
         val windows = runCatching { service.windows.toList() }.getOrDefault(emptyList())
         val window = windows.firstOrNull {
@@ -183,6 +185,7 @@ class DeviceAccessibility(@Provided private val context: Context) {
         durationMs: Long = 300,
     ): Boolean = withContext(Dispatchers.Main) {
         val service = DeviceAccessibilityService.current ?: return@withContext false
+        service.indicator.showGesture(startX, startY, endX, endY, durationMs)
         val path = Path().apply {
             moveTo(startX, startY)
             lineTo(endX, endY)
@@ -232,11 +235,24 @@ class DeviceAccessibility(@Provided private val context: Context) {
                 done = true
             }
         }
+        if (done) {
+            val input = focused?.let { Rect().also(it::getBoundsInScreen) }
+            val metrics = context.resources.displayMetrics
+            val anchorX = input?.centerX()?.toFloat()
+                ?: bounds?.centerX?.toFloat()
+                ?: (metrics.widthPixels / 2f)
+            val anchorTop = input?.top?.toFloat()
+                ?: bounds?.top?.toFloat()
+                ?: (metrics.heightPixels - 120f)
+            val label = if (focused != null && !focused.isPassword) text else null
+            service.indicator.showText(label, anchorX, anchorTop)
+        }
         done
     }
 
     suspend fun key(name: String): Boolean = withContext(Dispatchers.Main) {
         val service = DeviceAccessibilityService.current ?: return@withContext false
+        keyLabel(name)?.let { service.indicator.showKey(it) }
         when (name) {
             "back" -> service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK)
             "home" -> service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
@@ -251,9 +267,33 @@ class DeviceAccessibility(@Provided private val context: Context) {
         }
     }
 
+    fun showWait(seconds: Int) {
+        DeviceAccessibilityService.current?.indicator?.showLabel(
+            context.getString(R.string.device_indicator_wait, seconds),
+        )
+    }
+
+    private fun keyLabel(name: String): String? = when (name) {
+        "back" -> context.getString(R.string.device_indicator_back)
+        "home" -> context.getString(R.string.device_indicator_home)
+        "recents" -> context.getString(R.string.device_indicator_recents)
+        "notifications" -> context.getString(R.string.device_indicator_notifications)
+        "quick_settings" -> context.getString(R.string.device_indicator_quick_settings)
+        "enter" -> context.getString(R.string.device_indicator_enter)
+        "delete" -> context.getString(R.string.device_indicator_delete)
+        "escape" -> context.getString(R.string.device_indicator_escape)
+        else -> null
+    }
+
     suspend fun openApp(packageName: String, activity: String = ""): Boolean =
         withContext(Dispatchers.Main) {
             val manager = context.packageManager
+            val label = runCatching {
+                manager.getApplicationLabel(manager.getApplicationInfo(packageName, 0)).toString()
+            }.getOrNull() ?: packageName
+            DeviceAccessibilityService.current?.indicator?.showLabel(
+                context.getString(R.string.device_indicator_open_app, label),
+            )
             val intents = buildList {
                 if (activity.isNotBlank()) {
                     add(
@@ -409,11 +449,12 @@ class DeviceAccessibility(@Provided private val context: Context) {
         }
 
     private suspend fun gestureTapOnMain(
-        service: AccessibilityService,
+        service: DeviceAccessibilityService,
         x: Float,
         y: Float,
         durationMs: Long,
     ): Boolean {
+        service.indicator.showGesture(x, y, x, y, durationMs)
         val path = Path().apply { moveTo(x, y) }
         return dispatch(service, path, durationMs)
     }

@@ -176,6 +176,7 @@ class DeviceToolProvider(
             }
             "wait" -> {
                 val seconds = (args.int("seconds") ?: 2).coerceIn(1, 10)
+                accessibility.showWait(seconds)
                 delay(seconds * 1_000L)
                 stepResult(
                     runtime.snapshot(

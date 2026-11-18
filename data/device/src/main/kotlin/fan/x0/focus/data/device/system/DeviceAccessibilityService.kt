@@ -8,6 +8,8 @@ import android.view.accessibility.AccessibilityEvent
 import fan.x0.focus.data.device.DeviceEvents
 
 class DeviceAccessibilityService : AccessibilityService() {
+    val indicator: AutomationIndicator by lazy { AutomationIndicator(this) }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         val info = serviceInfo ?: AccessibilityServiceInfo()
@@ -47,9 +49,12 @@ class DeviceAccessibilityService : AccessibilityService() {
         )
     }
 
-    override fun onInterrupt() = Unit
+    override fun onInterrupt() {
+        indicator.dismiss()
+    }
 
     override fun onDestroy() {
+        indicator.dismiss()
         if (current === this) current = null
         inputMethodInstance = null
         super.onDestroy()

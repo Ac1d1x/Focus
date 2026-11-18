@@ -12,4 +12,15 @@
     <string name="device_notification_display_body">A background virtual screen is active on this device</string>
     <string name="device_trigger_service_title">Event triggers active</string>
     <string name="device_trigger_service_body">Focus is watching for trigger events</string>
+    <string name="device_indicator_typing">Typing</string>
+    <string name="device_indicator_open_app">Open %1$s</string>
+    <string name="device_indicator_back">Back</string>
+    <string name="device_indicator_home">Home</string>
+    <string name="device_indicator_recents">Recents</string>
+    <string name="device_indicator_notifications">Notifications</string>
+    <string name="device_indicator_quick_settings">Quick settings</string>
+    <string name="device_indicator_enter">Enter</string>
+    <string name="device_indicator_delete">Delete</string>
+    <string name="device_indicator_escape">Escape</string>
+    <string name="device_indicator_wait">Waiting %1$d s</string>
 </resources>

@@ -102,7 +102,7 @@ import fan.x0.focus.core.designsystem.components.AvatarStyle
 import fan.x0.focus.core.designsystem.components.FocusActivity
 import fan.x0.focus.core.designsystem.components.FocusAvatar
 import fan.x0.focus.core.designsystem.components.FocusBubbleEnter
-import fan.x0.focus.core.designsystem.components.FocusCompactTopBar
+import fan.x0.focus.core.designsystem.components.FocusChatTopBar
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusJumpToLatest
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
@@ -296,6 +296,7 @@ fun ChatScreen(
     var mascotBottom by remember { mutableStateOf<Offset?>(null) }
     var overlayOrigin by remember { mutableStateOf(Offset.Zero) }
     var composerTop by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
+    var topBarScrolled by remember(state.conversationId) { mutableStateOf(false) }
     LaunchedEffect(state.conversationId) { mascotBottom = null }
     LaunchedEffect(working) {
         if (!working) mascotBottom = null
@@ -308,7 +309,7 @@ fun ChatScreen(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
-                FocusCompactTopBar(
+                FocusChatTopBar(
                     title = when {
                         state.isMain -> state.title.ifBlank { stringResource(R.string.chat_main_title) }
                         state.isSide && state.title.isNotBlank() -> stringResource(
@@ -341,13 +342,14 @@ fun ChatScreen(
                         state.title.isBlank() -> stringResource(R.string.chat_subtitle)
                         else -> null
                     },
+                    scrolledUnder = topBarScrolled && !state.isEmpty,
                     onMenu = if (state.isSide) null else LocalFocusDrawerOpener.current,
                     onBack = if (state.isSide) {
                         { onAction(ChatAction.BackToMain) }
                     } else {
                         null
                     },
-                    actions = {
+                    trailing = {
                         if (!state.isEmpty && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
                             Box(
                                 modifier = Modifier
@@ -356,6 +358,8 @@ fun ChatScreen(
                                     .onGloballyPositioned { mascotTop = it.positionInRoot() },
                             )
                         }
+                    },
+                    actions = {
                         if (state.isMain && state.assistantKind != fan.x0.focus.data.assistant.AssistantKind.Roleplay) {
                             val unread = state.sideUnreadCount
                             val badge = if (unread > 0) unread else state.sideActiveCount
@@ -440,6 +444,7 @@ fun ChatScreen(
                                     bottomPadding = composerPadding,
                                     working = working,
                                     onMascotDock = { mascotBottom = it },
+                                    onScrolledUnderChange = { topBarScrolled = it },
                                 )
                             }
                         }
@@ -780,6 +785,7 @@ private fun ChatThread(
     bottomPadding: Dp = 0.dp,
     working: Boolean = false,
     onMascotDock: (Offset?) -> Unit = {},
+    onScrolledUnderChange: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -792,6 +798,11 @@ private fun ChatThread(
     val played = remember(state.conversationId) { mutableSetOf<String>() }
 
     LaunchedEffect(state.conversationId) { follow = true }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.canScrollBackward }
+            .collect(onScrolledUnderChange)
+    }
 
     LaunchedEffect(state.turn) {
         follow = true

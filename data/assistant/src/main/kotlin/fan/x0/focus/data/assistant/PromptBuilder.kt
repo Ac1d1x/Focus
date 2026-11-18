@@ -27,6 +27,154 @@ class PromptBuilder(
         mentionedSkills: List<String> = emptyList(),
         main: Boolean = false,
         side: Boolean = false,
+        packs: Set<ToolPack> = ToolPack.All,
+        phoneMode: Boolean = false,
+    ): String {
+        if (phoneMode) return phonePrompt(assistantId, title)
+        if (packs != ToolPack.All) {
+            return compactPrompt(assistantId, title, mode, mentionedSkills, main, side, packs)
+        }
+        return coroutineScope {
+            fullPrompt(assistantId, title, mode, mentionedSkills, main, side)
+        }
+    }
+
+    private suspend fun compactPrompt(
+        assistantId: String,
+        title: String,
+        mode: AgentMode,
+        mentionedSkills: List<String>,
+        main: Boolean,
+        side: Boolean,
+        packs: Set<ToolPack>,
+    ): String = coroutineScope {
+        val name = workspace.assistantName(assistantId)
+        val documents = workspace.readAll(assistantId)
+        val mentionJob = if (mentionedSkills.isEmpty()) {
+            null
+        } else {
+            async { mentionedSkillsSection(mentionedSkills) }
+        }
+        val trustJob = if (ToolPack.Workspace in packs || ToolPack.Computer in packs) {
+            async { trustedWorkspaceSection() }
+        } else {
+            null
+        }
+        val skillJob = if (ToolPack.Skills in packs) async { skillsSection() } else null
+        val pluginJob = if (ToolPack.Plugin in packs) async { pluginSection() } else null
+        val builder = StringBuilder()
+        builder.appendLine("You are $name, a personal assistant running on the user's Android phone.")
+        builder.appendLine("Rules:")
+        builder.appendLine("- Calendar, feeds, files, goals, reminders, context files, and the Today feed are reachable only through tools. Call a tool before stating any fact about them.")
+        builder.appendLine("- Never invent events, articles, files, numbers, or sources. If a tool returns an error or nothing, say so plainly.")
+        builder.appendLine("- ${language()} Briefly and concretely.")
+        builder.appendLine("- Do not print raw JSON for tool calls; the app renders them.")
+        builder.appendLine("- Writes and deletions may require the user's approval; the app shows a card, so just wait.")
+        builder.appendLine("- When you need a decision, a missing detail, or a preference, call ask instead of guessing.")
+        builder.appendLine("- Before a slow tool, call set_working_text with a short line in the user's language, and keep it under 20 characters.")
+        builder.appendLine("- Use web_search for current facts and cite the result links.")
+        builder.appendLine("- Never store passwords, API keys, or one-time details in context files.")
+        builder.appendLine("- The chat title is shown to the user. Call rename_conversation when the topic changes, and keep it short and plain.")
+        builder.appendLine("- You may add one emoji reaction to a user message with react_to_message when it fits. Use it sparingly.")
+        builder.appendLine("- Multi-step work: call todowrite at the start with every step, keep exactly one item in_progress, and mark each item completed as soon as it is done.")
+        builder.appendLine("- Parallel work: call several independent read tools in one response when that saves time. Keep writes ordered when they touch the same resource.")
+        if (ToolPack.Workspace in packs) {
+            builder.appendLine("- Context files are yours to maintain. Use read_workspace_file to reread one, write_workspace_file to rewrite it, append_workspace_file to add to it, and save_memory for one durable fact. Update a context file only when you learn something durable.")
+        }
+        if (ToolPack.Feed in packs) {
+            builder.appendLine("- Today feed and ideas: read sources with list_articles, post cards with post_update, and save ideas with save_idea. Call list_icons before picking an icon.")
+        }
+        if (ToolPack.Goals in packs) {
+            builder.appendLine("- Goal tools are available.")
+        }
+        if (ToolPack.Calendar in packs) {
+            builder.appendLine("- Calendar and reminder tools are available.")
+        }
+        if (ToolPack.Device in packs) {
+            builder.appendLine("- phone_use operates the phone. Call action=observe first, then act by element index. Every action returns the new node list; screenshots are opt-in. One action per response.")
+        }
+        if (ToolPack.DeviceSystem in packs) {
+            builder.appendLine("- device_* system tools are available for shell, files, packages, and settings.")
+        }
+        if (ToolPack.Computer in packs) {
+            builder.appendLine("- bridge_* tools reach the paired computer.")
+        }
+        if (ToolPack.Messaging in packs) {
+            builder.appendLine("- im_* tools reach bound chats.")
+        }
+        if (ToolPack.Agents in packs) {
+            builder.appendLine("- Agent group, side chat, and trigger tools are available.")
+        }
+        if (ToolPack.Skills in packs) {
+            builder.appendLine("- Skill tools are available. Call skill to load one when a task matches.")
+        }
+        if (ToolPack.Mcp in packs) {
+            builder.appendLine("- MCP tools are available.")
+        }
+        if (ToolPack.Models in packs) {
+            builder.appendLine("- Provider and model configuration tools are available.")
+        }
+        if (ToolPack.Plugin in packs) {
+            builder.appendLine("- You can build a script plugin with plugin_create. Write a focus-plugin.json manifest with runtime set to script, declare tools, then provide main.js with runTool(name, argsJson). The app asks the user to approve installation. Use plugin_list and plugin_logs to inspect installed code.")
+        }
+        builder.appendLine(
+            if (mode == AgentMode.Plan) {
+                "- You are in plan mode. Only read-only tools are available. Inspect, then call propose_plan with concrete steps, files, risks, and verification."
+            } else {
+                "- You are in build mode. You may change files and run commands when the task needs it."
+            },
+        )
+        if (title.isNotBlank()) builder.appendLine("- Current chat title: $title")
+        builder.appendLine("- Current time: ${ToolTime.full(ToolTime.now())} (${java.util.TimeZone.getDefault().id}).")
+        if (side) {
+            val sidePrompt = prompts.configOnce(assistantId).side.trim()
+            if (sidePrompt.isNotBlank()) {
+                builder.appendLine("Side chat instructions from the user:")
+                builder.appendLine(sidePrompt)
+            }
+        }
+        if (main) {
+            val mainPrompt = prompts.configOnce(assistantId).main.trim()
+            if (mainPrompt.isNotBlank()) {
+                builder.appendLine("Main conversation instructions from the user:")
+                builder.appendLine(mainPrompt)
+            }
+        }
+        trustJob?.await()?.takeIf { it.isNotBlank() }?.let {
+            builder.appendLine("Workspace instructions:")
+            builder.appendLine(it)
+        }
+        skillJob?.await()?.takeIf { it.isNotBlank() }?.let { builder.appendLine(it) }
+        mentionJob?.await()?.takeIf { it.isNotBlank() }?.let { builder.appendLine(it) }
+        pluginJob?.await()?.takeIf { it.isNotBlank() }?.let { builder.appendLine(it) }
+        appendDocuments(builder, documents)
+        return@coroutineScope builder.toString()
+    }
+
+    private suspend fun phonePrompt(assistantId: String, title: String): String {
+        val name = workspace.assistantName(assistantId)
+        val builder = StringBuilder()
+        builder.appendLine("You are $name, operating the user's Android phone through phone_use.")
+        builder.appendLine("Rules:")
+        builder.appendLine("- Call phone_use action=observe first. Use the element index from the latest node list for tap, long_press, swipe, scroll, and type.")
+        builder.appendLine("- Every action returns the new node list. Do not call observe again unless you need a fresh read.")
+        builder.appendLine("- One action per response. Read the returned node list before deciding the next action.")
+        builder.appendLine("- Screenshots are slow; use action=screenshot only when the node list is not enough.")
+        builder.appendLine("- Payment, banking, and irreversible confirmations must be left to the user. Ask before sending messages or deleting data unless the user already told you to do exactly that.")
+        builder.appendLine("- Use ask for a decision, and set_working_text before a slow step.")
+        builder.appendLine("- Call action=stop when the task is done on the physical screen. Leave a virtual screen running.")
+        builder.appendLine("- ${language()} Briefly and concretely.")
+        if (title.isNotBlank()) builder.appendLine("- Current chat title: $title")
+        return builder.toString()
+    }
+
+    private suspend fun fullPrompt(
+        assistantId: String,
+        title: String,
+        mode: AgentMode,
+        mentionedSkills: List<String>,
+        main: Boolean,
+        side: Boolean,
     ): String = coroutineScope {
         val trustJob = async { trustedWorkspaceSection() }
         val skillJob = async { skillsSection() }
@@ -58,10 +206,10 @@ class PromptBuilder(
         builder.appendLine("- You can configure models yourself. Use list_providers to see saved providers, save_provider to add one with its base URL, API key, and model, test_provider to verify it, list_models to fetch the provider's live model list (never guess model ids from memory), and switch_model to change models, with default=true saving it as the app default. Never repeat an API key back to the user.")
         builder.appendLine("- Never store passwords, API keys, or one-time details in the context files.")
         builder.appendLine("- Use web_search for current facts and cite the result links. Use the paired computer tools only when the user asks about that computer or its files.")
-        builder.appendLine("- You can control this phone and trusted remote phones with the device_* tools. Call device_list to see targets, device_start once, then device_snapshot before acting. Use the index from the latest snapshot with device_tap or device_type. One action per response, then read the returned screen.")
-        builder.appendLine("- Device snapshots return accessibility node lists. That is enough for normal apps; only pass include_screenshot=true or call device_screencap when the screen is images, canvas, or custom views. Screenshots are slow.")
+        builder.appendLine("- You can control this phone and trusted remote phones. Prefer phone_use for screen actions: call action=observe first, then act by element index. Each action returns the new node list. One action per response, then read the returned screen.")
+        builder.appendLine("- device_* tools are available for shell, files, packages, settings, virtual displays, events, and triggers. Use device_snapshot and device_screencap only when phone_use is not enough. Screenshots are slow.")
+        builder.appendLine("- Device control is real. Verify the result from the returned node list or command output instead of claiming success. Call phone_use action=stop or device_stop when the task is done unless a virtual screen is open.")
         builder.appendLine("- device_shell is the full system escape hatch. It uses root when available, then Shizuku. Use device_file_*, device_package_*, device_settings_*, and device_appops_* for structured work, and device_shell for everything else.")
-        builder.appendLine("- Device control is real. Verify the result from the returned screen or command output instead of claiming success. Call device_stop when the task is done unless a virtual screen is open.")
         builder.appendLine("- To work without taking over the phone, call device_display_start before cross-app work. It creates a background virtual screen and returns a display id. Screen tools use that screen automatically until device_display_stop. A virtual screen needs Shizuku or root.")
         builder.appendLine("- If the user is already using the target app on the physical screen and asks to act on it in place, stay on the physical screen. Pass display_id=0 explicitly in that case.")
         builder.appendLine("- The user can watch and take over the virtual screen in a floating window. Do not stop it just because your turn ended. Call device_display_stop only when the user asks to close it or the screen is no longer needed.")

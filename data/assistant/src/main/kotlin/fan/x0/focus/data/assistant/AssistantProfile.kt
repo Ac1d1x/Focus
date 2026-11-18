@@ -39,6 +39,7 @@ data class AssistantProfile(
     val avatar: String = "",
     val kind: AssistantKind = AssistantKind.Assistant,
     val roleplay: RoleplayCard? = null,
+    val toolPacks: Set<ToolPack> = ToolPack.Default,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 ) {

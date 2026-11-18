@@ -8,6 +8,7 @@ import fan.x0.focus.data.assistant.AssistantProfile
 import fan.x0.focus.data.assistant.AssistantProfileStore
 import fan.x0.focus.data.assistant.ChatStore
 import fan.x0.focus.data.assistant.PromptSettings
+import fan.x0.focus.data.assistant.ToolPack
 import fan.x0.focus.data.assistant.WorkspaceStore
 import fan.x0.focus.data.roleplay.RoleplayCard
 import fan.x0.focus.data.roleplay.RoleplayStore
@@ -17,6 +18,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.koin.core.annotation.KoinViewModel
 
 @KoinViewModel
@@ -31,6 +34,7 @@ class AssistantViewModel(
 ) : BaseViewModel<AssistantAction, AssistantUiState, AssistantEffect>(AssistantUiState()) {
 
     private var assistantId = AssistantProfile.DEFAULT_ID
+    private val packMutex = Mutex()
 
     init {
         viewModelScope.launch {
@@ -102,6 +106,7 @@ class AssistantViewModel(
                     assistantEmoji = profile?.emoji.orEmpty(),
                     assistantAvatar = profile?.avatar.orEmpty(),
                     assistantKind = profile?.kind ?: fan.x0.focus.data.assistant.AssistantKind.Assistant,
+                    toolPacks = profile?.toolPacks ?: ToolPack.Default,
                     roleplayGreeting = profile?.roleplay?.greeting.orEmpty(),
                     roleplayPrompt = profile?.roleplay?.prompt.orEmpty(),
                     roleplayExamples = profile?.roleplay?.examples.orEmpty(),
@@ -158,7 +163,23 @@ class AssistantViewModel(
             AssistantAction.ExportRoleplayCard -> exportRoleplayCard()
             is AssistantAction.DeleteRoleplayMemory -> deleteMemory(action.id)
             is AssistantAction.CompleteRoleplayMemory -> completeMemory(action.id)
+            AssistantAction.OpenTools -> updateState { copy(toolsOpen = true) }
+            AssistantAction.CloseTools -> updateState { copy(toolsOpen = false) }
+            is AssistantAction.ToggleToolPack -> toggleToolPack(action.pack)
             AssistantAction.DeleteProfile -> deleteProfile()
+        }
+    }
+
+    private fun toggleToolPack(pack: ToolPack) {
+        if (pack == ToolPack.Core) return
+        viewModelScope.launch {
+            packMutex.withLock {
+                val profile = profiles.profiles.first().firstOrNull { it.id == assistantId } ?: return@launch
+                val packs = if (pack in profile.toolPacks) profile.toolPacks - pack else profile.toolPacks + pack
+                val next = packs + ToolPack.Core
+                manager.update(profile.copy(toolPacks = next))
+                updateState { copy(toolPacks = next) }
+            }
         }
     }
 

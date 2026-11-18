@@ -1119,6 +1119,57 @@ object ToolCatalog {
         spec.name == "complete_onboarding" || (!main && spec.name in dispatchTools)
     }
 
+    fun packOf(name: String): ToolPack = when {
+        name == "phone_use" -> ToolPack.Device
+        name.startsWith("device_") -> ToolPack.DeviceSystem
+        name.startsWith("bridge_") -> ToolPack.Computer
+        name.startsWith("im_") -> ToolPack.Messaging
+        name.startsWith("mcp_") -> ToolPack.Mcp
+        name in workspaceTools -> ToolPack.Workspace
+        name in feedTools -> ToolPack.Feed
+        name in goalTools -> ToolPack.Goals
+        name in calendarTools -> ToolPack.Calendar
+        name in agentTools -> ToolPack.Agents
+        name in skillTools -> ToolPack.Skills
+        name in modelTools -> ToolPack.Models
+        else -> ToolPack.Core
+    }
+
+    private val workspaceTools = setOf(
+        "read_workspace_file", "write_workspace_file", "append_workspace_file", "write_text_file",
+        "create_text_file", "read_text_file", "delete_file", "list_files", "list_workspace_files",
+        "workspace_files", "search_files", "index_workspace", "save_memory", "read_media_file",
+    )
+
+    private val feedTools = setOf(
+        "save_idea", "list_ideas", "delete_idea", "post_update", "list_updates", "delete_update",
+        "remove_feed", "list_feeds", "add_feed", "list_articles", "search_articles", "read_article",
+        "delete_article", "mark_article_read", "list_icons",
+    )
+
+    private val goalTools = setOf("create_goal", "update_goal", "list_goals", "delete_goal")
+
+    private val calendarTools = setOf(
+        "create_calendar_event", "list_calendar_events", "search_calendar", "delete_calendar_event",
+        "create_reminder", "list_reminders",
+    )
+
+    private val agentTools = setOf(
+        "create_agent_group", "update_agent_group", "delete_agent_group", "add_agent_group_members",
+        "update_agent_group_member", "remove_agent_group_member", "start_agent_group_task",
+        "get_agent_group", "list_agent_groups", "react_to_group_message", "mention_group_agent",
+        "finish_group_discussion", "start_side_chat", "list_side_chats", "read_side_chat",
+        "stop_side_chat", "list_triggers", "create_cron_trigger", "create_webhook_trigger",
+        "set_trigger_enabled", "delete_trigger", "async_list", "async_stop", "create_desktop_shortcut",
+    )
+
+    private val skillTools = setOf("save_skill", "delete_skill", "list_skills", "set_skill_enabled", "skill")
+
+    private val modelTools = setOf(
+        "save_provider", "list_providers", "test_provider", "list_models", "switch_model",
+        "list_role_models", "set_role_model", "clear_role_model",
+    )
+
     fun redactArguments(name: String, arguments: String): String {
         if (name !in secretArgumentTools) return arguments
         val value = runCatching { Json.parseToJsonElement(arguments) as? JsonObject }.getOrNull()

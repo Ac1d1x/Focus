@@ -30,6 +30,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -76,6 +77,7 @@ import fan.x0.focus.core.mvi.CollectEffect
 import fan.x0.focus.data.assistant.AssistantAvatarStore
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.assistant.ToolPack
 import fan.x0.focus.data.assistant.WorkspaceFile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -214,6 +216,34 @@ fun AssistantScreen(
             item(key = "more") {
                 FocusReveal(index = 4) {
                     FocusCardGroup(title = stringResource(R.string.assistant_more)) {
+                        if (state.assistantKind != AssistantKind.Roleplay) {
+                            item(
+                                headlineContent = { Text(stringResource(R.string.assistant_tools_title)) },
+                                supportingContent = {
+                                    Text(
+                                        stringResource(
+                                            R.string.assistant_tools_summary,
+                                            state.toolPacks.count { it != ToolPack.Core },
+                                        ),
+                                    )
+                                },
+                                leadingContent = {
+                                    FocusCardGroupIcon(
+                                        icon = FocusIcons.Tool,
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                },
+                                trailingContent = {
+                                    Icon(
+                                        FocusIcons.Chevron,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                onClick = { onAction(AssistantAction.OpenTools) },
+                            )
+                        }
                         item(
                             headlineContent = { Text(stringResource(R.string.assistant_settings_row)) },
                             supportingContent = { Text(stringResource(R.string.assistant_settings_row_body)) },
@@ -277,6 +307,111 @@ fun AssistantScreen(
             onClose = { onAction(AssistantAction.ClosePrompt) },
             onSave = { onAction(AssistantAction.SavePrompt) },
         )
+    }
+    if (state.toolsOpen) {
+        ToolPacksSheet(
+            packs = state.toolPacks,
+            onClose = { onAction(AssistantAction.CloseTools) },
+            onToggle = { onAction(AssistantAction.ToggleToolPack(it)) },
+        )
+    }
+}
+
+private val toolPackOrder = listOf(
+    ToolPack.Workspace,
+    ToolPack.Feed,
+    ToolPack.Goals,
+    ToolPack.Calendar,
+    ToolPack.Device,
+    ToolPack.DeviceSystem,
+    ToolPack.Computer,
+    ToolPack.Messaging,
+    ToolPack.Agents,
+    ToolPack.Skills,
+    ToolPack.Mcp,
+    ToolPack.Models,
+    ToolPack.Plugin,
+)
+
+private fun toolPackTitle(pack: ToolPack): Int = when (pack) {
+    ToolPack.Core -> R.string.assistant_tool_pack_core
+    ToolPack.Workspace -> R.string.assistant_tool_pack_workspace
+    ToolPack.Feed -> R.string.assistant_tool_pack_feed
+    ToolPack.Goals -> R.string.assistant_tool_pack_goals
+    ToolPack.Calendar -> R.string.assistant_tool_pack_calendar
+    ToolPack.Device -> R.string.assistant_tool_pack_device
+    ToolPack.DeviceSystem -> R.string.assistant_tool_pack_device_system
+    ToolPack.Computer -> R.string.assistant_tool_pack_computer
+    ToolPack.Messaging -> R.string.assistant_tool_pack_messaging
+    ToolPack.Agents -> R.string.assistant_tool_pack_agents
+    ToolPack.Skills -> R.string.assistant_tool_pack_skills
+    ToolPack.Mcp -> R.string.assistant_tool_pack_mcp
+    ToolPack.Models -> R.string.assistant_tool_pack_models
+    ToolPack.Plugin -> R.string.assistant_tool_pack_plugin
+}
+
+private fun toolPackBody(pack: ToolPack): Int = when (pack) {
+    ToolPack.Core -> R.string.assistant_tool_pack_core_body
+    ToolPack.Workspace -> R.string.assistant_tool_pack_workspace_body
+    ToolPack.Feed -> R.string.assistant_tool_pack_feed_body
+    ToolPack.Goals -> R.string.assistant_tool_pack_goals_body
+    ToolPack.Calendar -> R.string.assistant_tool_pack_calendar_body
+    ToolPack.Device -> R.string.assistant_tool_pack_device_body
+    ToolPack.DeviceSystem -> R.string.assistant_tool_pack_device_system_body
+    ToolPack.Computer -> R.string.assistant_tool_pack_computer_body
+    ToolPack.Messaging -> R.string.assistant_tool_pack_messaging_body
+    ToolPack.Agents -> R.string.assistant_tool_pack_agents_body
+    ToolPack.Skills -> R.string.assistant_tool_pack_skills_body
+    ToolPack.Mcp -> R.string.assistant_tool_pack_mcp_body
+    ToolPack.Models -> R.string.assistant_tool_pack_models_body
+    ToolPack.Plugin -> R.string.assistant_tool_pack_plugin_body
+}
+
+@Composable
+private fun ToolPacksSheet(
+    packs: Set<ToolPack>,
+    onClose: () -> Unit,
+    onToggle: (ToolPack) -> Unit,
+) {
+    ExSheet(
+        onDismiss = onClose,
+        title = stringResource(R.string.assistant_tools_title),
+        full = true,
+    ) {
+        Text(
+            text = stringResource(R.string.assistant_tools_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = stringResource(R.string.assistant_tools_core),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        toolPackOrder.forEach { pack ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(toolPackTitle(pack)),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        text = stringResource(toolPackBody(pack)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = pack in packs,
+                    onCheckedChange = { onToggle(pack) },
+                )
+            }
+        }
     }
 }
 

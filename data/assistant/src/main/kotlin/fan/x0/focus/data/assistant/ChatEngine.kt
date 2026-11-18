@@ -213,6 +213,9 @@ class ChatEngine(
             return@flow
         }
         val requestConfig = provider?.requestConfig(apiKey) ?: ProviderRequestConfig(apiKey = apiKey)
+        val profilePacks = chats.conversation(conversationId)?.assistantId
+            ?.let { profiles.profileOnce(it)?.toolPacks }
+            ?: ToolPack.Default
 
         val startedAt = System.currentTimeMillis()
         var agentMode = options.agentMode
@@ -277,8 +280,14 @@ class ChatEngine(
                 }
                 val context = chats.context(conversationId)
                 val info = chats.conversation(conversationId)
+                val phoneMode = tools.phoneMode(conversationId)
                 val specs = when (mode) {
-                    ChatMode.Chat -> tools.specsFor(agentMode, main = info?.kind == ConversationKind.Main)
+                    ChatMode.Chat -> tools.specsFor(
+                        agentMode,
+                        main = info?.kind == ConversationKind.Main,
+                        packs = profilePacks,
+                        phoneMode = phoneMode,
+                    )
                     ChatMode.Onboarding -> ToolCatalog.onboarding()
                 }.let { list ->
                     if (completesOnboarding) list.filterNot { it.name == "complete_onboarding" } else list
@@ -291,6 +300,8 @@ class ChatEngine(
                         mentionedSkills = options.mentionedSkills,
                         main = info?.kind == ConversationKind.Main,
                         side = info?.kind == ConversationKind.Side,
+                        packs = if (phoneMode) ToolPack.Phone else profilePacks,
+                        phoneMode = phoneMode,
                     )
                     ChatMode.Onboarding -> prompt.onboardingPrompt(
                         assistantId = AssistantProfile.DEFAULT_ID,

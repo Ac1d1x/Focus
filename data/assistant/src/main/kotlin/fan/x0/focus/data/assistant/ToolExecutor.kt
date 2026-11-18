@@ -130,18 +130,40 @@ class ToolExecutor(
 ) {
     private val sideChats: SideChatManager by lazy { KoinPlatform.getKoin().get<SideChatManager>() }
 
-    fun allSpecs(main: Boolean = false): List<ToolSpec> = ToolCatalog.chat(main) + providers.specs()
+    fun allSpecs(
+        main: Boolean = false,
+        packs: Set<ToolPack> = ToolPack.All,
+        phoneMode: Boolean = false,
+    ): List<ToolSpec> {
+        val active = packs + ToolPack.Core
+        val base = ToolCatalog.chat(main).filter { spec ->
+            val pack = ToolCatalog.packOf(spec.name)
+            pack in active && (!phoneMode || spec.name in PhoneCoreTools)
+        }
+        val extra = providers.specs().filter { spec ->
+            val pack = providers.packOf(spec.name) ?: ToolCatalog.packOf(spec.name)
+            pack in active && (!phoneMode || pack == ToolPack.Device)
+        }
+        return base + extra
+    }
 
     fun roleplaySpecs(): List<ToolSpec> = RoleplayToolCatalog.chatSpecs()
 
-    fun specsFor(mode: AgentMode, main: Boolean = false): List<ToolSpec> {
-        val specs = allSpecs(main)
+    fun specsFor(
+        mode: AgentMode,
+        main: Boolean = false,
+        packs: Set<ToolPack> = ToolPack.All,
+        phoneMode: Boolean = false,
+    ): List<ToolSpec> {
+        val specs = allSpecs(main, packs, phoneMode)
         return if (mode == AgentMode.Plan) {
             specs.filter { it.kind == ToolKind.Read || it.kind == ToolKind.Ask || it.kind == ToolKind.Plan }
         } else {
             specs
         }
     }
+
+    fun phoneMode(conversationId: String): Boolean = providers.phoneActive(conversationId)
 
     fun find(name: String): ToolSpec? =
         ToolCatalog.find(name) ?: RoleplayToolCatalog.find(name) ?: providers.find(name)

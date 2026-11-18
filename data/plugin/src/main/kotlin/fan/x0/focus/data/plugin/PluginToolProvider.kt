@@ -3,6 +3,7 @@ package fan.x0.focus.data.plugin
 import fan.x0.focus.data.assistant.ExternalToolProvider
 import fan.x0.focus.data.assistant.ToolApprovalDraft
 import fan.x0.focus.data.assistant.ToolKind
+import fan.x0.focus.data.assistant.ToolPack
 import fan.x0.focus.data.assistant.ToolResult
 import fan.x0.focus.data.assistant.ToolSpec
 import kotlinx.serialization.json.JsonObject
@@ -25,6 +26,8 @@ class PluginToolProvider(
 
     override fun find(name: String): ToolSpec? =
         PluginManagementTools.specs.firstOrNull { it.name == name } ?: registry.findToolSpec(name)
+
+    override fun packOf(name: String): ToolPack? = if (find(name) != null) ToolPack.Plugin else null
 
     override suspend fun execute(name: String, args: JsonObject, conversationId: String): ToolResult? =
         when (name) {

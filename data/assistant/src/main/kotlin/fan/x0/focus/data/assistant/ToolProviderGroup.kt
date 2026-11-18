@@ -5,6 +5,11 @@ import kotlinx.serialization.json.JsonObject
 class ToolProviderGroup(private val providers: List<ExternalToolProvider>) {
     fun specs(): List<ToolSpec> = providers.flatMap { it.specs() }
 
+    fun packOf(name: String): ToolPack? = providers.firstNotNullOfOrNull { it.packOf(name) }
+
+    fun phoneActive(conversationId: String): Boolean =
+        providers.any { it.phoneActive(conversationId) }
+
     fun find(name: String): ToolSpec? =
         providers.firstNotNullOfOrNull { it.find(name) }
 

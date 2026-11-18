@@ -6,9 +6,11 @@ import fan.x0.focus.data.assistant.BackgroundCommandMonitor
 import fan.x0.focus.data.assistant.BackgroundJobSnapshot
 import fan.x0.focus.data.assistant.ExternalToolProvider
 import fan.x0.focus.data.assistant.ToolApprovalDraft
+import fan.x0.focus.data.assistant.ToolPack
 import fan.x0.focus.data.assistant.ToolResult
 import fan.x0.focus.data.assistant.ToolSpec
 import fan.x0.focus.data.device.display.VirtualDisplaySpec
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -28,11 +30,31 @@ class DeviceToolProvider(
     private val attachments: AttachmentLoader,
     private val backgroundWatch: BackgroundCommandMonitor,
 ) : ExternalToolProvider {
-    override fun specs(): List<ToolSpec> = DeviceToolCatalog.all
+    private val remoteConversations = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val remoteSessions = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    override fun specs(): List<ToolSpec> = DeviceToolCatalog.modelSpecs
 
     override fun find(name: String): ToolSpec? = DeviceToolCatalog.find(name)
 
-    override fun label(name: String?): String? = null
+    override fun packOf(name: String): ToolPack? = when {
+        name == "phone_use" -> ToolPack.Device
+        name.startsWith("device_") && DeviceToolCatalog.find(name) != null -> ToolPack.DeviceSystem
+        else -> null
+    }
+
+    override fun phoneActive(conversationId: String): Boolean {
+        if (conversationId in remoteConversations) return true
+        val session = runtime.session.value ?: return false
+        if (session.remote) return false
+        return session.conversationId == conversationId || session.conversationId.isBlank()
+    }
+
+    override fun label(name: String?): String? = when {
+        name == "phone_use" -> "Phone"
+        name?.startsWith("device_") == true -> "Device"
+        else -> null
+    }
 
     override fun redactArguments(name: String, arguments: String): String? = null
 
@@ -55,6 +77,7 @@ class DeviceToolProvider(
             runtime.markAutomationRunning()
         }
         return when (name) {
+            "phone_use" -> phoneUse(args, conversationId)
             "device_list" -> listDevices()
             "device_capabilities" -> capabilities(args)
             "device_start" -> start(args, conversationId)
@@ -110,6 +133,158 @@ class DeviceToolProvider(
             "device_proc" -> proc(args)
             "device_reboot" -> reboot(args)
             else -> null
+        }
+    }
+
+    private suspend fun phoneUse(args: JsonObject, conversationId: String): ToolResult {
+        val action = args.text("action") ?: return fail("action is required")
+        val target = target(args)
+        if (target.endpoint != null) return remotePhoneUse(target.endpoint, action, args, conversationId)
+        if (action == "stop") {
+            runtime.stopSessionWithDisplay()
+            return ToolResult(ok = true, content = "Phone control stopped", summary = "Stopped")
+        }
+        if (!store.localEnabledOnce()) {
+            return fail("Device control is off. Turn it on in the Device page first.")
+        }
+        val error = ensurePhoneSession(conversationId)
+        if (error != null) return fail(error)
+        runtime.markAutomationRunning()
+        val displayId = args.int("display_id") ?: -1
+        return when (action) {
+            "start" -> ToolResult(ok = true, content = "Phone control started", summary = "Started")
+            "observe" -> stepResult(
+                runtime.snapshot(
+                    includeScreenshot = args.flag("include_screenshot") ?: false,
+                    maxNodes = 150,
+                    deviceName = store.deviceName(),
+                    displayId = displayId,
+                ),
+            )
+            "screenshot" -> {
+                val image = runtime.screenshot(displayId) ?: return fail("Screenshot failed")
+                imageResult(image, "Screenshot")
+            }
+            "list_apps" -> {
+                val apps = runtime.apps(args.text("query").orEmpty(), 80)
+                ToolResult(
+                    ok = true,
+                    content = apps.joinToString("\n") { "${it.label}\t${it.packageName}" }
+                        .ifBlank { "No apps" },
+                    summary = "${apps.size} apps",
+                )
+            }
+            "wait" -> {
+                val seconds = (args.int("seconds") ?: 2).coerceIn(1, 10)
+                delay(seconds * 1_000L)
+                stepResult(
+                    runtime.snapshot(
+                        includeScreenshot = args.flag("include_screenshot") ?: false,
+                        maxNodes = 150,
+                        deviceName = store.deviceName(),
+                        displayId = displayId,
+                    ),
+                )
+            }
+            "tap", "long_press", "swipe", "scroll", "type", "press", "open_app" ->
+                phoneAction(action, args, displayId)
+            else -> fail("Unknown action: $action")
+        }
+    }
+
+    private suspend fun ensurePhoneSession(conversationId: String): String? {
+        val current = runtime.session.value
+        if (current != null && !current.remote &&
+            (current.conversationId == conversationId || current.conversationId.isBlank())
+        ) {
+            return null
+        }
+        if (!accessibility.ready()) {
+            val health = runtime.health()
+            if (!health.root && !health.shizuku) {
+                return "Enable the Focus accessibility service or root access first."
+            }
+        }
+        runtime.startSession("Focus", conversationId = conversationId)
+        return null
+    }
+
+    private suspend fun phoneAction(action: String, args: JsonObject, displayId: Int): ToolResult {
+        val name = phoneActionName(action)
+        val payload = buildJsonObject {
+            args.forEach { (key, value) -> put(key, value) }
+            put("action", JsonPrimitive(name))
+            args.int("element")?.let { put("index", JsonPrimitive(it)) }
+            if ((action == "scroll" || action == "swipe") && args.text("direction") == null) {
+                put("direction", JsonPrimitive("down"))
+            }
+        }
+        return stepResult(runtime.action(name, payload, displayId))
+    }
+
+    private fun phoneActionName(action: String): String = when (action) {
+        "scroll" -> "swipe"
+        "press" -> "key"
+        else -> action
+    }
+
+    private suspend fun remotePhoneUse(
+        endpoint: DeviceEndpoint,
+        action: String,
+        args: JsonObject,
+        conversationId: String,
+    ): ToolResult {
+        val sessionKey = "${endpoint.id}:$conversationId"
+        if (action == "start") {
+            val response = repository.rpc(endpoint, "start", buildJsonObject { put("owner", "Focus") })
+            if (!response.ok) return fail(response.error)
+            remoteSessions += sessionKey
+            remoteConversations += conversationId
+            return ToolResult(ok = true, content = "Remote phone control started", summary = "Started")
+        }
+        if (action == "stop") {
+            val response = repository.rpc(endpoint, "stop")
+            remoteSessions -= sessionKey
+            remoteConversations -= conversationId
+            return if (response.ok) {
+                ToolResult(ok = true, content = "Remote phone control stopped", summary = "Stopped")
+            } else {
+                fail(response.error)
+            }
+        }
+        if (remoteSessions.add(sessionKey)) {
+            val response = repository.rpc(endpoint, "start", buildJsonObject { put("owner", "Focus") })
+            if (!response.ok) {
+                remoteSessions -= sessionKey
+                return fail(response.error)
+            }
+        }
+        remoteConversations += conversationId
+        if (action == "wait") {
+            delay((args.int("seconds") ?: 2).coerceIn(1, 10) * 1_000L)
+            return remoteStep(repository.rpc(endpoint, "snapshot", args))
+        }
+        return when (action) {
+            "observe" -> remoteStep(repository.rpc(endpoint, "snapshot", args))
+            "screenshot" -> {
+                val response = repository.rpc(endpoint, "screencap", args)
+                if (!response.ok) return fail(response.error)
+                val image = response.data.text("screenshot") ?: return fail("Remote screenshot failed")
+                imageResult(image, "Remote screenshot")
+            }
+            "list_apps" -> remoteData(repository.rpc(endpoint, "apps", args), "output")
+            else -> {
+                val name = phoneActionName(action)
+                val payload = buildJsonObject {
+                    args.forEach { (key, value) -> put(key, value) }
+                    put("action", JsonPrimitive(name))
+                    args.int("element")?.let { put("index", JsonPrimitive(it)) }
+                    if ((action == "scroll" || action == "swipe") && args.text("direction") == null) {
+                        put("direction", JsonPrimitive("down"))
+                    }
+                }
+                remoteStep(repository.rpc(endpoint, "action", payload))
+            }
         }
     }
 
@@ -837,6 +1012,7 @@ class DeviceToolProvider(
     private data class Target(val endpoint: DeviceEndpoint?)
 
     private val localExempt = setOf(
+        "phone_use",
         "device_list",
         "device_capabilities",
         "device_start",

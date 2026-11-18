@@ -12,6 +12,38 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 object DeviceToolCatalog {
+    val phoneUse: ToolSpec = ToolSpec(
+        name = "phone_use",
+        description = "Operate this Android phone: read the screen, tap, long press, swipe, scroll, type, press keys, and open apps. Call action=observe first, then act by element index. Every action that changes the screen returns the new node list, so you rarely need to observe again. Screenshots are slow, use action=screenshot only when the node list is not enough. Coordinates are relative 0 to 1. Payment and banking confirmations must be left to the user.",
+        kind = ToolKind.Write,
+        parameters = schema(required = listOf("action")) {
+            put(
+                "action",
+                enumString(
+                    "start, stop, observe, screenshot, tap, long_press, swipe, scroll, type, press, open_app, list_apps, or wait",
+                    listOf(
+                        "start", "stop", "observe", "screenshot", "tap", "long_press", "swipe",
+                        "scroll", "type", "press", "open_app", "list_apps", "wait",
+                    ),
+                ),
+            )
+            put("device_id", string("Optional paired phone id, omit for this phone"))
+            put("display_id", displayId())
+            put("element", number("Element index from the latest observe"))
+            put("x", decimal("Relative x from 0 to 1"))
+            put("y", decimal("Relative y from 0 to 1"))
+            put("direction", enumString("Swipe direction for swipe or scroll", listOf("up", "down", "left", "right")))
+            put("text", string("Text for type"))
+            put("clear", boolean("Clear the field first, default true"))
+            put("submit", boolean("Press enter after typing, default false"))
+            put("key", enumString("Key for press", listOf("back", "home", "recents", "notifications", "enter")))
+            put("app", string("App label or package name for open_app"))
+            put("query", string("Filter text for list_apps"))
+            put("seconds", number("Seconds to wait, up to 10"))
+            put("include_screenshot", boolean("Attach a screenshot to observe, default false"))
+        },
+    )
+
     val all: List<ToolSpec> = listOf(
         ToolSpec(
             name = "device_list",
@@ -541,9 +573,23 @@ object DeviceToolCatalog {
         ),
     )
 
+    private val screenToolNames = setOf(
+        "device_tap",
+        "device_long_press",
+        "device_swipe",
+        "device_type",
+        "device_key",
+        "device_open_app",
+        "device_apps",
+        "device_start",
+        "device_stop",
+    )
+
+    val modelSpecs: List<ToolSpec> = listOf(phoneUse) + all.filterNot { it.name in screenToolNames }
+
     private val byName = all.associateBy { it.name }
 
-    fun find(name: String): ToolSpec? = byName[name]
+    fun find(name: String): ToolSpec? = if (name == phoneUse.name) phoneUse else byName[name]
 
     private fun displayId(): JsonObject = buildJsonObject {
         put("type", "integer")
@@ -578,5 +624,11 @@ object DeviceToolCatalog {
     private fun boolean(description: String): JsonObject = buildJsonObject {
         put("type", "boolean")
         put("description", description)
+    }
+
+    private fun enumString(description: String, values: List<String>): JsonObject = buildJsonObject {
+        put("type", "string")
+        put("description", description)
+        putJsonArray("enum") { values.forEach { add(JsonPrimitive(it)) } }
     }
 }

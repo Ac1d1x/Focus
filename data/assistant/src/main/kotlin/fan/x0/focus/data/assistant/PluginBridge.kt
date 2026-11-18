@@ -15,6 +15,8 @@ interface ExternalToolProvider {
     fun redactArguments(name: String, arguments: String): String?
     fun label(name: String?): String?
     fun approval(name: String, args: JsonObject): ToolApprovalDraft?
+    fun packOf(name: String): ToolPack? = null
+    fun phoneActive(conversationId: String): Boolean = false
 }
 
 interface ExternalPromptProvider {

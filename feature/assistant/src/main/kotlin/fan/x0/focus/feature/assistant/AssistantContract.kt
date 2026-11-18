@@ -5,6 +5,7 @@ import fan.x0.focus.core.mvi.UiEffect
 import fan.x0.focus.core.mvi.UiState
 import fan.x0.focus.data.assistant.AssistantKind
 import fan.x0.focus.data.assistant.AssistantProfile
+import fan.x0.focus.data.assistant.ToolPack
 import fan.x0.focus.data.assistant.WorkspaceFile
 import fan.x0.focus.data.roleplay.RoleplayStateView
 
@@ -63,6 +64,8 @@ data class AssistantUiState(
     val sidePrompt: String = "",
     val promptEditor: PromptEditorUi? = null,
     val promptSaving: Boolean = false,
+    val toolPacks: Set<ToolPack> = ToolPack.Default,
+    val toolsOpen: Boolean = false,
 ) : UiState
 
 sealed interface AssistantAction : UiAction {
@@ -80,6 +83,9 @@ sealed interface AssistantAction : UiAction {
     data object ExportRoleplayCard : AssistantAction
     data class DeleteRoleplayMemory(val id: String) : AssistantAction
     data class CompleteRoleplayMemory(val id: String) : AssistantAction
+    data object OpenTools : AssistantAction
+    data object CloseTools : AssistantAction
+    data class ToggleToolPack(val pack: ToolPack) : AssistantAction
     data object DeleteProfile : AssistantAction
 }
 

@@ -2069,16 +2069,20 @@ class ChatViewModel(
                     }
                 }
                 ChatRole.System -> {
+                    val label = message.label.orEmpty()
                     when {
-                        message.label == "failure" -> entries += ChatEntry.Failure(
+                        label == "failure" -> entries += ChatEntry.Failure(
                             key = "m${message.id}",
                             message = message.content,
                             retryable = true,
                         )
-                        else -> entries += ChatEntry.Notice(
+                        label == "agent_stop" ||
+                            label == "agent_interrupted" ||
+                            label == "side_approval" ||
+                            label.startsWith("side_result:") -> entries += ChatEntry.Notice(
                             key = "m${message.id}",
                             text = message.content,
-                            label = message.label.orEmpty(),
+                            label = label,
                         )
                     }
                 }

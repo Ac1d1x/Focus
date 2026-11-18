@@ -996,10 +996,10 @@ private fun ChatThread(
                             onRetry = { onAction(ChatAction.RetryLast) },
                         )
                         is ChatEntry.Notice -> when {
-                            entry.label == "agent_stop" -> ChatSideStopCard(text = entry.text)
+                            entry.label == "agent_stop" || entry.label == "agent_interrupted" ->
+                                ChatSideStopCard(text = entry.text)
                             entry.label == "side_approval" -> ChatSideApprovalCard(text = entry.text)
                             entry.label.startsWith("side_result:") -> ChatSideResultCard(text = entry.text)
-                            else -> ChatNoticeCard(text = entry.text)
                         }
                         is ChatEntry.Compaction -> ChatCompactionCard(
                             text = entry.summary,

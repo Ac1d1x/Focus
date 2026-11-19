@@ -32,12 +32,15 @@ class DeviceRuntime(
     private val notifier: DeviceNotifier,
     private val automationGate: AutomationGate,
     private val display: VirtualDisplayController,
+    private val hints: AutomationHints,
 ) {
     private val _session = MutableStateFlow<DeviceSession?>(null)
     val session: StateFlow<DeviceSession?> = _session.asStateFlow()
 
     private val _automation = MutableStateFlow<DeviceAutomationState>(DeviceAutomationState.Idle)
     val automation: StateFlow<DeviceAutomationState> = _automation.asStateFlow()
+
+    val automationHint: StateFlow<String> get() = hints.text
 
     @Volatile
     private var lastSnapshot: DeviceSnapshot? = null
@@ -89,6 +92,7 @@ class DeviceRuntime(
         remote: Boolean = false,
         conversationId: String = "",
     ): DeviceSession {
+        hints.clear()
         val current = _session.value
         if (current != null &&
             current.owner == owner &&
@@ -133,6 +137,7 @@ class DeviceRuntime(
         shell.closeAllSessions()
         background.stopAll()
         display.release()
+        hints.clear()
         lastSnapshot = null
         if (hadSession) {
             notifier.cancelSession()
@@ -147,6 +152,7 @@ class DeviceRuntime(
         if (_automation.value is DeviceAutomationState.Finished) {
             _automation.value = DeviceAutomationState.Idle
         }
+        hints.clear()
     }
 
     fun markAutomationRunning() {
@@ -163,6 +169,11 @@ class DeviceRuntime(
         if (_session.value != null) {
             _automation.value = DeviceAutomationState.Idle
         }
+        hints.clear()
+    }
+
+    fun showWaitHint(seconds: Int) {
+        hints.update(context.getString(R.string.device_indicator_wait, seconds))
     }
 
     suspend fun openShell(): DeviceShellSession? = shell.openSession()
@@ -313,6 +324,7 @@ class DeviceRuntime(
                 ?: return stepError("app or package is required")
             val app = accessibility.resolveApp(query)
                 ?: return stepError("App not found: $query")
+            hints.update(context.getString(R.string.device_indicator_open_app, app.label))
             val activity = args["activity"]?.jsonPrimitive?.content.orEmpty()
                 .ifBlank { app.activity }
             if (target != 0) {
@@ -340,6 +352,7 @@ class DeviceRuntime(
                 displayId = target,
             )
         }
+        setActionHint(action, args)
         val ok = when (action) {
             "tap" -> {
                 val bounds = point ?: normalizedBounds(args, target) ?: return stepError("index or x and y are required")
@@ -619,6 +632,37 @@ class DeviceRuntime(
             return display.swipe(sx.toInt(), sy.toInt(), ex.toInt(), ey.toInt(), 300)
         }
         return accessibility.swipe(sx, sy, ex, ey, 300)
+    }
+
+    private fun setActionHint(action: String, args: JsonObject) {
+        val text = when (action) {
+            "tap" -> context.getString(R.string.device_indicator_tap)
+            "long_press" -> context.getString(R.string.device_indicator_long_press)
+            "swipe" -> context.getString(swipeHint(args["direction"]?.jsonPrimitive?.content))
+            "type" -> context.getString(R.string.device_indicator_typing)
+            "key" -> keyHint(args["key"]?.jsonPrimitive?.content)
+            else -> null
+        }
+        if (!text.isNullOrBlank()) hints.update(text)
+    }
+
+    private fun swipeHint(direction: String?): Int = when (direction?.lowercase()) {
+        "up" -> R.string.device_indicator_swipe_up
+        "left" -> R.string.device_indicator_swipe_left
+        "right" -> R.string.device_indicator_swipe_right
+        else -> R.string.device_indicator_swipe_down
+    }
+
+    private fun keyHint(name: String?): String? = when (name) {
+        "back" -> context.getString(R.string.device_indicator_back)
+        "home" -> context.getString(R.string.device_indicator_home)
+        "recents" -> context.getString(R.string.device_indicator_recents)
+        "notifications" -> context.getString(R.string.device_indicator_notifications)
+        "quick_settings" -> context.getString(R.string.device_indicator_quick_settings)
+        "enter" -> context.getString(R.string.device_indicator_enter)
+        "delete" -> context.getString(R.string.device_indicator_delete)
+        "escape" -> context.getString(R.string.device_indicator_escape)
+        else -> null
     }
 
     private fun virtualDisplayReady(displayId: Int): Boolean {

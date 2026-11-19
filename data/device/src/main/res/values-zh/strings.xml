@@ -13,6 +13,12 @@
     <string name="device_trigger_service_title">事件触发器运行中</string>
     <string name="device_trigger_service_body">Focus 正在监听触发事件</string>
     <string name="device_indicator_typing">输入中</string>
+    <string name="device_indicator_tap">点击</string>
+    <string name="device_indicator_long_press">长按</string>
+    <string name="device_indicator_swipe_up">上滑</string>
+    <string name="device_indicator_swipe_down">下滑</string>
+    <string name="device_indicator_swipe_left">左滑</string>
+    <string name="device_indicator_swipe_right">右滑</string>
     <string name="device_indicator_open_app">打开 %1$s</string>
     <string name="device_indicator_back">返回</string>
     <string name="device_indicator_home">主屏幕</string>

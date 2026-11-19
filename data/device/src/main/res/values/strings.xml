@@ -13,6 +13,12 @@
     <string name="device_trigger_service_title">Event triggers active</string>
     <string name="device_trigger_service_body">Focus is watching for trigger events</string>
     <string name="device_indicator_typing">Typing</string>
+    <string name="device_indicator_tap">Tap</string>
+    <string name="device_indicator_long_press">Long press</string>
+    <string name="device_indicator_swipe_up">Swipe up</string>
+    <string name="device_indicator_swipe_down">Swipe down</string>
+    <string name="device_indicator_swipe_left">Swipe left</string>
+    <string name="device_indicator_swipe_right">Swipe right</string>
     <string name="device_indicator_open_app">Open %1$s</string>
     <string name="device_indicator_back">Back</string>
     <string name="device_indicator_home">Home</string>

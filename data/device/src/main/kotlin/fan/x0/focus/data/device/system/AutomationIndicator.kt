@@ -9,34 +9,19 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PixelFormat
-import android.graphics.Point
-import android.graphics.RectF
-import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.text.TextPaint
-import android.text.TextUtils
-import android.view.Display
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
-import fan.x0.focus.data.device.R
 import kotlin.math.hypot
-import kotlin.math.min
 
 private const val GESTURE_LINGER_MS = 320L
-private const val LABEL_MS = 1300L
 private const val TAP_RADIUS_DP = 26f
 private const val DOT_RADIUS_DP = 8f
 private const val STROKE_DP = 3f
 private const val TAP_SLOP_DP = 8f
-private const val LABEL_PAD_X_DP = 14f
-private const val LABEL_PAD_Y_DP = 9f
-private const val LABEL_RADIUS_DP = 18f
-private const val LABEL_TEXT_SP = 14f
-private const val LABEL_MARGIN_DP = 16f
-private const val KEY_TOP_DP = 96f
 
 class AutomationIndicator(private val service: AccessibilityService) {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -57,42 +42,6 @@ class AutomationIndicator(private val service: AccessibilityService) {
             ),
         )
     }
-
-    fun showText(text: String?, anchorX: Float, anchorTop: Float) = onMain {
-        dismissNow()
-        val label = text
-            ?.trim()
-            ?.take(64)
-            ?.takeIf { it.isNotEmpty() }
-            ?: service.getString(R.string.device_indicator_typing)
-        add(
-            LabelView(
-                context = service,
-                text = label,
-                anchorX = anchorX,
-                anchorY = anchorTop,
-                aboveAnchor = true,
-                onEnd = ::dismissNow,
-            ),
-        )
-    }
-
-    fun showKey(text: String) = onMain {
-        dismissNow()
-        val screen = screenSize(service)
-        add(
-            LabelView(
-                context = service,
-                text = text,
-                anchorX = screen.x / 2f,
-                anchorY = KEY_TOP_DP * service.resources.displayMetrics.density,
-                aboveAnchor = false,
-                onEnd = ::dismissNow,
-            ),
-        )
-    }
-
-    fun showLabel(text: String) = showKey(text)
 
     fun dismiss() = onMain { dismissNow() }
 
@@ -124,10 +73,7 @@ class AutomationIndicator(private val service: AccessibilityService) {
     private fun dismissNow() {
         val target = view ?: return
         view = null
-        when (target) {
-            is GestureView -> target.cancelAnimation()
-            is LabelView -> target.cancelAnimation()
-        }
+        if (target is GestureView) target.cancelAnimation()
         runCatching { windowManager?.removeViewImmediate(target) }
     }
 
@@ -223,108 +169,6 @@ private class GestureView(
         fill.color = withAlpha(accent, alphaScale)
         canvas.drawCircle(x, y, DOT_RADIUS_DP * density, fill)
     }
-}
-
-private class LabelView(
-    context: Context,
-    text: String,
-    anchorX: Float,
-    anchorY: Float,
-    aboveAnchor: Boolean,
-    private val onEnd: () -> Unit,
-) : View(context) {
-    private val density = resources.displayMetrics.density
-    private val screen = screenSize(context)
-    private val margin = LABEL_MARGIN_DP * density
-    private val padX = LABEL_PAD_X_DP * density
-    private val padY = LABEL_PAD_Y_DP * density
-    private val radius = LABEL_RADIUS_DP * density
-    private val background = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Color.argb(190, 24, 24, 24)
-    }
-    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textSize = LABEL_TEXT_SP * resources.displayMetrics.scaledDensity
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-    }
-    private val label = TextUtils.ellipsize(
-        text,
-        textPaint,
-        (screen.x - margin * 2 - padX * 2).coerceAtLeast(1f),
-        TextUtils.TruncateAt.END,
-    ).toString()
-    private val textWidth = textPaint.measureText(label)
-    private val metrics = textPaint.fontMetrics
-    private val textHeight = metrics.descent - metrics.ascent
-    private val bubbleWidth = min(textWidth + padX * 2, screen.x - margin * 2)
-    private val bubbleHeight = textHeight + padY * 2
-    private val left = (anchorX - bubbleWidth / 2f).coerceIn(margin, (screen.x - bubbleWidth - margin).coerceAtLeast(margin))
-    private val top = if (aboveAnchor) {
-        (anchorY - bubbleHeight - margin * 0.5f).coerceIn(margin, (screen.y - bubbleHeight - margin).coerceAtLeast(margin))
-    } else {
-        (anchorY - bubbleHeight / 2f).coerceIn(margin, (screen.y - bubbleHeight - margin).coerceAtLeast(margin))
-    }
-    private val rect = RectF(left, top, left + bubbleWidth, top + bubbleHeight)
-    private val baseline = top + padY - metrics.ascent
-    private val location = IntArray(2)
-    private var progress = 0f
-
-    private val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-        duration = LABEL_MS
-        addUpdateListener {
-            progress = it.animatedFraction
-            invalidate()
-        }
-        addListener(object : AnimatorListenerAdapter() {
-            private var cancelled = false
-
-            override fun onAnimationCancel(animation: Animator) {
-                cancelled = true
-            }
-
-            override fun onAnimationEnd(animation: Animator) {
-                if (!cancelled) onEnd()
-            }
-        })
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        animator.start()
-    }
-
-    fun cancelAnimation() = animator.cancel()
-
-    override fun onDraw(canvas: Canvas) {
-        val fade = when {
-            progress < 0.12f -> progress / 0.12f
-            progress > 0.78f -> (1f - progress) / 0.22f
-            else -> 1f
-        }.coerceIn(0f, 1f)
-        if (fade <= 0f) return
-        getLocationOnScreen(location)
-        canvas.translate(-location[0].toFloat(), -location[1].toFloat())
-        background.alpha = (190 * fade).toInt()
-        textPaint.alpha = (255 * fade).toInt()
-        canvas.drawRoundRect(rect, radius, radius, background)
-        canvas.drawText(label, left + padX, baseline, textPaint)
-    }
-}
-
-private fun screenSize(context: Context): Point {
-    val windowManager = context.getSystemService(WindowManager::class.java)
-        ?: return Point(
-            context.resources.displayMetrics.widthPixels,
-            context.resources.displayMetrics.heightPixels,
-        )
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        val bounds = windowManager.maximumWindowMetrics.bounds
-        return Point(bounds.width(), bounds.height())
-    }
-    @Suppress("DEPRECATION")
-    val display: Display = windowManager.defaultDisplay
-    return Point().also { display.getRealSize(it) }
 }
 
 private fun accentColor(context: Context): Int =

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,13 +34,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fan.x0.focus.core.designsystem.components.FocusIcons
 import fan.x0.focus.core.designsystem.components.FocusLoadingBlob
 import fan.x0.focus.core.designsystem.theme.LocalFocusTypography
 
 @Composable
-internal fun AutomationOverlay(finished: Boolean, showMarquee: Boolean = true) {
+internal fun AutomationOverlay(
+    finished: Boolean,
+    hint: String,
+    showMarquee: Boolean = true,
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (showMarquee) AutomationMarquee()
         Box(
@@ -49,16 +55,21 @@ internal fun AutomationOverlay(finished: Boolean, showMarquee: Boolean = true) {
                 .padding(bottom = 56.dp),
             contentAlignment = Alignment.BottomCenter,
         ) {
-            AutomationPill(finished = finished)
+            AutomationPill(finished = finished, hint = hint)
         }
     }
 }
 
 @Composable
-private fun AutomationPill(finished: Boolean) {
+private fun AutomationPill(finished: Boolean, hint: String) {
     val scheme = MaterialTheme.colorScheme
     val typography = LocalFocusTypography.current
     val shape = RoundedCornerShape(50)
+    val label = when {
+        finished -> stringResource(R.string.overlay_automation_finished)
+        hint.isNotBlank() -> hint
+        else -> stringResource(R.string.overlay_automation_running)
+    }
     Row(
         modifier = Modifier
             .clip(shape)
@@ -69,12 +80,12 @@ private fun AutomationPill(finished: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         AnimatedContent(
-            targetState = finished,
+            targetState = finished to label,
             transitionSpec = {
                 fadeIn(tween(durationMillis = 180)) togetherWith fadeOut(tween(durationMillis = 120))
             },
             label = "automationPill",
-        ) { done ->
+        ) { (done, text) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -93,15 +104,12 @@ private fun AutomationPill(finished: Boolean) {
                     )
                 }
                 Text(
-                    text = stringResource(
-                        if (done) {
-                            R.string.overlay_automation_finished
-                        } else {
-                            R.string.overlay_automation_running
-                        },
-                    ),
+                    text = text,
                     style = typography.labelLarge,
                     color = scheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 220.dp),
                 )
             }
         }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,7 +22,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -73,11 +70,6 @@ internal fun ChatTodoCard(
     val active = todos.any {
         it.status == TodoStatus.Pending || it.status == TodoStatus.InProgress
     }
-    val progress by animateFloatAsState(
-        targetValue = if (todos.isEmpty()) 0f else done.toFloat() / todos.size,
-        animationSpec = motion.spatialDefault(),
-        label = "todoProgress",
-    )
     var expanded by rememberSaveable(conversationId) { mutableStateOf(active) }
     var wasActive by remember { mutableStateOf(active) }
     LaunchedEffect(active) {
@@ -150,16 +142,6 @@ internal fun ChatTodoCard(
                         .rotate(chevron),
                 )
             }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .height(4.dp)
-                    .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary,
-                strokeCap = StrokeCap.Round,
-            )
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(motion.spatialDefault()) + fadeIn(motion.effectsDefault()),

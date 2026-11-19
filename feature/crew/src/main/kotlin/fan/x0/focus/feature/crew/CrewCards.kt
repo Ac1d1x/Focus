@@ -3,7 +3,6 @@ package fan.x0.focus.feature.crew
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -28,7 +26,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -41,10 +38,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -365,11 +360,6 @@ internal fun CrewTodoCard(todos: List<ConversationTodo>) {
     val scheme = MaterialTheme.colorScheme
     val done = todos.count { it.status == TodoStatus.Completed }
     val active = todos.any { it.status == TodoStatus.Pending || it.status == TodoStatus.InProgress }
-    val progress by animateFloatAsState(
-        targetValue = done.toFloat() / todos.size,
-        animationSpec = motion.spatialDefault(),
-        label = "crewTodoProgress",
-    )
     var expanded by rememberSaveable { mutableStateOf(active) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -410,16 +400,6 @@ internal fun CrewTodoCard(todos: List<ConversationTodo>) {
                         .rotate(if (expanded) 180f else 0f),
                 )
             }
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp)
-                    .height(4.dp)
-                    .clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary,
-                strokeCap = StrokeCap.Round,
-            )
             AnimatedVisibility(
                 visible = expanded,
                 enter = expandVertically(motion.spatialDefault()) + fadeIn(motion.effectsDefault()),
